@@ -1,4 +1,12 @@
-import { CalculateMetadataFunction, Composition } from "remotion";
+import { CameraMotionBlur } from "@remotion/motion-blur";
+import {
+  AbsoluteFill,
+  CalculateMetadataFunction,
+  Composition,
+  interpolate,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion";
 
 type Props = {};
 
@@ -20,6 +28,39 @@ export const MyComposition = () => {
   );
 };
 
+// Reads the frame itself so that <Freeze> (used internally by
+// CameraMotionBlur to render each blur sample) can re-evaluate its
+// position per sample instead of receiving an already-computed value.
+const MovingBox: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { width, durationInFrames } = useVideoConfig();
+
+  const x = interpolate(frame, [0, durationInFrames], [-100, width + 100], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 260,
+        left: x,
+        width: 200,
+        height: 200,
+        borderRadius: 24,
+        backgroundColor: "#4fc3f7",
+      }}
+    />
+  );
+};
+
 export const MyComponent: React.FC<Props> = () => {
-  return null;
+  return (
+    <AbsoluteFill style={{ backgroundColor: "black" }}>
+      <CameraMotionBlur shutterAngle={180} samples={10}>
+        <MovingBox />
+      </CameraMotionBlur>
+    </AbsoluteFill>
+  );
 };
