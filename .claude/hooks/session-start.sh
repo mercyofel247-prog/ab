@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+
+# Remotion project deps (remotion-app/node_modules is gitignored, must be restored per session)
+if [ -f "$CLAUDE_PROJECT_DIR/remotion-app/package.json" ]; then
+  (cd "$CLAUDE_PROJECT_DIR/remotion-app" && npm install)
+fi
+
+# HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts)
+npm install -g hyperframes@0.7.107
