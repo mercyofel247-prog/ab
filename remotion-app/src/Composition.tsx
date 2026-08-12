@@ -1,4 +1,7 @@
 import { CameraMotionBlur } from "@remotion/motion-blur";
+import { ThreeCanvas } from "@remotion/three";
+import { gsap } from "gsap";
+import { useLayoutEffect, useRef } from "react";
 import {
   AbsoluteFill,
   CalculateMetadataFunction,
@@ -19,7 +22,7 @@ export const MyComposition = () => {
     <Composition
       id="MyComp"
       component={MyComponent}
-      durationInFrames={60}
+      durationInFrames={90}
       fps={30}
       width={1280}
       height={720}
@@ -44,7 +47,7 @@ const MovingBox: React.FC = () => {
     <div
       style={{
         position: "absolute",
-        top: 260,
+        top: 580,
         left: x,
         width: 200,
         height: 200,
@@ -55,9 +58,76 @@ const MovingBox: React.FC = () => {
   );
 };
 
+// GSAP timelines run on their own real-time ticker by default, which is
+// not frame-accurate for rendering. Building the timeline once (paused)
+// and seeking it to `frame / fps` on every render makes it deterministic.
+const GsapTitle: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const timeline = useRef<gsap.core.Timeline | null>(null);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  useLayoutEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+    if (!timeline.current) {
+      timeline.current = gsap.timeline({ paused: true });
+      timeline.current.fromTo(
+        ref.current,
+        { opacity: 0, y: 40, scale: 0.7 },
+        { opacity: 1, y: 0, scale: 1, duration: 1, ease: "back.out(2)" },
+      );
+    }
+    timeline.current.seek(frame / fps);
+  }, [frame, fps]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        top: 60,
+        width: "100%",
+        textAlign: "center",
+        fontFamily: "sans-serif",
+        fontSize: 56,
+        fontWeight: 700,
+        color: "white",
+      }}
+    >
+      Remotion + GSAP + Three.js
+    </div>
+  );
+};
+
+// R3F's own useFrame ticker is real-time, not tied to Remotion's frame
+// count, so rotation is driven directly from useCurrentFrame() instead —
+// the documented approach for deterministic <ThreeCanvas /> scenes.
+const RotatingCube: React.FC = () => {
+  const frame = useCurrentFrame();
+
+  return (
+    <mesh rotation={[frame / 30, frame / 20, 0]}>
+      <boxGeometry args={[2, 2, 2]} />
+      <meshStandardMaterial color="#4fc3f7" />
+    </mesh>
+  );
+};
+
 export const MyComponent: React.FC<Props> = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
+      <GsapTitle />
+      <ThreeCanvas
+        width={400}
+        height={400}
+        style={{ position: "absolute", top: 160, left: 440 }}
+      >
+        <ambientLight intensity={1} />
+        <pointLight position={[10, 10, 10]} />
+        <RotatingCube />
+      </ThreeCanvas>
       <CameraMotionBlur shutterAngle={180} samples={10}>
         <MovingBox />
       </CameraMotionBlur>
