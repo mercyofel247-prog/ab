@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Data Beat — $8.8T</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-0: #05060a;
+        --bg-1: #14171d;
+        --bg-2: #23272f;
+        --steel-hi: #f2f4f7;
+        --steel-mid: #a8afb9;
+        --steel-lo: #454a54;
+        --accent: #7fd6ff;
+        --ink-dim: #8f96a1;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg-0);
+      }
+
+      body {
+        font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 90% at 50% 38%, var(--bg-2) 0%, var(--bg-1) 46%, var(--bg-0) 100%);
+      }
+
+      /* brushed-metal streaks */
+      .brushed {
+        position: absolute;
+        inset: -10% -10%;
+        background: repeating-linear-gradient(
+          115deg,
+          rgba(255, 255, 255, 0.05) 0px,
+          rgba(255, 255, 255, 0.05) 1px,
+          rgba(255, 255, 255, 0) 3px,
+          rgba(255, 255, 255, 0) 7px,
+          rgba(255, 255, 255, 0.03) 8px,
+          rgba(255, 255, 255, 0) 10px
+        );
+        mix-blend-mode: overlay;
+        opacity: 0.55;
+      }
+
+      /* fine hairline grid, data-instrument texture */
+      .grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+        background-size: 64px 64px;
+        opacity: 0.5;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(75% 65% at 50% 46%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.62) 100%);
+      }
+
+      .sweep {
+        position: absolute;
+        top: -20%;
+        bottom: -20%;
+        width: 420px;
+        left: 0;
+        transform: translateX(-420px);
+        background: linear-gradient(
+          100deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.1) 46%,
+          rgba(127, 214, 255, 0.16) 50%,
+          rgba(255, 255, 255, 0.1) 54%,
+          rgba(255, 255, 255, 0) 100%
+        );
+        transform: skewX(-18deg);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+      }
+
+      .ring-wrap {
+        position: relative;
+        width: 620px;
+        height: 620px;
+        display: grid;
+        place-items: center;
+      }
+
+      .ring-wrap svg {
+        position: absolute;
+        inset: 0;
+        transform: rotate(-90deg);
+      }
+
+      .ring-track {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.07);
+        stroke-width: 3;
+      }
+
+      .ring-fill {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 3;
+        stroke-linecap: round;
+        filter: drop-shadow(0 0 10px rgba(127, 214, 255, 0.55));
+      }
+
+      .amount-col {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        z-index: 4;
+      }
+
+      .eyebrow {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.42em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        opacity: 0;
+      }
+
+      .amount {
+        font-size: 190px;
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        background: linear-gradient(
+          180deg,
+          var(--steel-hi) 0%,
+          var(--steel-mid) 42%,
+          var(--steel-lo) 54%,
+          var(--steel-hi) 62%,
+          var(--steel-mid) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.55));
+      }
+
+      .readout {
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 34px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink-dim);
+        white-space: nowrap;
+      }
+
+      .flash {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(60% 55% at 50% 46%, rgba(200, 232, 255, 0.5) 0%, rgba(200, 232, 255, 0) 70%);
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="10" data-track-index="1">
+        <div class="brushed" data-layout-allow-overflow></div>
+        <div class="grid"></div>
+        <div id="sweep" class="sweep"></div>
+        <div class="vignette"></div>
+
+        <div class="center">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 620 620">
+              <circle class="ring-track" cx="310" cy="310" r="292"></circle>
+              <circle id="ringFill" class="ring-fill" cx="310" cy="310" r="292"></circle>
+            </svg>
+            <div class="amount-col">
+              <div id="eyebrow" class="eyebrow">USD · Running Total</div>
+              <div id="amount" class="amount">$0.0T</div>
+              <div id="readout" class="readout">$0</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="flash" class="flash"></div>
+      </section>
+
+      <audio
+        id="sting"
+        data-start="0"
+        data-duration="10"
+        data-track-index="2"
+        src="assets/sting.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const amountEl = document.querySelector("#amount");
+      const readoutEl = document.querySelector("#readout");
+      const ringFill = document.querySelector("#ringFill");
+
+      const TARGET_T = 8.8;
+      const RADIUS = 292;
+      const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+      ringFill.style.strokeDasharray = String(CIRCUMFERENCE);
+      ringFill.style.strokeDashoffset = String(CIRCUMFERENCE);
+
+      function renderCount(trillions) {
+        const bounded = Math.max(0, Math.min(TARGET_T, trillions));
+        amountEl.textContent = "$" + bounded.toFixed(1) + "T";
+        readoutEl.textContent = "$" + Math.round(bounded * 1e12).toLocaleString("en-US");
+        ringFill.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - bounded / TARGET_T));
+      }
+
+      renderCount(0);
+
+      const count = { v: 0 };
+
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power2.out" } });
+
+      gsap.set(["#amount", "#eyebrow", ".ring-fill"], { opacity: 0 });
+      gsap.set("#amount", { y: 20, scale: 0.97 });
+
+      tl.to("#amount", { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power2.out" }, 0.1);
+      tl.to(".ring-fill", { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.1);
+      tl.to("#eyebrow", { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.35);
+
+      tl.to(
+        count,
+        {
+          v: TARGET_T,
+          duration: 7.7,
+          ease: "power1.out",
+          onUpdate: () => renderCount(count.v),
+          onComplete: () => renderCount(TARGET_T),
+        },
+        0.4,
+      );
+
+      // landing beat, synced to the audio ping at ~8.3s
+      tl.to("#amount", { scale: 1.045, duration: 0.14, ease: "back.out(2.4)" }, 8.16);
+      tl.to("#amount", { scale: 1, duration: 0.26, ease: "power2.out" }, 8.3);
+      tl.to(
+        "#amount",
+        {
+          filter: "drop-shadow(0 10px 34px rgba(127,214,255,0.45))",
+          duration: 0.3,
+          ease: "power2.out",
+        },
+        8.16,
+      );
+      tl.to(".ring-fill", { filter: "drop-shadow(0 0 22px rgba(127,214,255,0.85))", duration: 0.3 }, 8.16);
+      tl.to(".ring-fill", { filter: "drop-shadow(0 0 10px rgba(127,214,255,0.55))", duration: 0.9 }, 8.6);
+
+      tl.to("#flash", { opacity: 1, duration: 0.1, ease: "none" }, 8.16);
+      tl.to("#flash", { opacity: 0, duration: 0.9, ease: "power2.out" }, 8.26);
+
+      tl.fromTo(
+        "#sweep",
+        { x: -420 },
+        { x: 2340, duration: 1.5, ease: "power1.inOut" },
+        8.05,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
