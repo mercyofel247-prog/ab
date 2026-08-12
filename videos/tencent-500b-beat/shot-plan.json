@@ -1,0 +1,52 @@
+{
+  "category": "stat",
+  "duration_s": 10,
+  "fps": 30,
+  "canvas": { "w": 1920, "h": 1080, "aspect": "16:9" },
+  "style": "dark navy/black data-instrument background, subtle brushed-metal texture, jade-green accent light, tabular-nums kinetic count-up, comparison-bar payoff, logo-sting close",
+  "palette": ["#05060a", "#14171d", "#23272f", "#f2f4f7", "#a8afb9", "#454a54", "#3ddc97", "#8f96a1"],
+  "font": "Helvetica Neue",
+  "beats": [0.1, 4, 6, 8.16, 9.5],
+  "export": "mp4",
+
+  "asset_needs": [],
+
+  "block": null,
+  "customize": {
+    "reused_asset": "assets/impact.wav (copied from videos/data-beat-8-8t/assets/sting.wav, reused-in-place per media-use cross-project reuse) for the 9.5s audio impact"
+  },
+
+  "content": {
+    "value": 500,
+    "prefix": "$",
+    "suffix": "B+",
+    "label": "Tencent's market cap",
+    "ring": false,
+    "scenes": [
+      {
+        "id": "count-up",
+        "start": 0,
+        "end": 4,
+        "description": "Hero number kinetic count-up 0 -> $500B+, punching on the beat; subtitle fades up beneath after the number lands."
+      },
+      {
+        "id": "logo-sting",
+        "start": 4,
+        "end": 6,
+        "description": "WeChat-style speech-bubble logo mark scales in center-low with a light sting; number/subtitle settle to a smaller top position to make room."
+      },
+      {
+        "id": "comparison-bars",
+        "start": 6,
+        "end": 9.5,
+        "description": "Three shorter bars slide in (Facebook, Mastercard, Samsung) beside the tallest Tencent bar; bold callout 'BIGGER THAN ALL OF THEM' punches in."
+      },
+      {
+        "id": "logo-lockup",
+        "start": 9.5,
+        "end": 10,
+        "description": "Final logo lockup with light flash + screen-shake micro-punch synced to the audio impact; hold."
+      }
+    ]
+  }
+}
