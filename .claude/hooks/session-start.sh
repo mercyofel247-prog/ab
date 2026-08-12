@@ -6,6 +6,12 @@ if [ -f "$CLAUDE_PROJECT_DIR/remotion-app/package.json" ]; then
   (cd "$CLAUDE_PROJECT_DIR/remotion-app" && npm install)
 fi
 
+# ffmpeg/ffprobe (required by hyperframes for encoding/probing; not bundled)
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  apt-get update -qq
+  apt-get install -y -qq ffmpeg
+fi
+
 # HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts)
 npm install -g hyperframes@0.7.107
 
