@@ -8,3 +8,9 @@ fi
 
 # HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts)
 npm install -g hyperframes@0.7.107
+
+# Work around hyperframes shipping its CLI entry point without the executable bit set
+HYPERFRAMES_BIN="$(npm root -g)/hyperframes/bin/hyperframes.mjs"
+if [ -f "$HYPERFRAMES_BIN" ]; then
+  chmod +x "$HYPERFRAMES_BIN"
+fi
