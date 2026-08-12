@@ -1,4 +1,7 @@
 # HyperFrames agent tooling (installed via `npx skills add`) — not part of the repo's source
 /.agents/
-/.claude/
+/.claude/*
+!/.claude/settings.json
+!/.claude/hooks/
+!/.claude/hooks/**
 /skills-lock.json
