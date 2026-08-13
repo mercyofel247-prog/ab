@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$50,000,000,000,000 — Metallic Count-Up Overlay</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Anton";
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url("assets/anton.ttf") format("truetype");
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        /* cool silver brushed-metal ramp — no hue, only luminance */
+        --steel-top: #ffffff;
+        --steel-hi: #eef1f4;
+        --steel-mid: #b9c0c8;
+        --steel-lo: #6e767f;
+        --steel-shadow: #454b52;
+        --red: #ff2a2a;
+      }
+
+      /* fully transparent — this composites over footage in DaVinci Resolve */
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      .center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* constant fit-scale so the final numeral fills ~70% of frame width */
+      .fit {
+        transform: scale(1);
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* inline-block: width tracks the number, so the underline can be 100% of it */
+      .stack {
+        display: inline-block;
+        position: relative;
+      }
+
+      .amount {
+        display: block;
+        font-family: "Anton", sans-serif;
+        font-weight: 400;
+        font-size: 260px;
+        line-height: 0.92;
+        letter-spacing: 0.005em;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+
+        /* brushed-silver faces via vertical luminance gradient + bevel band */
+        background: linear-gradient(
+          177deg,
+          var(--steel-top) 0%,
+          var(--steel-hi) 20%,
+          var(--steel-mid) 44%,
+          var(--steel-lo) 52%,
+          var(--steel-hi) 60%,
+          var(--steel-mid) 82%,
+          var(--steel-shadow) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+
+        /* subtle emboss/bevel on the faces + soft grounding shadow for compositing */
+        filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.28))
+          drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35))
+          drop-shadow(0 14px 26px rgba(0, 0, 0, 0.35));
+        will-change: transform, opacity;
+      }
+
+      /* comma separators — same cool metal, a touch dimmer than the digits */
+      .amount .comma {
+        background: linear-gradient(
+          177deg,
+          #c7ccd2 0%,
+          #9aa1a9 46%,
+          #5c636b 54%,
+          #8b929a 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        opacity: 0.72;
+      }
+
+      /* red underline that sweeps in beneath the number */
+      .underline {
+        position: relative;
+        width: 100%;
+        height: 14px;
+        margin-top: 26px;
+        transform: scaleX(0);
+        transform-origin: 0% 50%;
+        will-change: transform;
+      }
+
+      .underline-core {
+        position: absolute;
+        inset: 0;
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          #ff5a5a 0%,
+          var(--red) 12%,
+          var(--red) 88%,
+          #ff5a5a 100%
+        );
+      }
+
+      .underline-glow {
+        position: absolute;
+        left: -6px;
+        right: -6px;
+        top: -12px;
+        bottom: -12px;
+        border-radius: 16px;
+        background: var(--red);
+        filter: blur(18px);
+        opacity: 0.55;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="5"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <div class="center">
+          <div class="fit" id="fit">
+            <div class="stack" id="stack">
+              <div class="amount" id="amount" data-layout-allow-overflow>$0</div>
+              <div class="underline" id="underline" data-layout-allow-overflow>
+                <div class="underline-glow" id="uglow"></div>
+                <div class="underline-core"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const amountEl = document.querySelector("#amount");
+      const fitEl = document.querySelector("#fit");
+      const stackEl = document.querySelector("#stack");
+      const underlineEl = document.querySelector("#underline");
+      const uglowEl = document.querySelector("#uglow");
+
+      const TARGET = 50000000000000; // $50,000,000,000,000
+      const TARGET_STR = formatMoney(TARGET);
+      const FIT_WIDTH = 1920 * 0.7; // numeral occupies ~70% of frame width
+
+      // Deterministic formatting: group with commas, wrap commas so they render dimmer.
+      function formatMoney(n) {
+        const grouped = Math.floor(n).toLocaleString("en-US");
+        return "$" + grouped.replace(/,/g, '<span class="comma">,</span>');
+      }
+
+      function renderCount(v) {
+        const bounded = Math.max(0, Math.min(TARGET, v));
+        amountEl.innerHTML = formatMoney(bounded);
+      }
+
+      // Lock the fit-scale to the FINAL string so the numeral never resizes mid-count.
+      function applyFit() {
+        const prev = amountEl.innerHTML;
+        amountEl.innerHTML = TARGET_STR;
+        const natural = stackEl.getBoundingClientRect().width; // #fit is scale(1) here
+        amountEl.innerHTML = prev;
+        if (natural > 0) {
+          fitEl.style.transform = "scale(" + FIT_WIDTH / natural + ")";
+          return true;
+        }
+        return false;
+      }
+
+      // Measure only once Anton's real metrics are available. Gated on the GSAP
+      // ticker (not raw rAF) so it stays in sync with frame capture: in the
+      // renderer fonts are ready on the first tick; live preview retries until
+      // Anton loads. Fully deterministic — no Math.random, no wall-clock timing.
+      let fitted = false;
+      function tryFit() {
+        if (fitted) return;
+        const fontReady = document.fonts && document.fonts.check('260px "Anton"');
+        if (fontReady && applyFit()) {
+          fitted = true;
+          gsap.ticker.remove(tryFit);
+        }
+      }
+      gsap.ticker.add(tryFit);
+      tryFit();
+      renderCount(0);
+
+      // ---- Timeline -----------------------------------------------------------
+      const count = { v: 0 };
+      const tl = gsap.timeline({ paused: true });
+
+      // initial states — everything animates in, no entrance jump cuts
+      gsap.set("#amount", { opacity: 0, scale: 1.03, transformOrigin: "50% 50%" });
+      gsap.set("#underline", { scaleX: 0 });
+
+      // 1) 0–0.4s: whole numeral fades up with a 3% scale settle (expo.out)
+      tl.to("#amount", { opacity: 1, scale: 1, duration: 0.4, ease: "expo.out" }, 0);
+
+      // 2) 0.4–3.2s: dramatic count-up, heavy expo.out deceleration into the landing
+      tl.to(
+        count,
+        {
+          v: TARGET,
+          duration: 2.8,
+          ease: "expo.out",
+          onUpdate: () => renderCount(count.v),
+          onComplete: () => renderCount(TARGET),
+        },
+        0.4,
+      );
+
+      // 3) 3.2–3.7s: red underline sweeps left→right, completing as the last digit lands
+      tl.to("#underline", { scaleX: 1, duration: 0.5, ease: "expo.out" }, 3.2);
+
+      // 4) 3.7–5.0s: settle & hold
+      //    single subtle bass-style scale pulse (4%) on the numeral
+      tl.to("#amount", { scale: 1.04, duration: 0.22, ease: "sine.out" }, 3.78);
+      tl.to("#amount", { scale: 1.0, duration: 0.9, ease: "expo.out" }, 4.0);
+
+      //    red underline holds steady with a soft glow breathe
+      tl.to("#uglow", { opacity: 0.85, duration: 0.7, ease: "sine.inOut" }, 3.9);
+      tl.to("#uglow", { opacity: 0.5, duration: 0.9, ease: "sine.inOut" }, 4.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
