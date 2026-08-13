@@ -146,7 +146,7 @@
       .bar {
         width: 160px;
         border-radius: 6px 6px 0 0;
-        background: var(--blue);
+        /* background set per-bar in JS -- a blue-to-green gradient across the 5 bars */
         /* no static transform -- GSAP owns scaleY via gsap.set below */
         transform-origin: bottom center;
       }
@@ -252,6 +252,15 @@
           <div class="dot" id="dot-4"></div>
         </div>
       </section>
+
+      <audio
+        id="growth-audio"
+        data-start="0"
+        data-duration="30"
+        data-track-index="2"
+        src="assets/growth-music.mp3"
+        data-volume="0.85"
+      ></audio>
     </div>
 
     <script>
@@ -277,6 +286,11 @@
 
       const barHeights = VALUES.map((v) => Math.round((v / MAX_VALUE) * MAX_BAR_H));
 
+      // Blue-to-green gradient across the 5 bars -- each year its own step
+      // along the same "modern blue and green" palette, reinforcing the
+      // rightward growth trend the way the trend line does.
+      const BAR_COLORS = ["#2563eb", "#0ea5e9", "#06b6d4", "#10b981", "#16a34a"];
+
       // ---- One-time layout: position columns, size bars, place labels -------
       for (let i = 0; i < N; i++) {
         const col = document.getElementById("col-" + i);
@@ -284,6 +298,7 @@
 
         const bar = document.getElementById("bar-" + i);
         bar.style.height = barHeights[i] + "px";
+        bar.style.background = BAR_COLORS[i % BAR_COLORS.length];
 
         const num = document.getElementById("num-" + i);
         num.style.left = colX[i] + BAR_W / 2 + "px";
