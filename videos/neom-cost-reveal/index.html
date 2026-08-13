@@ -560,14 +560,20 @@
 
       // ---- One-time setup: typography + burst lines ---------------------------
       gsap.set("#label .word", { opacity: 0, y: 26 });
+      // Strict reading-order build (THE -> ... -> HISTORY): each word lands
+      // after the one before it, so the sentence never shows a gap. "THE"
+      // opens solo early; the back half rushes in together right on the
+      // slam -- "MOST EXPENSIVE" (and its burst) lands exactly at LOCK_T
+      // per the brief, with the remaining words completing the sentence in
+      // the ~0.3s immediately after as one continuous machine-gun finish.
       const WORD_TIMES = {
         "#w-the": 4.55,
-        "#w-mistake": 4.95,
-        "#w-in": 5.3,
-        "#w-human": 5.6,
-        "#w-most": 6.97,
-        "#w-expensive": 7.0,
-        "#w-history": 7.0,
+        "#w-most": 6.86,
+        "#w-expensive": LOCK_T,
+        "#w-mistake": LOCK_T + 0.08,
+        "#w-in": LOCK_T + 0.16,
+        "#w-human": LOCK_T + 0.22,
+        "#w-history": LOCK_T + 0.28,
       };
       const BURST_ANGLES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
       const burstRand = mulberry32(4471);
@@ -665,6 +671,16 @@
         if (t < LOCK_T) return 1.0;
         return 1.0 - 0.55 * smoothstep(LOCK_T, 9.0, t);
       }
+      // The narration's treble band is near-silent right at LOCK_T (it peaks
+      // earlier, ~6.2s), so the treble-driven glow would sit out the slam
+      // while bass/amplitude spike on real audio content there. This is a
+      // deterministic (not audio-sampled) pulse layered on top so the glow
+      // still visibly joins the hit -- fast attack, exp decay, seeded at 0.
+      function glowImpactPulse(t) {
+        if (t < LOCK_T) return 0;
+        const dt = t - LOCK_T;
+        return 0.5 * Math.exp(-dt / 0.18);
+      }
       function vignetteAudioGain(t) {
         if (t < HOLD_END) return 0.4;
         if (t < ACCEL_END) return 1.0; // strongest during the acceleration
@@ -706,8 +722,9 @@
               const thumpScale = 1 + b.bass * 0.05 * counterAudioGain(tt);
               gsap.set("#counter-audio", { scale: thumpScale });
 
-              // treble -> graph glow shimmer, subtle (6%), background element
-              const glowOp = Math.min(1, b.treble * 0.9 * glowAudioGain(tt));
+              // treble -> graph glow shimmer, subtle (6%), background element,
+              // plus the deterministic slam-sync pulse (see glowImpactPulse).
+              const glowOp = Math.min(1, b.treble * 0.9 * glowAudioGain(tt) + glowImpactPulse(tt));
               gsap.set("#graph-glow", { opacity: glowOp });
 
               // amplitude -> vignette breathing, 8-10% swing around baseline
