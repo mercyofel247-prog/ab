@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>5-Year Revenue Growth — Data Viz</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Montserrat";
+        font-style: normal;
+        font-weight: 300;
+        font-display: block;
+        src: url("assets/montserrat-300.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "Montserrat";
+        font-style: normal;
+        font-weight: 800;
+        font-display: block;
+        src: url("assets/montserrat-800.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "IBM Plex Mono";
+        font-style: normal;
+        font-weight: 600;
+        font-display: block;
+        src: url("assets/plexmono-600.ttf") format("truetype");
+      }
+      @font-face {
+        font-family: "IBM Plex Mono";
+        font-style: normal;
+        font-weight: 700;
+        font-display: block;
+        src: url("assets/plexmono-700.ttf") format("truetype");
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --blue: #2563eb;
+        --green: #16a34a;
+        --ink: #0f172a;
+        --ink-soft: #64748b;
+        --hairline: #e2e8f0;
+        --bg: #ffffff;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      body {
+        font-family: "Montserrat", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+
+      #bg {
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
+      }
+
+      #header {
+        position: absolute;
+        top: 132px;
+        left: 0;
+        width: 1920px;
+        text-align: center;
+        opacity: 0;
+      }
+      #header .eyebrow {
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 600;
+        font-size: 22px;
+        letter-spacing: 0.28em;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+      }
+      #header .title {
+        margin-top: 14px;
+        font-weight: 800;
+        font-size: 52px;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+      }
+
+      #chart {
+        position: absolute;
+        left: 320px;
+        top: 300px;
+        width: 1280px;
+        height: 620px;
+      }
+
+      #trend-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      #trend-line {
+        fill: none;
+        stroke: var(--green);
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .baseline {
+        position: absolute;
+        left: 0;
+        top: 520px;
+        width: 100%;
+        height: 2px;
+        background: var(--hairline);
+        /* no static transform -- GSAP owns scaleX via gsap.set below */
+        transform-origin: left center;
+      }
+
+      .bar-col {
+        position: absolute;
+        top: 0;
+        width: 160px;
+        height: 520px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+
+      .bar {
+        width: 160px;
+        border-radius: 6px 6px 0 0;
+        background: var(--blue);
+        /* no static transform -- GSAP owns scaleY via gsap.set below */
+        transform-origin: bottom center;
+      }
+
+      .bar-number {
+        position: absolute;
+        left: 50%;
+        /* no static transform here -- GSAP owns xPercent/scale on this element
+           (see gsap.set below); a CSS transform would fight the tween and get
+           silently overwritten the moment GSAP touches the element */
+        font-family: "IBM Plex Mono", monospace;
+        font-weight: 700;
+        font-size: 34px;
+        color: var(--ink);
+        white-space: nowrap;
+        opacity: 0;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .year-label {
+        position: absolute;
+        left: 50%;
+        top: 542px;
+        transform: translateX(-50%);
+        font-family: "Montserrat", sans-serif;
+        font-weight: 300;
+        font-size: 24px;
+        letter-spacing: 0.04em;
+        color: var(--ink-soft);
+        white-space: nowrap;
+        opacity: 0;
+      }
+
+      .dot {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        margin-left: -5px;
+        margin-top: -5px;
+        border-radius: 50%;
+        background: var(--green);
+        /* no static transform -- GSAP owns scale via gsap.set below */
+        transform-origin: 50% 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="30" data-track-index="1">
+        <div id="bg"></div>
+
+        <div id="header" data-layout-allow-overflow>
+          <div class="eyebrow">FY2021 &ndash; FY2025</div>
+          <div class="title">5-Year Revenue Growth</div>
+        </div>
+
+        <div id="chart" data-layout-allow-overflow>
+          <div class="baseline" id="baseline"></div>
+          <svg id="trend-svg" viewBox="0 0 1280 620" preserveAspectRatio="none">
+            <path id="trend-line" d=""></path>
+          </svg>
+
+          <div class="bar-col" id="col-0">
+            <div class="bar" id="bar-0"></div>
+          </div>
+          <div class="bar-col" id="col-1">
+            <div class="bar" id="bar-1"></div>
+          </div>
+          <div class="bar-col" id="col-2">
+            <div class="bar" id="bar-2"></div>
+          </div>
+          <div class="bar-col" id="col-3">
+            <div class="bar" id="bar-3"></div>
+          </div>
+          <div class="bar-col" id="col-4">
+            <div class="bar" id="bar-4"></div>
+          </div>
+
+          <div class="bar-number" id="num-0">$0.0M</div>
+          <div class="bar-number" id="num-1">$0.0M</div>
+          <div class="bar-number" id="num-2">$0.0M</div>
+          <div class="bar-number" id="num-3">$0.0M</div>
+          <div class="bar-number" id="num-4">$0.0M</div>
+
+          <div class="year-label" id="yr-0">FY2021</div>
+          <div class="year-label" id="yr-1">FY2022</div>
+          <div class="year-label" id="yr-2">FY2023</div>
+          <div class="year-label" id="yr-3">FY2024</div>
+          <div class="year-label" id="yr-4">FY2025</div>
+
+          <div class="dot" id="dot-0"></div>
+          <div class="dot" id="dot-1"></div>
+          <div class="dot" id="dot-2"></div>
+          <div class="dot" id="dot-3"></div>
+          <div class="dot" id="dot-4"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Illustrative placeholder series (revenue, $M) -- swap in real figures.
+      const VALUES = [1.0, 1.3, 1.7, 2.2, 2.8];
+      const YEARS = ["FY2021", "FY2022", "FY2023", "FY2024", "FY2025"];
+      const MAX_VALUE = Math.max.apply(null, VALUES);
+
+      const CHART_W = 1280;
+      const CHART_H = 620;
+      const BAR_W = 160;
+      const BASELINE_Y = 520;
+      const MAX_BAR_H = 480;
+      const GAP = 120;
+      const N = VALUES.length;
+      const totalW = N * BAR_W + (N - 1) * GAP;
+      const startX = (CHART_W - totalW) / 2;
+
+      const colX = [];
+      for (let i = 0; i < N; i++) colX.push(startX + i * (BAR_W + GAP));
+
+      const barHeights = VALUES.map((v) => Math.round((v / MAX_VALUE) * MAX_BAR_H));
+
+      // ---- One-time layout: position columns, size bars, place labels -------
+      for (let i = 0; i < N; i++) {
+        const col = document.getElementById("col-" + i);
+        col.style.left = colX[i] + "px";
+
+        const bar = document.getElementById("bar-" + i);
+        bar.style.height = barHeights[i] + "px";
+
+        const num = document.getElementById("num-" + i);
+        num.style.left = colX[i] + BAR_W / 2 + "px";
+        num.style.top = BASELINE_Y - barHeights[i] - 58 + "px";
+
+        const yr = document.getElementById("yr-" + i);
+        yr.style.left = colX[i] + BAR_W / 2 + "px";
+        yr.textContent = YEARS[i];
+
+        const dot = document.getElementById("dot-" + i);
+        dot.style.left = colX[i] + BAR_W / 2 + "px";
+        dot.style.top = BASELINE_Y - barHeights[i] + "px";
+      }
+
+      // ---- One-time layout: green trend line across bar-top points ----------
+      const trendPoints = colX.map((x, i) => [x + BAR_W / 2, BASELINE_Y - barHeights[i]]);
+      const trendPathD = trendPoints.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+      const trendLineEl = document.getElementById("trend-line");
+      trendLineEl.setAttribute("d", trendPathD);
+      const TREND_LEN = trendLineEl.getTotalLength();
+      trendLineEl.style.strokeDasharray = String(TREND_LEN);
+      trendLineEl.style.strokeDashoffset = String(TREND_LEN);
+
+      // Cumulative length fraction at each point, so each year's line segment
+      // reveal duration matches only that segment (not the whole path so far).
+      function cumulativeLenFractions(pts) {
+        const fr = [0];
+        let acc = 0;
+        for (let i = 1; i < pts.length; i++) {
+          const dx = pts[i][0] - pts[i - 1][0];
+          const dy = pts[i][1] - pts[i - 1][1];
+          acc += Math.sqrt(dx * dx + dy * dy);
+          fr.push(acc);
+        }
+        return fr.map((v) => v / acc);
+      }
+      const trendFrac = cumulativeLenFractions(trendPoints);
+
+      function formatMoney(v) {
+        return "$" + v.toFixed(1) + "M";
+      }
+
+      // ---- Timing -------------------------------------------------------------
+      const FPS = 30;
+      const HEADER_AT = 0.3;
+      const BEAT0 = 1.3;
+      const BEAT_INTERVAL = 5.2;
+      const RISE_DUR = 1.0;
+      const EASE = "power3.out";
+
+      function beatStart(i) {
+        return BEAT0 + i * BEAT_INTERVAL;
+      }
+
+      // ---- Track builder: everything lives on ONE flat timeline. Nested child
+      // timelines are avoided -- this vendored GSAP build does not propagate
+      // duration/seeking through tl.add(childTimeline), verified directly.
+      function buildChart(tl) {
+        // Entrance -- header + baseline, no jump cuts.
+        tl.to("#header", { opacity: 1, duration: 0.6, ease: "power2.out" }, HEADER_AT);
+        tl.to("#baseline", { scaleX: 1, duration: 0.8, ease: "power2.out" }, HEADER_AT + 0.15);
+
+        for (let i = 0; i < N; i++) {
+          const t0 = beatStart(i);
+          const barSel = "#bar-" + i;
+          const numSel = "#num-" + i;
+          const yrSel = "#yr-" + i;
+          const dotSel = "#dot-" + i;
+          const colSel = "#col-" + i;
+
+          // Year label arrives just ahead of its bar.
+          tl.to(yrSel, { opacity: 1, duration: 0.35, ease: "power2.out" }, t0 - 0.15);
+
+          // Bar rise (scaleY only -- never animate height).
+          tl.to(barSel, { scaleY: 1, duration: RISE_DUR, ease: EASE }, t0);
+
+          // Counting number -- same duration + ease as the bar, so they land
+          // together as one beat (counting-dynamic-scale pairing principle).
+          tl.to(numSel, { opacity: 1, duration: 0.3, ease: "power2.out" }, t0);
+          const counterProxy = { v: 0 };
+          tl.to(
+            counterProxy,
+            {
+              v: VALUES[i],
+              duration: RISE_DUR,
+              ease: EASE,
+              onUpdate: () => {
+                document.getElementById("num-" + i).textContent = formatMoney(counterProxy.v);
+              },
+            },
+            t0,
+          );
+
+          // Trend line segment from the previous point to this one.
+          if (i > 0) {
+            const fromFrac = trendFrac[i - 1];
+            const toFrac = trendFrac[i];
+            const seg = { p: fromFrac };
+            tl.to(
+              seg,
+              {
+                p: toFrac,
+                duration: RISE_DUR * 0.85,
+                ease: "power2.out",
+                onUpdate: () => {
+                  trendLineEl.style.strokeDashoffset = String(TREND_LEN * (1 - seg.p));
+                },
+              },
+              t0 + RISE_DUR * 0.15,
+            );
+          }
+          // immediateRender: false on every fromTo below -- otherwise GSAP
+          // applies the "from" state eagerly at *creation* time (synchronous,
+          // page-load) rather than when the timeline playhead reaches it,
+          // which would reset earlier elements' state the instant a later
+          // bar's tween is scheduled. Confirmed by direct repro against this
+          // vendored GSAP build.
+          tl.fromTo(
+            dotSel,
+            { scale: 0 },
+            { scale: 1, duration: 0.35, ease: "back.out(2.2)", immediateRender: false },
+            t0 + RISE_DUR - 0.15,
+          );
+
+          // Understated landing pulse -- the piece's only "musical" accent:
+          // a small, even beat on every arrival, nothing louder than the last.
+          tl.fromTo(
+            [barSel, numSel],
+            { scale: 1 },
+            { scale: 1.025, duration: 0.16, ease: "sine.out", immediateRender: false },
+            t0 + RISE_DUR,
+          );
+          tl.to([barSel, numSel], { scale: 1, duration: 0.32, ease: "sine.inOut" }, t0 + RISE_DUR + 0.16);
+        }
+      }
+
+      const tlChart = gsap.timeline({ paused: true });
+      buildChart(tlChart);
+      window.__hfTracks = window.__hfTracks || {};
+      window.__hfTracks["chart"] = tlChart;
+
+      const tl = gsap.timeline({ paused: true });
+      gsap.set("#header", { opacity: 0 });
+      gsap.set("#baseline", { scaleX: 0 });
+      gsap.set(".bar", { scaleY: 0 });
+      gsap.set(".bar-number", { opacity: 0, scale: 0.94, xPercent: -50 });
+      gsap.set(".year-label", { opacity: 0 });
+      gsap.set(".dot", { scale: 0 });
+      buildChart(tl);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
