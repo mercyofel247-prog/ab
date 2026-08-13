@@ -149,12 +149,7 @@
         text-shadow:
           0 0 24px rgba(255, 42, 42, 0.65),
           0 4px 10px rgba(0, 0, 0, 0.6);
-      }
-
-      .gone .ch {
-        display: inline-block;
-        opacity: 0;
-        will-change: transform, opacity;
+        will-change: transform, opacity, filter;
       }
     </style>
   </head>
@@ -174,10 +169,7 @@
             <div class="stack" id="stack">
               <div class="underglow" id="underglow" data-layout-allow-overflow></div>
               <div class="amount" id="amount" data-layout-allow-overflow>$0</div>
-              <div class="gone" id="gone" data-layout-allow-overflow>
-                <span class="ch">G</span><span class="ch">o</span><span class="ch">n</span
-                ><span class="ch">e</span><span class="ch">.</span>
-              </div>
+              <div class="gone" id="gone" data-layout-allow-overflow>Gone.</div>
             </div>
           </div>
         </div>
@@ -200,6 +192,7 @@
       const fitEl = document.querySelector("#fit");
       const stackEl = document.querySelector("#stack");
       const underglowEl = document.querySelector("#underglow");
+      const goneEl = document.querySelector("#gone");
 
       const TARGET = 50000000000; // $50,000,000,000
       const TARGET_STR = formatMoney(TARGET);
@@ -221,6 +214,10 @@
 
       function applyBlur(px) {
         amountEl.style.filter = px > 0.05 ? `blur(${px}px) ${DROP_SHADOWS}` : DROP_SHADOWS;
+      }
+
+      function applyGoneBlur(px) {
+        goneEl.style.filter = px > 0.05 ? `blur(${px}px)` : "";
       }
 
       // Lock the fit-scale to the FINAL string so the numeral never resizes mid-count.
@@ -268,7 +265,8 @@
       // duplicate/echo of the number: it counts up from a truly empty frame.
       gsap.set("#amount", { opacity: 0 });
       gsap.set("#underglow", { opacity: 0, scale: 0.85 });
-      gsap.set(".gone .ch", { y: 14 });
+      gsap.set("#gone", { opacity: 0, x: 0, scale: 1 });
+      applyGoneBlur(0);
 
       // 1) OPEN on black — numeral fades up from nothing as the count begins.
       tl.to("#amount", { opacity: 1, duration: FADE_DUR, ease: "power1.out" }, FADE_START);
@@ -327,11 +325,37 @@
         LOCK_T,
       );
 
-      // 4) "Gone." fades in beneath with a fast per-character reveal.
+      // 4) "Gone." swoops in from the side with a zoom, landing exactly on the
+      //    same beat as the lock/slam — one unified impact, not a beat late.
+      //    Motion blur seeds at peak and resolves to 0 on arrival (same
+      //    window/ease as the move), per the entrance-blur recipe.
+      const GONE_ENTER_DUR = 0.34;
+      const GONE_ENTER_START = LOCK_T - GONE_ENTER_DUR; // arrival == LOCK_T
+      const GONE_SIDE_X = 820; // enters from off-frame right
+      const GONE_START_SCALE = 0.5; // zooms in toward full size
+      const GONE_PEAK_BLUR = 16;
+      const GONE_EASE = "expo.out";
+
+      gsap.set("#gone", { x: GONE_SIDE_X, scale: GONE_START_SCALE });
+      applyGoneBlur(GONE_PEAK_BLUR);
+
+      tl.to("#gone", { opacity: 1, duration: GONE_ENTER_DUR * 0.4, ease: "power1.out" }, GONE_ENTER_START);
+      tl.fromTo(
+        "#gone",
+        { x: GONE_SIDE_X, scale: GONE_START_SCALE },
+        { x: 0, scale: 1, duration: GONE_ENTER_DUR, ease: GONE_EASE },
+        GONE_ENTER_START,
+      );
+      const goneBlur = { v: GONE_PEAK_BLUR };
       tl.to(
-        ".gone .ch",
-        { opacity: 1, y: 0, duration: 0.16, ease: "power2.out", stagger: 0.035 },
-        LOCK_T + 0.05,
+        goneBlur,
+        {
+          v: 0,
+          duration: GONE_ENTER_DUR,
+          ease: GONE_EASE,
+          onUpdate: () => applyGoneBlur(goneBlur.v),
+        },
+        GONE_ENTER_START,
       );
 
       // 5) HOLD with micro-life — one bounded glow breath, no ongoing loop.
