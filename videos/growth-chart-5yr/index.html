@@ -42,12 +42,11 @@
       }
 
       :root {
-        --blue: #2563eb;
-        --green: #16a34a;
-        --ink: #0f172a;
-        --ink-soft: #64748b;
-        --hairline: #e2e8f0;
-        --bg: #ffffff;
+        --accent: #f4f4f5;
+        --ink: #f8fafc;
+        --ink-soft: #a1a1aa;
+        --hairline: rgba(255, 255, 255, 0.14);
+        --bg: #000000;
       }
 
       html,
@@ -116,7 +115,7 @@
       }
       #trend-line {
         fill: none;
-        stroke: var(--green);
+        stroke: var(--accent);
         stroke-width: 3;
         stroke-linecap: round;
         stroke-linejoin: round;
@@ -187,7 +186,7 @@
         margin-left: -5px;
         margin-top: -5px;
         border-radius: 50%;
-        background: var(--green);
+        background: var(--accent);
         /* no static transform -- GSAP owns scale via gsap.set below */
         transform-origin: 50% 50%;
       }
@@ -289,7 +288,8 @@
       // Blue-to-green gradient across the 5 bars -- each year its own step
       // along the same "modern blue and green" palette, reinforcing the
       // rightward growth trend the way the trend line does.
-      const BAR_COLORS = ["#2563eb", "#0ea5e9", "#06b6d4", "#10b981", "#16a34a"];
+      // Lavender-to-red gradient across the 5 bars, vivid against black.
+      const BAR_COLORS = ["#a78bfa", "#c084fc", "#e879f9", "#fb7185", "#ef4444"];
 
       // ---- One-time layout: position columns, size bars, place labels -------
       for (let i = 0; i < N; i++) {
@@ -298,7 +298,9 @@
 
         const bar = document.getElementById("bar-" + i);
         bar.style.height = barHeights[i] + "px";
-        bar.style.background = BAR_COLORS[i % BAR_COLORS.length];
+        const barColor = BAR_COLORS[i % BAR_COLORS.length];
+        bar.style.background = barColor;
+        bar.style.boxShadow = "0 0 34px " + barColor + "55"; // subtle color-matched glow on black
 
         const num = document.getElementById("num-" + i);
         num.style.left = colX[i] + BAR_W / 2 + "px";
@@ -343,11 +345,11 @@
 
       // ---- Timing -------------------------------------------------------------
       const FPS = 30;
-      const HEADER_AT = 0.3;
-      const BEAT0 = 1.3;
-      const BEAT_INTERVAL = 5.2;
-      const RISE_DUR = 1.0;
-      const EASE = "power3.out";
+      const HEADER_AT = 0.2;
+      const BEAT0 = 0.8;
+      const BEAT_INTERVAL = 3.0;
+      const RISE_DUR = 0.6;
+      const EASE = "expo.out";
 
       function beatStart(i) {
         return BEAT0 + i * BEAT_INTERVAL;
@@ -370,14 +372,14 @@
           const colSel = "#col-" + i;
 
           // Year label arrives just ahead of its bar.
-          tl.to(yrSel, { opacity: 1, duration: 0.35, ease: "power2.out" }, t0 - 0.15);
+          tl.to(yrSel, { opacity: 1, duration: 0.22, ease: "power2.out" }, t0 - 0.1);
 
           // Bar rise (scaleY only -- never animate height).
           tl.to(barSel, { scaleY: 1, duration: RISE_DUR, ease: EASE }, t0);
 
           // Counting number -- same duration + ease as the bar, so they land
           // together as one beat (counting-dynamic-scale pairing principle).
-          tl.to(numSel, { opacity: 1, duration: 0.3, ease: "power2.out" }, t0);
+          tl.to(numSel, { opacity: 1, duration: 0.18, ease: "power2.out" }, t0);
           const counterProxy = { v: 0 };
           tl.to(
             counterProxy,
@@ -419,8 +421,8 @@
           tl.fromTo(
             dotSel,
             { scale: 0 },
-            { scale: 1, duration: 0.35, ease: "back.out(2.2)", immediateRender: false },
-            t0 + RISE_DUR - 0.15,
+            { scale: 1, duration: 0.22, ease: "back.out(2.2)", immediateRender: false },
+            t0 + RISE_DUR - 0.09,
           );
 
           // Understated landing pulse -- the piece's only "musical" accent:
@@ -428,10 +430,10 @@
           tl.fromTo(
             [barSel, numSel],
             { scale: 1 },
-            { scale: 1.025, duration: 0.16, ease: "sine.out", immediateRender: false },
+            { scale: 1.025, duration: 0.1, ease: "sine.out", immediateRender: false },
             t0 + RISE_DUR,
           );
-          tl.to([barSel, numSel], { scale: 1, duration: 0.32, ease: "sine.inOut" }, t0 + RISE_DUR + 0.16);
+          tl.to([barSel, numSel], { scale: 1, duration: 0.2, ease: "sine.inOut" }, t0 + RISE_DUR + 0.1);
         }
       }
 
