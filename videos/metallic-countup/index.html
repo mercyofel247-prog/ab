@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920, height=1080" />
-    <title>$50,000,000,000,000 — Metallic Count-Up Overlay</title>
+    <title>$50,000,000,000 — "Gone." Count-Up</title>
     <script src="vendor/gsap.min.js"></script>
     <style>
       @font-face {
@@ -28,15 +28,16 @@
         --steel-lo: #6e767f;
         --steel-shadow: #454b52;
         --red: #ff2a2a;
+        --red-dim: #b31212;
       }
 
-      /* fully transparent — this composites over footage in DaVinci Resolve */
+      /* standalone cold-open clip — opaque black, not a compositing overlay */
       html,
       body {
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: transparent;
+        background: #000;
       }
 
       #stage {
@@ -44,7 +45,7 @@
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: transparent;
+        background: #000;
       }
 
       .center {
@@ -62,13 +63,36 @@
         will-change: transform;
       }
 
-      /* inline-block: width tracks the number, so the underline can be 100% of it */
+      /* inline-block: width tracks the number, so glow/label can center under it */
       .stack {
         display: inline-block;
         position: relative;
+        text-align: center;
+      }
+
+      /* soft red pool of light beneath the whole stack — the "underglow" */
+      .underglow {
+        position: absolute;
+        left: 50%;
+        bottom: -70px;
+        width: 130%;
+        height: 260px;
+        transform: translateX(-50%) scale(0.85);
+        transform-origin: 50% 50%;
+        background: radial-gradient(
+          ellipse 50% 50% at 50% 50%,
+          var(--red) 0%,
+          var(--red-dim) 45%,
+          transparent 72%
+        );
+        filter: blur(40px);
+        opacity: 0;
+        z-index: 0;
       }
 
       .amount {
+        position: relative;
+        z-index: 1;
         display: block;
         font-family: "Anton", sans-serif;
         font-weight: 400;
@@ -97,20 +121,13 @@
 
         /* subtle emboss/bevel on the faces + soft grounding shadow for compositing */
         filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.28))
-          drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35))
-          drop-shadow(0 14px 26px rgba(0, 0, 0, 0.35));
-        will-change: transform, opacity;
+          drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35)) drop-shadow(0 14px 26px rgba(0, 0, 0, 0.35));
+        will-change: transform, filter;
       }
 
       /* comma separators — same cool metal, a touch dimmer than the digits */
       .amount .comma {
-        background: linear-gradient(
-          177deg,
-          #c7ccd2 0%,
-          #9aa1a9 46%,
-          #5c636b 54%,
-          #8b929a 100%
-        );
+        background: linear-gradient(177deg, #c7ccd2 0%, #9aa1a9 46%, #5c636b 54%, #8b929a 100%);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -118,40 +135,26 @@
         opacity: 0.72;
       }
 
-      /* red underline that sweeps in beneath the number */
-      .underline {
+      .gone {
         position: relative;
-        width: 100%;
-        height: 14px;
-        margin-top: 26px;
-        transform: scaleX(0);
-        transform-origin: 0% 50%;
-        will-change: transform;
+        z-index: 1;
+        margin-top: 34px;
+        font-family: "Anton", sans-serif;
+        font-weight: 400;
+        font-size: 92px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: center;
+        color: var(--red);
+        text-shadow:
+          0 0 24px rgba(255, 42, 42, 0.65),
+          0 4px 10px rgba(0, 0, 0, 0.6);
       }
 
-      .underline-core {
-        position: absolute;
-        inset: 0;
-        border-radius: 8px;
-        background: linear-gradient(
-          90deg,
-          #ff5a5a 0%,
-          var(--red) 12%,
-          var(--red) 88%,
-          #ff5a5a 100%
-        );
-      }
-
-      .underline-glow {
-        position: absolute;
-        left: -6px;
-        right: -6px;
-        top: -12px;
-        bottom: -12px;
-        border-radius: 16px;
-        background: var(--red);
-        filter: blur(18px);
-        opacity: 0.55;
+      .gone .ch {
+        display: inline-block;
+        opacity: 0;
+        will-change: transform, opacity;
       }
     </style>
   </head>
@@ -160,24 +163,34 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="5"
+      data-duration="3"
       data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
         <div class="center">
           <div class="fit" id="fit">
             <div class="stack" id="stack">
+              <div class="underglow" id="underglow" data-layout-allow-overflow></div>
               <div class="amount" id="amount" data-layout-allow-overflow>$0</div>
-              <div class="underline" id="underline" data-layout-allow-overflow>
-                <div class="underline-glow" id="uglow"></div>
-                <div class="underline-core"></div>
+              <div class="gone" id="gone" data-layout-allow-overflow>
+                <span class="ch">G</span><span class="ch">o</span><span class="ch">n</span
+                ><span class="ch">e</span><span class="ch">.</span>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      <audio
+        id="countup-audio"
+        data-start="0"
+        data-duration="3"
+        data-track-index="2"
+        src="assets/countup-audio.mp3"
+        data-volume="0.95"
+      ></audio>
     </div>
 
     <script>
@@ -186,12 +199,14 @@
       const amountEl = document.querySelector("#amount");
       const fitEl = document.querySelector("#fit");
       const stackEl = document.querySelector("#stack");
-      const underlineEl = document.querySelector("#underline");
-      const uglowEl = document.querySelector("#uglow");
+      const underglowEl = document.querySelector("#underglow");
 
-      const TARGET = 50000000000000; // $50,000,000,000,000
+      const TARGET = 50000000000; // $50,000,000,000
       const TARGET_STR = formatMoney(TARGET);
       const FIT_WIDTH = 1920 * 0.7; // numeral occupies ~70% of frame width
+
+      const DROP_SHADOWS =
+        "drop-shadow(0 2px 0 rgba(255, 255, 255, 0.28)) drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35)) drop-shadow(0 14px 26px rgba(0, 0, 0, 0.35))";
 
       // Deterministic formatting: group with commas, wrap commas so they render dimmer.
       function formatMoney(n) {
@@ -202,6 +217,10 @@
       function renderCount(v) {
         const bounded = Math.max(0, Math.min(TARGET, v));
         amountEl.innerHTML = formatMoney(bounded);
+      }
+
+      function applyBlur(px) {
+        amountEl.style.filter = px > 0.05 ? `blur(${px}px) ${DROP_SHADOWS}` : DROP_SHADOWS;
       }
 
       // Lock the fit-scale to the FINAL string so the numeral never resizes mid-count.
@@ -233,42 +252,104 @@
       gsap.ticker.add(tryFit);
       tryFit();
       renderCount(0);
+      applyBlur(0);
 
       // ---- Timeline -----------------------------------------------------------
-      const count = { v: 0 };
       const tl = gsap.timeline({ paused: true });
 
-      // initial states — everything animates in, no entrance jump cuts
-      gsap.set("#amount", { opacity: 0, scale: 1.03, transformOrigin: "50% 50%" });
-      gsap.set("#underline", { scaleX: 0 });
+      const FADE_START = 0.1;
+      const FADE_DUR = 0.2;
+      const COUNT_START = 0.1;
+      const COUNT_DUR = 2.0;
+      const COUNT_EASE = "expo.in"; // slow start, jets to the final value
+      const LOCK_T = COUNT_START + COUNT_DUR; // 2.1s
 
-      // 1) 0–0.4s: whole numeral fades up with a 3% scale settle (expo.out)
-      tl.to("#amount", { opacity: 1, scale: 1, duration: 0.4, ease: "expo.out" }, 0);
+      // initial states — everything animates in, no entrance jump cuts, no
+      // duplicate/echo of the number: it counts up from a truly empty frame.
+      gsap.set("#amount", { opacity: 0 });
+      gsap.set("#underglow", { opacity: 0, scale: 0.85 });
+      gsap.set(".gone .ch", { y: 14 });
 
-      // 2) 0.4–3.2s: dramatic count-up, heavy expo.out deceleration into the landing
+      // 1) OPEN on black — numeral fades up from nothing as the count begins.
+      tl.to("#amount", { opacity: 1, duration: FADE_DUR, ease: "power1.out" }, FADE_START);
+
+      // 2) Count-up: ease-in-expo (slow, then jets to the final value). Motion
+      //    blur is derived analytically from the ease's instantaneous slope, so
+      //    it is correct for any seek time (snapshot-safe) and always resolves
+      //    to exactly 0 at the lock frame instead of lingering.
+      const easeFn = gsap.parseEase(COUNT_EASE);
+      const BLUR_SCALE = 2.4;
+      const MAX_BLUR = 22;
+      function velocityAt(u) {
+        const du = 0.004;
+        const lo = Math.max(0, u - du);
+        const hi = Math.min(1, u + du);
+        return (easeFn(hi) - easeFn(lo)) / (hi - lo);
+      }
+
+      const count = { v: 0 };
       tl.to(
         count,
         {
           v: TARGET,
-          duration: 2.8,
-          ease: "expo.out",
-          onUpdate: () => renderCount(count.v),
-          onComplete: () => renderCount(TARGET),
+          duration: COUNT_DUR,
+          ease: COUNT_EASE,
+          onUpdate: function () {
+            renderCount(count.v);
+            const u = gsap.utils.clamp(0, 1, (tl.time() - COUNT_START) / COUNT_DUR);
+            const blurPx = u >= 1 ? 0 : Math.min(MAX_BLUR, velocityAt(u) * BLUR_SCALE);
+            applyBlur(blurPx);
+          },
+          onComplete: () => {
+            renderCount(TARGET);
+            applyBlur(0);
+          },
         },
-        0.4,
+        COUNT_START,
       );
 
-      // 3) 3.2–3.7s: red underline sweeps left→right, completing as the last digit lands
-      tl.to("#underline", { scaleX: 1, duration: 0.5, ease: "expo.out" }, 3.2);
+      // 3) LOCK — the underglow ignites (bloom slightly past peak, then settles)
+      //    and one subtle overshoot-settle bumps the numeral as it lands.
+      const GLOW_PEAK = 0.4;
+      const GLOW_OVERSHOOT = 0.46;
+      tl.fromTo(
+        "#underglow",
+        { opacity: 0, scale: 0.85 },
+        { opacity: GLOW_OVERSHOOT, scale: 1.04, duration: 0.16, ease: "power2.out" },
+        LOCK_T,
+      );
+      tl.to("#underglow", { opacity: GLOW_PEAK, scale: 1.0, duration: 0.32, ease: "sine.out" }, LOCK_T + 0.16);
 
-      // 4) 3.7–5.0s: settle & hold
-      //    single subtle bass-style scale pulse (4%) on the numeral
-      tl.to("#amount", { scale: 1.04, duration: 0.22, ease: "sine.out" }, 3.78);
-      tl.to("#amount", { scale: 1.0, duration: 0.9, ease: "expo.out" }, 4.0);
+      tl.fromTo(
+        "#amount",
+        { scale: 1.055 },
+        { scale: 1.0, duration: 0.42, ease: "back.out(1.25)" },
+        LOCK_T,
+      );
 
-      //    red underline holds steady with a soft glow breathe
-      tl.to("#uglow", { opacity: 0.85, duration: 0.7, ease: "sine.inOut" }, 3.9);
-      tl.to("#uglow", { opacity: 0.5, duration: 0.9, ease: "sine.inOut" }, 4.6);
+      // 4) "Gone." fades in beneath with a fast per-character reveal.
+      tl.to(
+        ".gone .ch",
+        { opacity: 1, y: 0, duration: 0.16, ease: "power2.out", stagger: 0.035 },
+        LOCK_T + 0.05,
+      );
+
+      // 5) HOLD with micro-life — one bounded glow breath, no ongoing loop.
+      const HOLD_BREATH_START = LOCK_T + 0.42;
+      const phase = { p: 0 };
+      tl.to(
+        phase,
+        {
+          p: Math.PI,
+          duration: 0.42,
+          ease: "none",
+          onUpdate: () => {
+            const s = Math.sin(phase.p);
+            underglowEl.style.opacity = String(GLOW_PEAK + s * 0.07);
+          },
+        },
+        HOLD_BREATH_START,
+      );
 
       window.__timelines["main"] = tl;
     </script>
