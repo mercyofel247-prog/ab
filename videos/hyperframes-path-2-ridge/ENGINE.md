@@ -1,15 +1,29 @@
 # HyperFrames Path 2 — Ridge/Sky Parallax Engine
 
-A minimal still-image reveal: one 3840×2160 photograph, split into two depth
-planes by mask, moved by a barely-perceptible camera + differential parallax,
-dressed with front-plane dust and a fixed grade. Alternative implementation
-path to "Omni" for the same class of still-image reveal.
+A minimal still-image reveal: one photograph, split into two depth planes by
+mask, moved by a barely-perceptible camera + differential parallax, dressed
+with front-plane dust and a fixed grade. Alternative implementation path to
+"Omni" for the same class of still-image reveal.
 
 ## Source
 
-Load the still full-frame at 3840×2160 (`assets/still-placeholder.png` here —
-**temporary stand-in**, see "Swapping in the real still" below). Do not crop
-or pre-process it; the engine reveals it, it never reshapes it.
+Source the still at up to 3840×2160 for quality headroom (`assets/still-
+placeholder.png` here — **temporary stand-in**, see "Swapping in the real
+still" below); `object-fit: cover` downsamples it onto whatever the
+composition canvas is. Do not crop or pre-process it beyond that; the engine
+reveals it, it never reshapes it.
+
+**Composition canvas defaults to 1920×1080**, not the source's native 4K.
+This is a render-cost decision, not a creative one: this engine's grade runs
+a WebGL shader (vignette/grain/chromatic aberration) over two full-frame
+image layers, and on GPU-less render hardware that shader's `ReadPixels`
+readback is the bottleneck — 4K made single frames take **1–1.5 minutes
+each** (a 360-frame render would run many hours). 1080p is 4x fewer pixels
+for that same shader and renders practically on CPU-only hardware. Set
+`--resolution landscape-4k` at render time (or raise `data-width`/
+`data-height` back to 3840x2160) once real GPU-accelerated render capacity
+is available — nothing else about the engine changes; the still still
+sources at full quality either way.
 
 ## Two planes, one image, split by mask
 
