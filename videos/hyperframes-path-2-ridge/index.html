@@ -175,15 +175,17 @@
         tl.addLabel("frame-" + String(f).padStart(2, "0"), f - 1);
       }
 
-      // Camera — container scale. Uncomfortably slow for how small the delta is:
-      // eased both ends, never linear.
-      tl.fromTo("#camera", { scale: 1.02 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+      // Camera — container scale. Eased both ends, never linear. Deltas below
+      // are intentionally larger than the original "minimal" spec (1.02/1.03/
+      // 1.008) — bumped up on request because that version read as motionless,
+      // especially against the low-detail placeholder. See ENGINE.md.
+      tl.fromTo("#camera", { scale: 1.08 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
 
       // Depth parallax — differential scale per plane, same timing as the camera
       // so all three land on neutral scale together. This differential IS the
-      // depth cue; keep it minimal (the AWE lever), nothing else moves.
-      tl.fromTo("#plane-ridge", { scale: 1.03 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
-      tl.fromTo("#plane-sky", { scale: 1.008 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+      // depth cue.
+      tl.fromTo("#plane-ridge", { scale: 1.15 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+      tl.fromTo("#plane-sky", { scale: 1.04 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
 
       // Dust — continuous ambient drift across the FULL duration (unlike the camera,
       // it never holds), each mote on its own gently curved path.

@@ -1,9 +1,16 @@
 # HyperFrames Path 2 — Ridge/Sky Parallax Engine
 
-A minimal still-image reveal: one photograph, split into two depth planes by
-mask, moved by a barely-perceptible camera + differential parallax, dressed
-with front-plane dust and a fixed grade. Alternative implementation path to
-"Omni" for the same class of still-image reveal.
+A still-image reveal: one photograph, split into two depth planes by mask,
+moved by a camera + differential parallax, dressed with front-plane dust and
+a fixed grade. Alternative implementation path to "Omni" for the same class
+of still-image reveal.
+
+**Motion level:** the original spec called for near-imperceptible movement
+(2%/3%/0.8% scale deltas, "AWE LEVER: minimal"). On the placeholder still —
+mostly flat black, little edge detail — that read as motionless, so the
+deltas were bumped up on request (see "Camera" below). If a future still has
+enough texture that the original subtle deltas read clearly, dial back down;
+the mechanism doesn't change, only the numbers.
 
 ## Source
 
@@ -34,28 +41,31 @@ sources at full quality either way.
 seam is invisible at rest; it only shows a few sub-pixels of parallax
 mismatch during the camera move, which reads as depth, not a seam.
 
-- `foreground_ridge` — bottom band, parallax scale **1.03 → 1.00**
-- `sky` — upper band, parallax scale **1.008 → 1.00**
+- `foreground_ridge` — bottom band, parallax scale **1.15 → 1.00**
+- `sky` — upper band, parallax scale **1.04 → 1.00**
 
 The differential between those two numbers *is* the depth cue. Nothing else
 about the two planes differs — same grade, same duration, same ease.
 
 ## Camera
 
-A `.camera` wrapper around both planes scales **1.02 → 1.00**,
+A `.camera` wrapper around both planes scales **1.08 → 1.00**,
 `power2.inOut`, over `MOVE_FRAMES` (4 of the 12 beat frames = 4s at the
 1 frame/second beat rate this project uses). `power2.inOut` eases both
-ends — never linear — and reads as uncomfortably slow specifically because
-the delta it's covering (2%) is so small; slow easing on a tiny move is what
-produces the "held breath" feel, not a large move slowed down.
+ends — never linear.
+
+These deltas (camera 8%, ridge 15%, sky 4%) are well above the original
+"uncomfortably slow / minimal" spec (2%/3%/0.8%) — bumped up because the
+subtle version was invisible against the placeholder still. Still eased
+both ends, still never linear, still confined to the first `MOVE_FRAMES`
+seconds; only the magnitude changed.
 
 ## AWE LEVER
 
-Depth parallax is the *only* lever pulled for "awe." No push-in beyond the
-2%/3%/0.8% deltas above, no exposure ramp, no pans, no reveals. Restraint is
-the point — resist the urge to add a second camera phase or a bigger scale
-delta later; if the shot needs more weight, extend the *hold* (more static
-frames), not the move.
+Depth parallax is still the *only* lever pulled for "awe" — no exposure
+ramp, no pans, no reveals, no second camera phase. Restraint now applies to
+*what* moves, not how far; if the shot needs more weight, extend the *hold*
+(more static frames), not the move, and don't reach for other levers.
 
 ## Additive: dust
 
@@ -100,9 +110,14 @@ bespoke SVG filter grafted on top of the canonical grade.
   displaced, distorted, or content-aware anything. Everything visible is a
   `transform: scale(...)` on a wrapper, plus the canonical grade layer, plus
   the additive dust overlay.
-- Combined max scale stays inside a 10% margin above source resolution
-  (camera 1.02 × ridge parallax 1.03 ≈ 1.05 at t=0) — comfortably inside the
-  "inner 90%" cap, so the crop never approaches the source's raw edge.
+- Combined max scale is camera 1.08 × ridge parallax 1.15 ≈ 1.242 at t=0 —
+  **24% beyond source resolution, outside the original "inner 90%" cap.**
+  Documented deviation: the cap was sized for the original minimal deltas: it
+  doesn't leave headroom for the bumped-up motion above and was knowingly
+  traded away for visible movement. Still fine in practice (`object-fit:
+  cover` + real photo detail have plenty of margin at 24% overscan), but if
+  the "inner 90%" constraint turns out to be a hard requirement, the camera/
+  parallax deltas need to come back down, not this note revised away.
 - Final 8 of the 12 beat frames (`frame-05`…`frame-12`, seconds 4–12) are
   static except dust: the camera/parallax tweens are 4s long and are never
   touched again after that — nothing re-tweens `#camera`, `#plane-sky`, or
