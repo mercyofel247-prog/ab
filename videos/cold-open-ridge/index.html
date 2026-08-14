@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Cold Open — Ridge</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0a0a0c;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0a0a0c;
+      }
+
+      /* ── planes (z0): same full-frame still, masked into two bands ── */
+      #container {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      .plane {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        display: block;
+      }
+
+      /* sky — upper 88%, feathered 4% crossfade band centered on the 88% line */
+      #skyPlane {
+        z-index: 0;
+        transform-origin: 50% 40%;
+        -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 90%);
+        mask-image: linear-gradient(to bottom, #000 0%, #000 86%, transparent 90%);
+      }
+
+      /* foreground_ridge — bottom 12%, same feather band */
+      #ridgePlane {
+        z-index: 0;
+        transform-origin: 50% 94%;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 86%, #000 90%, #000 100%);
+        mask-image: linear-gradient(to bottom, transparent 86%, #000 90%, #000 100%);
+      }
+
+      /* ── dust (z1) ── */
+      #dustLayer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.14;
+        pointer-events: none;
+      }
+
+      .dust-particle {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(232, 236, 240, 0.95) 0%, rgba(232, 236, 240, 0) 70%);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="1.5" data-width="1920" data-height="1080" data-fps="24">
+      <section id="stage" class="clip" data-start="0" data-duration="1.5" data-track-index="1">
+        <div id="container" data-layout-allow-overflow="">
+          <img data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0,&quot;highlights&quot;:0,&quot;shadows&quot;:0,&quot;whites&quot;:0,&quot;blacks&quot;:0,&quot;temperature&quot;:0,&quot;tint&quot;:0,&quot;vibrance&quot;:0,&quot;saturation&quot;:0},&quot;details&quot;:{&quot;vignette&quot;:0.6,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.65,&quot;grain&quot;:0.08,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0.04,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" id="skyPlane" class="plane" src="assets/ridge-still.jpg" alt="">
+          <img data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0,&quot;highlights&quot;:0,&quot;shadows&quot;:0,&quot;whites&quot;:0,&quot;blacks&quot;:0,&quot;temperature&quot;:0,&quot;tint&quot;:0,&quot;vibrance&quot;:0,&quot;saturation&quot;:0},&quot;details&quot;:{&quot;vignette&quot;:0.6,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.65,&quot;grain&quot;:0.08,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0.04,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" id="ridgePlane" class="plane" src="assets/ridge-still.jpg" alt="">
+        </div>
+        <div id="dustLayer"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // deterministic seed — pure function of n, no Math.random
+      const prand = (n) => {
+        const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+        return x - Math.floor(x);
+      };
+
+      // ── dust particle field: fixed pool, seeded once at setup ──
+      const DUST_COUNT = 16;
+      const dustLayer = document.getElementById("dustLayer");
+      const particles = [];
+
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "dust-particle";
+        const size = 1.5 + prand(i * 3 + 1) * 2.5; // 1.5-4px at 1080p
+        const left = prand(i * 5 + 2) * 1920;
+        const top = prand(i * 7 + 3) * 825; // keep dust within the sky band, clear of the ridge glow
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+        dustLayer.appendChild(el);
+        particles.push(el);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // container "breathe": whole composited image, 0 -> 1.1667s (frame 28/36),
+      // holding fully static for the last 8 frames per the lock/neg constraint.
+      const SETTLE_DUR = 1.1666667; // (1.5s - 8 frames @ 24fps)
+
+      tl.fromTo("#container", { scale: 1.02 }, { scale: 1.0, duration: SETTLE_DUR, ease: "power2.inOut" }, 0);
+
+      // per-plane differential parallax (same window) — the scale gap between
+      // ridge and sky is the depth cue; it composes multiplicatively with the
+      // container breathe above (nested transforms), independent of it.
+      tl.fromTo("#skyPlane", { scale: 1.008 }, { scale: 1.0, duration: SETTLE_DUR, ease: "power2.inOut" }, 0);
+      tl.fromTo("#ridgePlane", { scale: 1.03 }, { scale: 1.0, duration: SETTLE_DUR, ease: "power2.inOut" }, 0);
+
+      // dust drift: linear, no easing, looping across the full 1.5s (including
+      // the held tail — dust is the one thing explicitly still moving there).
+      // Finite repeat (not repeat:-1) keeps the timeline's own duration bounded.
+      particles.forEach((el, i) => {
+        const legDur = 0.25;
+        const startOffset = prand(i * 11 + 5) * 0.12; // slight per-particle phase, deterministic
+        tl.fromTo(
+          el,
+          { x: 0 },
+          { x: 4, duration: legDur, ease: "none", repeat: 5, yoyo: true },
+          startOffset,
+        );
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
