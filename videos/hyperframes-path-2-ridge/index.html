@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape-4k">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=3840, height=2160">
+    <title>HyperFrames Path 2 — Ridge Reveal</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      :root {
+        /* Where the sky/foreground_ridge masks split, as a % of stage height.
+           Tune this once the real still is in place — it must land on the
+           photo's actual horizon line for the feather to read as invisible. */
+        --horizon: 80%;
+        --feather: 6%;
+      }
+
+      #root {
+        position: relative;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      /* Camera rig — container scale. The single wrapper transform; everything
+         inside rides it. Depth planes additionally carry their own parallax
+         scale on top of this. */
+      .camera {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .plane {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .plane img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      /* Both planes sample the SAME still. Only the mask differs, so the
+         feathered seam is invisible — the pixels on either side of the
+         blend are identical; only their transforms (parallax) diverge. */
+      .plane-sky {
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 calc(var(--horizon) - var(--feather)),
+          transparent calc(var(--horizon) + var(--feather))
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          #000 0%,
+          #000 calc(var(--horizon) - var(--feather)),
+          transparent calc(var(--horizon) + var(--feather))
+        );
+      }
+
+      .plane-ridge {
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          transparent calc(var(--horizon) - var(--feather)),
+          #000 calc(var(--horizon) + var(--feather)),
+          #000 100%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          transparent calc(var(--horizon) - var(--feather)),
+          #000 calc(var(--horizon) + var(--feather)),
+          #000 100%
+        );
+      }
+
+      /* Dust — z-front, outside the camera rig on purpose: it does NOT ride
+         the container/parallax scale, which is what reads it as closer to
+         the viewer than the graded plate (a depth cue, not a decoration). */
+      .dust {
+        position: absolute;
+        inset: 0;
+        opacity: 0.14;
+        pointer-events: none;
+      }
+      .mote {
+        position: absolute;
+        width: var(--s, 6px);
+        height: var(--s, 6px);
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 70%);
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="12" data-width="3840" data-height="2160">
+      <div class="camera" id="camera">
+        <div class="plane plane-sky" id="plane-sky">
+          <img data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0,&quot;highlights&quot;:0,&quot;shadows&quot;:0,&quot;whites&quot;:0,&quot;blacks&quot;:0,&quot;temperature&quot;:0,&quot;tint&quot;:0,&quot;vibrance&quot;:0,&quot;saturation&quot;:0},&quot;details&quot;:{&quot;vignette&quot;:0.85,&quot;vignetteMidpoint&quot;:0.45,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.55,&quot;grain&quot;:0.08,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0.12,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" src="assets/still-placeholder.png" alt="">
+        </div>
+        <div class="plane plane-ridge" id="plane-ridge">
+          <img data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0,&quot;highlights&quot;:0,&quot;shadows&quot;:0,&quot;whites&quot;:0,&quot;blacks&quot;:0,&quot;temperature&quot;:0,&quot;tint&quot;:0,&quot;vibrance&quot;:0,&quot;saturation&quot;:0},&quot;details&quot;:{&quot;vignette&quot;:0.85,&quot;vignetteMidpoint&quot;:0.45,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.55,&quot;grain&quot;:0.08,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0.12,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" src="assets/still-placeholder.png" alt="">
+        </div>
+      </div>
+      <div class="dust" id="dust"></div>
+    </div>
+
+    <script>
+      // Deterministic PRNG for dust placement/paths — never Math.random for render-critical state.
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const STAGE_W = 3840;
+      const STAGE_H = 2160;
+      const TOTAL = 12; // engine's minimum unit: 12 one-second beat frames, extendable
+      const MOVE_FRAMES = 4; // frames 1-4: camera + parallax move
+      // frames 5-12 (HOLD_FRAMES = 8) are static except dust — enforced simply by
+      // giving the camera/parallax tweens a 4s duration and never touching them again.
+
+      const rand = mulberry32(88);
+      const dustLayer = document.getElementById("dust");
+      const MOTE_COUNT = 46;
+      const motes = [];
+      for (let i = 0; i < MOTE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "mote";
+        const size = 3 + rand() * 6;
+        el.style.setProperty("--s", size + "px");
+        el.style.left = rand() * STAGE_W + "px";
+        el.style.top = rand() * STAGE_H + "px";
+        dustLayer.appendChild(el);
+
+        const angle = rand() * Math.PI * 2;
+        const curve = angle + (rand() - 0.5) * 0.6;
+        const dist = 60 + rand() * 160;
+        motes.push({ el, angle, curve, dist });
+      }
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // 12 labeled beat frames — the seams future extensions hang more static
+      // hold frames off (append "frame-13", "frame-14", ... beyond TOTAL).
+      for (let f = 1; f <= TOTAL; f++) {
+        tl.addLabel("frame-" + String(f).padStart(2, "0"), f - 1);
+      }
+
+      // Camera — container scale. Uncomfortably slow for how small the delta is:
+      // eased both ends, never linear.
+      tl.fromTo("#camera", { scale: 1.02 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+
+      // Depth parallax — differential scale per plane, same timing as the camera
+      // so all three land on neutral scale together. This differential IS the
+      // depth cue; keep it minimal (the AWE lever), nothing else moves.
+      tl.fromTo("#plane-ridge", { scale: 1.03 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+      tl.fromTo("#plane-sky", { scale: 1.008 }, { scale: 1.0, duration: MOVE_FRAMES, ease: "power2.inOut" }, 0);
+
+      // Dust — continuous ambient drift across the FULL duration (unlike the camera,
+      // it never holds), each mote on its own gently curved path.
+      motes.forEach((m) => {
+        tl.to(
+          m.el,
+          {
+            keyframes: {
+              "50%": { x: Math.cos(m.curve) * m.dist * 0.55, y: Math.sin(m.curve) * m.dist * 0.55 },
+              "100%": { x: Math.cos(m.angle) * m.dist, y: Math.sin(m.angle) * m.dist },
+            },
+            duration: TOTAL,
+            ease: "sine.inOut",
+          },
+          0
+        );
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
