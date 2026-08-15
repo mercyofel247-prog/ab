@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>AURORA — A Generative Sequence</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-0: #04050c;
+        --bg-1: #070a16;
+        --bg-2: #0c1226;
+        --cyan: #57dcff;
+        --blue: #6aa0ff;
+        --violet: #9a7bff;
+        --magenta: #ff5cc8;
+        --ink: #eaf2ff;
+        --ink-dim: #8ea3c8;
+      }
+
+      html,
+      body {
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      body {
+        font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: radial-gradient(130% 100% at 50% 44%, var(--bg-2) 0%, var(--bg-1) 46%, var(--bg-0) 100%);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        will-change: opacity, transform;
+      }
+
+      .fill {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------- shared type ---------- */
+      .eyebrow {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: 0.62em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+      }
+      .wordmark {
+        font-size: 300px;
+        font-weight: 800;
+        letter-spacing: -0.015em;
+        color: var(--ink);
+        line-height: 0.9;
+        display: flex;
+        overflow: hidden;
+      }
+      .wordmark .ltr {
+        display: inline-block;
+        will-change: transform;
+      }
+      .subtitle {
+        font-size: 40px;
+        font-weight: 500;
+        letter-spacing: 0.16em;
+        color: var(--ink-dim);
+      }
+      .center-col {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 44px;
+      }
+
+      /* ---------- SCENE A: IGNITION ---------- */
+      #ignitionCore {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 40px;
+        height: 40px;
+        margin: -20px 0 0 -20px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ffffff 0%, var(--cyan) 30%, rgba(87, 220, 255, 0) 70%);
+        filter: blur(2px);
+        transform: scale(0);
+      }
+      #ignitionBloom {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 2600px;
+        height: 2600px;
+        margin: -1300px 0 0 -1300px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(120, 200, 255, 0.5) 0%,
+          rgba(106, 160, 255, 0.16) 26%,
+          rgba(106, 160, 255, 0) 60%
+        );
+        transform: scale(0);
+        opacity: 0;
+      }
+
+      /* ---------- SCENE B: ORBIT ---------- */
+      #orbitWrap {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #orbitWrap svg {
+        width: 1900px;
+        height: 1900px;
+        overflow: visible;
+      }
+      .orbit-core {
+        fill: url(#coreGrad);
+        filter: drop-shadow(0 0 60px rgba(87, 220, 255, 0.8));
+      }
+      .orbit-ring {
+        fill: none;
+        stroke-linecap: round;
+      }
+      .orbit-node {
+        filter: drop-shadow(0 0 22px rgba(122, 200, 255, 0.9));
+      }
+
+      /* ---------- SCENE C: SIGNAL ---------- */
+      #signalGrid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(120, 160, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120, 160, 255, 0.05) 1px, transparent 1px);
+        background-size: 120px 120px;
+        mask-image: radial-gradient(80% 70% at 50% 50%, #000 40%, transparent 100%);
+        -webkit-mask-image: radial-gradient(80% 70% at 50% 50%, #000 40%, transparent 100%);
+      }
+      #eq {
+        position: absolute;
+        left: 50%;
+        bottom: 760px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        height: 520px;
+      }
+      #eq .bar {
+        width: 34px;
+        height: 100%;
+        border-radius: 8px 8px 3px 3px;
+        background: linear-gradient(180deg, var(--cyan) 0%, var(--blue) 55%, var(--violet) 100%);
+        transform-origin: bottom center;
+        transform: scaleY(0.05);
+        box-shadow: 0 0 24px rgba(87, 200, 255, 0.4);
+      }
+      #signalReadout {
+        position: absolute;
+        left: 50%;
+        top: 560px;
+        transform: translateX(-50%);
+        text-align: center;
+      }
+      #signalNumber {
+        font-size: 260px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        background: linear-gradient(180deg, #ffffff 0%, var(--cyan) 60%, var(--blue) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 12px 40px rgba(87, 200, 255, 0.35));
+      }
+      #signalUnit {
+        margin-top: 18px;
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: 0.5em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+      }
+
+      /* ---------- SCENE D: HORIZON ---------- */
+      #auroraSky {
+        position: absolute;
+        inset: -12% -18%;
+        background:
+          radial-gradient(60% 40% at 30% 60%, rgba(87, 220, 255, 0.34), transparent 70%),
+          radial-gradient(52% 42% at 66% 52%, rgba(255, 92, 200, 0.24), transparent 70%),
+          conic-gradient(
+            from 200deg at 50% 70%,
+            rgba(106, 160, 255, 0.16),
+            rgba(154, 123, 255, 0.16),
+            rgba(87, 220, 255, 0.16),
+            rgba(106, 160, 255, 0.16)
+          );
+        filter: blur(40px);
+        opacity: 0.9;
+      }
+      .ridge {
+        position: absolute;
+        left: -8%;
+        width: 116%;
+        height: 100%;
+        top: 0;
+        will-change: transform;
+      }
+      .ridge svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* ---------- SCENE E: LOCKUP ---------- */
+      #lockup {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 54px;
+      }
+      #lockLine {
+        width: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent);
+        box-shadow: 0 0 22px rgba(87, 200, 255, 0.6);
+      }
+
+      /* ---------- GRADE PASS (persistent) ---------- */
+      #tint {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+        mix-blend-mode: soft-light;
+        background: linear-gradient(180deg, rgba(80, 120, 180, 0.14), rgba(120, 90, 160, 0.1));
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        z-index: 41;
+        pointer-events: none;
+        background: radial-gradient(80% 76% at 50% 50%, transparent 42%, rgba(0, 0, 0, 0.34) 74%, rgba(0, 0, 0, 0.62) 100%);
+      }
+      #grain {
+        position: absolute;
+        inset: 0;
+        z-index: 42;
+        pointer-events: none;
+        opacity: 0.06;
+        mix-blend-mode: overlay;
+      }
+      #grain svg {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-fps="30"
+      data-width="3840"
+      data-height="2160"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="30" data-track-index="1">
+        <!-- ============ SCENE A · IGNITION ============ -->
+        <div id="sceneA" class="scene">
+          <div id="starsA" class="fill"></div>
+          <div id="ignitionBloom"></div>
+          <div id="ignitionCore"></div>
+          <div class="center-col" id="titleA" style="gap: 60px" data-layout-allow-occlusion>
+            <div class="wordmark" id="wmA" style="font-size: 340px"></div>
+            <div class="subtitle" id="subA" style="opacity: 0">A&nbsp;&nbsp;G E N E R A T I V E&nbsp;&nbsp;S E Q U E N C E</div>
+          </div>
+        </div>
+
+        <!-- ============ SCENE B · ORBIT ============ -->
+        <div id="sceneB" class="scene">
+          <div id="starsB" class="fill"></div>
+          <div id="orbitWrap">
+            <svg viewBox="-950 -950 1900 1900">
+              <defs>
+                <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffffff" />
+                  <stop offset="42%" stop-color="#7fe3ff" />
+                  <stop offset="100%" stop-color="#3a7bff" />
+                </radialGradient>
+                <linearGradient id="ringGradA" x1="-900" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="rgba(87,220,255,0.05)" />
+                  <stop offset="0.5" stop-color="rgba(87,220,255,0.85)" />
+                  <stop offset="1" stop-color="rgba(87,220,255,0.05)" />
+                </linearGradient>
+                <linearGradient id="ringGradB" x1="-900" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="rgba(255,92,200,0.05)" />
+                  <stop offset="0.5" stop-color="rgba(255,92,200,0.7)" />
+                  <stop offset="1" stop-color="rgba(255,92,200,0.05)" />
+                </linearGradient>
+              </defs>
+              <g id="orbitRings"></g>
+              <circle class="orbit-core" id="orbitCore" cx="0" cy="0" r="70" />
+            </svg>
+          </div>
+          <div class="center-col" style="justify-content: flex-end; padding-bottom: 210px; gap: 30px">
+            <div class="eyebrow" id="ebB" style="opacity: 0" data-layout-allow-occlusion>System 01 · Orbital Field</div>
+          </div>
+        </div>
+
+        <!-- ============ SCENE C · SIGNAL ============ -->
+        <div id="sceneC" class="scene">
+          <div id="signalGrid"></div>
+          <div id="signalReadout" data-layout-allow-occlusion>
+            <div id="signalNumber">0.0</div>
+            <div id="signalUnit">Throughput · Gb/s</div>
+          </div>
+          <div id="eq"></div>
+          <div class="center-col" style="justify-content: flex-start; padding-top: 300px">
+            <div class="eyebrow" id="ebC" style="opacity: 0" data-layout-allow-occlusion>Signal 02 · Live Spectrum</div>
+          </div>
+        </div>
+
+        <!-- ============ SCENE D · HORIZON ============ -->
+        <div id="sceneD" class="scene">
+          <div id="auroraSky"></div>
+          <div id="starsD" class="fill"></div>
+
+          <div class="ridge" id="ridgeFar">
+            <svg viewBox="0 0 4450 2160" preserveAspectRatio="none" data-layout-allow-overflow>
+              <path d="M0 1520 C 700 1430 1200 1560 1900 1470 S 3200 1430 4450 1540 L4450 2160 L0 2160 Z" fill="#0a1024" />
+            </svg>
+          </div>
+          <div class="ridge" id="ridgeMid">
+            <svg viewBox="0 0 4450 2160" preserveAspectRatio="none" data-layout-allow-overflow>
+              <path d="M0 1720 C 620 1600 1300 1780 2050 1660 S 3400 1600 4450 1740 L4450 2160 L0 2160 Z" fill="#070b1a" />
+            </svg>
+          </div>
+          <div class="ridge" id="ridgeNear">
+            <svg viewBox="0 0 4450 2160" preserveAspectRatio="none" data-layout-allow-overflow>
+              <path d="M0 1930 C 700 1850 1500 1980 2300 1900 S 3700 1850 4450 1950 L4450 2160 L0 2160 Z" fill="#04060f" />
+            </svg>
+          </div>
+
+          <div class="center-col" style="justify-content: flex-start; padding-top: 300px">
+            <div class="eyebrow" id="ebD" style="opacity: 0" data-layout-allow-occlusion>Horizon 03 · Aurora</div>
+          </div>
+        </div>
+
+        <!-- ============ SCENE E · LOCKUP ============ -->
+        <div id="sceneE" class="scene">
+          <div id="starsE" class="fill"></div>
+          <div id="lockup" data-layout-allow-occlusion>
+            <div class="eyebrow" id="ebE" style="opacity: 0">Motion · Systems · Light</div>
+            <div class="wordmark" id="wmE"></div>
+            <div id="lockLine"></div>
+            <div class="subtitle" id="subE" style="opacity: 0; letter-spacing: 0.42em">R E N D E R E D&nbsp;&nbsp;I N&nbsp;&nbsp;4 K · 30 F P S</div>
+          </div>
+        </div>
+
+        <!-- ============ GRADE PASS (intentionally overlays all content) ============ -->
+        <div id="tint" data-layout-allow-occlusion></div>
+        <div id="vignette" data-layout-allow-occlusion></div>
+        <div id="grain" data-layout-allow-occlusion>
+          <svg xmlns="http://www.w3.org/2000/svg">
+            <filter id="grainFilter">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" seed="11" />
+              <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#grainFilter)" />
+          </svg>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      /* ---------- deterministic PRNG (seedable, no Math.random/Date) ---------- */
+      function makeRng(seed) {
+        let s = seed >>> 0;
+        return function () {
+          s |= 0;
+          s = (s + 0x6d2b79f5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const NS = "http://www.w3.org/2000/svg";
+
+      /* ---------- star fields ---------- */
+      function fillStars(el, count, seed, maxY) {
+        const rng = makeRng(seed);
+        let html = "";
+        for (let i = 0; i < count; i++) {
+          const x = (rng() * 3840).toFixed(0);
+          const y = (rng() * (maxY || 2160)).toFixed(0);
+          const r = (0.8 + rng() * 2.2).toFixed(2);
+          const o = (0.12 + rng() * 0.6).toFixed(2);
+          html +=
+            '<span style="position:absolute;left:' + x + "px;top:" + y + "px;width:" + r +
+            "px;height:" + r + "px;border-radius:50%;background:#dbe8ff;opacity:" + o +
+            ";box-shadow:0 0 6px rgba(200,225,255,.7)\"></span>";
+        }
+        el.innerHTML = html;
+      }
+      fillStars(document.getElementById("starsA"), 150, 101, 2160);
+      fillStars(document.getElementById("starsB"), 120, 202, 2160);
+      fillStars(document.getElementById("starsD"), 90, 303, 1400);
+      fillStars(document.getElementById("starsE"), 130, 404, 2160);
+
+      /* ---------- kinetic wordmarks (split into letters) ---------- */
+      function splitWord(el, text) {
+        el.innerHTML = "";
+        for (const ch of text) {
+          const s = document.createElement("span");
+          s.className = "ltr";
+          s.textContent = ch;
+          el.appendChild(s);
+        }
+        return el.querySelectorAll(".ltr");
+      }
+      const wmALetters = splitWord(document.getElementById("wmA"), "AURORA");
+      const wmELetters = splitWord(document.getElementById("wmE"), "AURORA");
+
+      /* ---------- orbit rings + nodes (SVG) ---------- */
+      const ringsG = document.getElementById("orbitRings");
+      const ringDefs = [
+        { r: 240, w: 2.5, grad: "ringGradA", nodes: 2, nodeR: 12, dur: 9, dir: 1 },
+        { r: 400, w: 2, grad: "ringGradB", nodes: 3, nodeR: 14, dur: 13, dir: -1 },
+        { r: 560, w: 2, grad: "ringGradA", nodes: 2, nodeR: 12, dur: 17, dir: 1 },
+        { r: 740, w: 1.5, grad: "ringGradB", nodes: 4, nodeR: 10, dur: 22, dir: -1 },
+        { r: 900, w: 1.5, grad: "ringGradA", nodes: 3, nodeR: 9, dur: 27, dir: 1 },
+      ];
+      const orbitGroups = [];
+      ringDefs.forEach((d, i) => {
+        const g = document.createElementNS(NS, "g");
+        g.setAttribute("data-dir", d.dir);
+        g.setAttribute("data-dur", d.dur);
+        // ring path
+        const c = document.createElementNS(NS, "circle");
+        c.setAttribute("cx", 0);
+        c.setAttribute("cy", 0);
+        c.setAttribute("r", d.r);
+        c.setAttribute("class", "orbit-ring");
+        c.setAttribute("stroke", "url(#" + d.grad + ")");
+        c.setAttribute("stroke-width", d.w);
+        c.setAttribute("stroke-dasharray", i % 2 ? "6 26" : "");
+        g.appendChild(c);
+        // nodes
+        const nrng = makeRng(900 + i * 37);
+        for (let n = 0; n < d.nodes; n++) {
+          const a = (n / d.nodes) * Math.PI * 2 + nrng() * 1.3;
+          const nx = Math.cos(a) * d.r;
+          const ny = Math.sin(a) * d.r;
+          const dot = document.createElementNS(NS, "circle");
+          dot.setAttribute("cx", nx.toFixed(1));
+          dot.setAttribute("cy", ny.toFixed(1));
+          dot.setAttribute("r", d.nodeR);
+          dot.setAttribute("class", "orbit-node");
+          dot.setAttribute("fill", i % 2 ? "#ff8fda" : "#8fe6ff");
+          g.appendChild(dot);
+        }
+        ringsG.appendChild(g);
+        orbitGroups.push(g);
+      });
+
+      /* ---------- equalizer bars ---------- */
+      const eq = document.getElementById("eq");
+      const BAR_COUNT = 41;
+      const bars = [];
+      const barRng = makeRng(555);
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const b = document.createElement("div");
+        b.className = "bar";
+        eq.appendChild(b);
+        bars.push({ el: b, phase: barRng() * Math.PI * 2, amp: 0.4 + barRng() * 0.6 });
+      }
+
+      /* =========================================================
+         MASTER TIMELINE — one paused timeline, seek-driven.
+         "no default easing": defaults.ease = none; every tween
+         states its own ease explicitly.
+         ========================================================= */
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+      // scene cross-fades (autoAlpha toggles visibility for perf)
+      gsap.set(["#sceneA", "#sceneB", "#sceneC", "#sceneD", "#sceneE"], { autoAlpha: 0 });
+      function sceneWindow(sel, inAt, outAt) {
+        tl.to(sel, { autoAlpha: 1, duration: 0.6, ease: "power2.out" }, inAt);
+        if (outAt !== null) tl.to(sel, { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, outAt - 0.6);
+      }
+      sceneWindow("#sceneA", 0.0, 6.6);
+      sceneWindow("#sceneB", 6.0, 13.6);
+      sceneWindow("#sceneC", 13.0, 20.6);
+      sceneWindow("#sceneD", 20.0, 26.6);
+      sceneWindow("#sceneE", 26.0, null); // holds to 30s, settles static
+
+      /* ---- SCENE A: IGNITION (0–6.6) ---- */
+      tl.fromTo("#ignitionCore", { scale: 0, opacity: 1 }, { scale: 6, duration: 0.7, ease: "expo.out" }, 0.2);
+      tl.to("#ignitionCore", { opacity: 0, duration: 0.5, ease: "power2.in" }, 0.9);
+      tl.fromTo(
+        "#ignitionBloom",
+        { scale: 0.1, opacity: 0.9 },
+        { scale: 1.1, opacity: 0, duration: 1.6, ease: "expo.out" },
+        0.35
+      );
+      tl.fromTo(
+        "#starsA span",
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 1.2, ease: "power2.out", stagger: { each: 0.004, from: "center" } },
+        0.4
+      );
+      tl.from(
+        wmALetters,
+        { yPercent: 130, opacity: 0, duration: 1.0, ease: "expo.out", stagger: 0.07 },
+        1.0
+      );
+      tl.to("#subA", { opacity: 1, duration: 0.8, ease: "power2.out" }, 1.9);
+      // slow "breathing" of the title via transform only (seek-safe, no reflow)
+      tl.fromTo("#titleA", { scale: 1.0 }, { scale: 1.02, duration: 3.5, ease: "sine.inOut", transformOrigin: "50% 50%" }, 2.0);
+      // gentle drift of the whole star layer for depth
+      tl.to("#starsA", { xPercent: -2, yPercent: -1, duration: 6.4, ease: "sine.inOut" }, 0.2);
+
+      /* ---- SCENE B: ORBIT (6–13.6) ---- */
+      tl.fromTo("#orbitCore", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 1.0, ease: "back.out(1.7)" }, 6.4);
+      // core pulse
+      tl.to("#orbitCore", { scale: 1.12, duration: 1.1, ease: "sine.inOut", repeat: 5, yoyo: true, transformOrigin: "50% 50%" }, 7.4);
+      // rings draw + rotate
+      orbitGroups.forEach((g, i) => {
+        const dir = Number(g.getAttribute("data-dir"));
+        const dur = Number(g.getAttribute("data-dur"));
+        const ring = g.querySelector(".orbit-ring");
+        const len = 2 * Math.PI * Number(ring.getAttribute("r"));
+        gsap.set(ring, { attr: { "stroke-dashoffset": 0 } });
+        gsap.set(g, { transformOrigin: "50% 50%", opacity: 0, scale: 0.6 });
+        tl.to(g, { opacity: 1, scale: 1, duration: 1.1, ease: "expo.out" }, 6.5 + i * 0.12);
+        // continuous rotation across the scene window
+        tl.to(g, { rotation: dir * 220, duration: 7.0, ease: "sine.inOut" }, 6.5);
+      });
+      tl.to("#ebB", { opacity: 1, duration: 0.8, ease: "power2.out" }, 7.6);
+      tl.fromTo("#starsB", { scale: 1.06 }, { scale: 1.0, duration: 7.2, ease: "sine.inOut" }, 6.4);
+
+      /* ---- SCENE C: SIGNAL (13–20.6) ---- */
+      const sig = { v: 0 };
+      const numEl = document.getElementById("signalNumber");
+      tl.to("#signalReadout", { opacity: 1, duration: 0.01, ease: "none" }, 13.0);
+      tl.fromTo(
+        "#signalNumber",
+        { yPercent: 40, opacity: 0 },
+        { yPercent: 0, opacity: 1, duration: 0.9, ease: "expo.out" },
+        13.3
+      );
+      tl.to(sig, {
+        v: 128.0,
+        duration: 5.2,
+        ease: "power2.out",
+        onUpdate: () => (numEl.textContent = sig.v.toFixed(1)),
+      }, 13.5);
+      tl.to("#ebC", { opacity: 1, duration: 0.8, ease: "power2.out" }, 13.6);
+      // equalizer: each bar oscillates on its own seeded phase (seek-safe repeats)
+      bars.forEach((b, i) => {
+        gsap.set(b.el, { scaleY: 0.05 });
+        // grow in
+        tl.to(b.el, { scaleY: 0.3 + b.amp * 0.4, duration: 0.5, ease: "power2.out" }, 13.4 + i * 0.012);
+        // sustained oscillation
+        const hi = 0.35 + b.amp * 0.62;
+        const lo = 0.12 + b.amp * 0.15;
+        tl.to(
+          b.el,
+          { scaleY: hi, duration: 0.42 + b.amp * 0.28, ease: "sine.inOut", repeat: 12, yoyo: true },
+          14.0 + (b.phase / (Math.PI * 2)) * 0.9
+        );
+        tl.to(b.el, { scaleY: lo, duration: 0.6, ease: "power2.inOut" }, 19.6);
+      });
+      tl.to("#signalGrid", { backgroundPosition: "0px 60px", duration: 7.0, ease: "none" }, 13.0);
+
+      /* ---- SCENE D: HORIZON (20–26.6) ---- */
+      // differential parallax drift (depth) + rising aurora
+      tl.fromTo("#ridgeFar", { xPercent: 0 }, { xPercent: -2.2, duration: 6.6, ease: "sine.inOut" }, 20.0);
+      tl.fromTo("#ridgeMid", { xPercent: 0 }, { xPercent: -4.4, duration: 6.6, ease: "sine.inOut" }, 20.0);
+      tl.fromTo("#ridgeNear", { xPercent: 0 }, { xPercent: -7.0, duration: 6.6, ease: "sine.inOut" }, 20.0);
+      tl.fromTo(
+        ["#ridgeFar", "#ridgeMid", "#ridgeNear"],
+        { yPercent: 8, opacity: 0 },
+        { yPercent: 0, opacity: 1, duration: 1.4, ease: "expo.out", stagger: 0.12 },
+        20.1
+      );
+      tl.fromTo("#auroraSky", { opacity: 0, rotation: -6 }, { opacity: 0.9, rotation: 0, duration: 2.2, ease: "sine.out", transformOrigin: "50% 70%" }, 20.0);
+      tl.to("#auroraSky", { rotation: 8, xPercent: -3, duration: 4.4, ease: "sine.inOut", transformOrigin: "50% 70%", overwrite: "auto" }, 22.2);
+      tl.to("#ebD", { opacity: 1, duration: 0.8, ease: "power2.out" }, 20.9);
+
+      /* ---- SCENE E: LOCKUP (26–30) — settles to static ---- */
+      tl.from(
+        wmELetters,
+        { yPercent: 120, opacity: 0, duration: 1.0, ease: "expo.out", stagger: 0.06 },
+        26.5
+      );
+      tl.to("#ebE", { opacity: 1, duration: 0.8, ease: "power2.out" }, 26.7);
+      tl.to("#lockLine", { width: 760, duration: 1.1, ease: "expo.out" }, 27.2);
+      tl.to("#subE", { opacity: 1, duration: 0.9, ease: "power2.out" }, 27.8);
+      // final micro settle — done well before the tail so 29–30s is static
+      tl.fromTo("#lockup", { scale: 1.03 }, { scale: 1.0, duration: 1.6, ease: "power3.out", transformOrigin: "50% 50%" }, 26.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
