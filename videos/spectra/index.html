@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>SPECTRA — Light in Motion</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --bg-0: #050409;
+        --bg-1: #0a0713;
+        --bg-2: #120a20;
+        --ink: #f2ecff;
+        --ink-dim: #a99fc7;
+      }
+
+      html, body {
+        width: 3840px; height: 2160px; overflow: hidden; background: #000;
+      }
+      body { font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+
+      #stage {
+        position: relative; width: 3840px; height: 2160px; overflow: hidden;
+        background: radial-gradient(135% 105% at 50% 46%, var(--bg-2) 0%, var(--bg-1) 44%, var(--bg-0) 100%);
+      }
+
+      .scene { position: absolute; inset: 0; opacity: 0; will-change: opacity, transform; }
+      .fill { position: absolute; inset: 0; }
+
+      /* ---- shared type ---- */
+      .eyebrow {
+        font-size: 34px; font-weight: 600; letter-spacing: 0.62em;
+        text-transform: uppercase; color: var(--ink-dim);
+      }
+      .subtitle {
+        font-size: 40px; font-weight: 500; letter-spacing: 0.18em; color: var(--ink-dim);
+      }
+      .wordmark {
+        font-size: 320px; font-weight: 800; letter-spacing: -0.02em; line-height: 0.9;
+        color: var(--ink);
+      }
+      .center-col {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 46px;
+      }
+
+      /* ---- SCENE A: filament + RGB-split title ---- */
+      #filamentWrap { position: absolute; inset: 0; }
+      #filamentWrap svg { width: 100%; height: 100%; }
+      .filament {
+        fill: none; stroke-width: 4; stroke-linecap: round;
+        filter: drop-shadow(0 0 24px rgba(120, 220, 255, 0.6));
+      }
+      .rgbTitle {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      }
+      .rgbTitle .layer {
+        position: absolute; font-size: 340px; font-weight: 800; letter-spacing: -0.02em;
+        mix-blend-mode: screen; will-change: transform, filter;
+      }
+      #tA_r { color: #ff2e6a; }
+      #tA_g { color: #22ffa8; }
+      #tA_b { color: #3aa0ff; }
+      #tA_w { color: #f6f2ff; mix-blend-mode: normal; opacity: 0; }
+
+      /* ---- SCENE B: superformula mandala ---- */
+      #mandalaWrap { position: absolute; inset: 0; display: grid; place-items: center; }
+      #mandalaWrap svg { width: 1900px; height: 1900px; overflow: visible; }
+      .sf { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+      /* ---- SCENE C: flow field ---- */
+      #flow { position: absolute; inset: 0; }
+      .fp { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform, opacity; }
+
+      /* ---- SCENE D: point-cloud sphere ---- */
+      #sphere { position: absolute; inset: 0; }
+      .pt { position: absolute; left: 0; top: 0; border-radius: 50%; background: #cfe6ff; will-change: transform, opacity; }
+      #sphereRings { position: absolute; inset: 0; display: grid; place-items: center; }
+      #sphereRings svg { width: 1500px; height: 1500px; overflow: visible; }
+
+      /* ---- SCENE E: convergence + lockup ---- */
+      #converge { position: absolute; inset: 0; }
+      .cp { position: absolute; left: 0; top: 0; border-radius: 50%; will-change: transform, opacity; }
+      #rays {
+        position: absolute; left: 50%; top: 50%; width: 3400px; height: 3400px;
+        margin: -1700px 0 0 -1700px; opacity: 0; mix-blend-mode: screen; will-change: transform, opacity;
+        background: conic-gradient(from 0deg,
+          rgba(120,220,255,0) 0deg, rgba(120,220,255,0.10) 12deg, rgba(120,220,255,0) 24deg,
+          rgba(180,140,255,0) 90deg, rgba(180,140,255,0.10) 102deg, rgba(180,140,255,0) 114deg,
+          rgba(255,150,200,0) 180deg, rgba(255,150,200,0.10) 192deg, rgba(255,150,200,0) 204deg,
+          rgba(120,220,255,0) 270deg, rgba(120,220,255,0.10) 282deg, rgba(120,220,255,0) 294deg,
+          rgba(120,220,255,0) 360deg);
+      }
+      #lockup {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 54px;
+      }
+      #wmE { display: flex; overflow: hidden; }
+      #wmE .ltr { display: inline-block; will-change: transform; }
+      #lockLine {
+        width: 0; height: 3px;
+        background: linear-gradient(90deg, transparent, #38d0ff, #a56cff, #ff7ac0, transparent);
+        box-shadow: 0 0 26px rgba(150, 190, 255, 0.7);
+      }
+
+      /* ---- GRADE PASS ---- */
+      #tint {
+        position: absolute; inset: 0; z-index: 40; pointer-events: none; mix-blend-mode: soft-light;
+        background: linear-gradient(180deg, rgba(90,120,180,0.12), rgba(150,90,170,0.12));
+      }
+      #vignette {
+        position: absolute; inset: 0; z-index: 41; pointer-events: none;
+        background: radial-gradient(82% 78% at 50% 50%, transparent 40%, rgba(0,0,0,0.36) 74%, rgba(0,0,0,0.64) 100%);
+      }
+      #grain {
+        position: absolute; inset: 0; z-index: 42; pointer-events: none; opacity: 0.06; mix-blend-mode: overlay;
+      }
+      #grain svg { width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-fps="30" data-width="3840" data-height="2160">
+      <section id="stage" class="clip" data-start="0" data-duration="30" data-track-index="1">
+        <!-- ===== SCENE A · EMERGENCE ===== -->
+        <div id="sceneA" class="scene">
+          <div id="starsA" class="fill"></div>
+          <div id="filamentWrap">
+            <svg viewBox="0 0 3840 2160" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="filGrad" x1="0" y1="0" x2="3840" y2="0" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#2ee6c6" /><stop offset="0.35" stop-color="#38d0ff" />
+                  <stop offset="0.65" stop-color="#a56cff" /><stop offset="1" stop-color="#ff7ac0" />
+                </linearGradient>
+              </defs>
+              <path id="filament" class="filament" stroke="url(#filGrad)"
+                d="M -80 1240 C 640 900 1180 1560 1920 1180 S 3200 760 3920 1120" />
+            </svg>
+          </div>
+          <div id="filParticles"></div>
+          <div class="rgbTitle" id="titleA">
+            <div class="layer" id="tA_r" data-layout-allow-overlap data-layout-allow-occlusion>SPECTRA</div>
+            <div class="layer" id="tA_g" data-layout-allow-overlap data-layout-allow-occlusion>SPECTRA</div>
+            <div class="layer" id="tA_b" data-layout-allow-overlap data-layout-allow-occlusion>SPECTRA</div>
+            <div class="layer" id="tA_w" data-layout-allow-overlap data-layout-allow-occlusion>SPECTRA</div>
+          </div>
+          <div class="center-col" style="justify-content: flex-end; padding-bottom: 330px">
+            <div class="subtitle" id="subA" style="opacity: 0" data-layout-allow-occlusion>L I G H T&nbsp;&nbsp;I N&nbsp;&nbsp;M O T I O N</div>
+          </div>
+        </div>
+
+        <!-- ===== SCENE B · BLOOM (superformula) ===== -->
+        <div id="sceneB" class="scene">
+          <div id="starsB" class="fill"></div>
+          <div id="mandalaWrap">
+            <svg viewBox="-950 -950 1900 1900">
+              <defs>
+                <linearGradient id="sfGrad" x1="-430" y1="-430" x2="430" y2="430" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#2ee6c6" /><stop offset="0.4" stop-color="#38d0ff" />
+                  <stop offset="0.7" stop-color="#a56cff" /><stop offset="1" stop-color="#ff7ac0" />
+                </linearGradient>
+              </defs>
+              <path id="sfEcho2" class="sf" stroke="url(#sfGrad)" stroke-width="2" opacity="0.25" />
+              <path id="sfEcho1" class="sf" stroke="url(#sfGrad)" stroke-width="2.5" opacity="0.5" />
+              <path id="sfMain" class="sf" stroke="url(#sfGrad)" stroke-width="4"
+                style="filter: drop-shadow(0 0 26px rgba(150, 200, 255, 0.5))" />
+              <circle id="sfCore" cx="0" cy="0" r="14" fill="#eaf3ff" style="filter: drop-shadow(0 0 30px rgba(150,220,255,0.9))" />
+            </svg>
+          </div>
+          <div class="center-col" style="justify-content: flex-end; padding-bottom: 210px">
+            <div class="eyebrow" id="ebB" style="opacity: 0" data-layout-allow-occlusion>Form 01 · Superformula</div>
+          </div>
+        </div>
+
+        <!-- ===== SCENE C · FLOW FIELD ===== -->
+        <div id="sceneC" class="scene">
+          <div id="flow"></div>
+          <div class="center-col" style="justify-content: flex-start; padding-top: 300px">
+            <div class="eyebrow" id="ebC" style="opacity: 0" data-layout-allow-occlusion>Field 02 · Flow</div>
+          </div>
+        </div>
+
+        <!-- ===== SCENE D · POINT-CLOUD SPHERE ===== -->
+        <div id="sceneD" class="scene">
+          <div id="starsD" class="fill"></div>
+          <div id="sphereRings">
+            <svg viewBox="-750 -750 1500 1500">
+              <ellipse id="ring1" cx="0" cy="0" rx="560" ry="180" fill="none" stroke="rgba(120,200,255,0.35)" stroke-width="2" />
+              <ellipse id="ring2" cx="0" cy="0" rx="560" ry="320" fill="none" stroke="rgba(180,140,255,0.3)" stroke-width="2" />
+              <ellipse id="ring3" cx="0" cy="0" rx="560" ry="470" fill="none" stroke="rgba(255,140,200,0.25)" stroke-width="2" />
+            </svg>
+          </div>
+          <div id="sphere"></div>
+          <div class="center-col" style="justify-content: flex-start; padding-top: 300px">
+            <div class="eyebrow" id="ebD" style="opacity: 0" data-layout-allow-occlusion>Volume 03 · Point Cloud</div>
+          </div>
+        </div>
+
+        <!-- ===== SCENE E · CONVERGENCE + LOCKUP ===== -->
+        <div id="sceneE" class="scene">
+          <div id="starsE" class="fill"></div>
+          <div id="rays"></div>
+          <div id="converge"></div>
+          <div id="lockup" data-layout-allow-occlusion>
+            <div class="eyebrow" id="ebE" style="opacity: 0" data-layout-allow-occlusion>A Generative Film</div>
+            <div class="wordmark" id="wmE"></div>
+            <div id="lockLine"></div>
+            <div class="subtitle" id="subE" style="opacity: 0; letter-spacing: 0.4em">3 8 4 0 × 2 1 6 0 · 30 F P S</div>
+          </div>
+        </div>
+
+        <!-- ===== GRADE PASS ===== -->
+        <div id="tint" data-layout-allow-occlusion></div>
+        <div id="vignette" data-layout-allow-occlusion></div>
+        <div id="grain" data-layout-allow-occlusion>
+          <svg xmlns="http://www.w3.org/2000/svg">
+            <filter id="grainFilter">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" seed="17" />
+              <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#grainFilter)" />
+          </svg>
+        </div>
+      </section>
+
+      <!-- Original melodic score, synced to the five movements -->
+      <audio id="bgm" data-start="0" data-duration="30" data-track-index="2" src="assets/bgm.wav" data-volume="0.66"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const NS = "http://www.w3.org/2000/svg";
+
+      function makeRng(seed) {
+        let s = seed >>> 0;
+        return function () {
+          s = (s + 0x6d2b79f5) | 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      // spectral color: p in [0,1] → teal→cyan→violet→magenta
+      function spectral(p, l) {
+        const hue = 168 + p * 176; // 168°..344°
+        return "hsl(" + hue.toFixed(1) + ",90%," + (l || 64) + "%)";
+      }
+
+      /* ---- star fields ---- */
+      function fillStars(el, count, seed, maxY) {
+        const rng = makeRng(seed);
+        let h = "";
+        for (let i = 0; i < count; i++) {
+          const x = (rng() * 3840).toFixed(0), y = (rng() * (maxY || 2160)).toFixed(0);
+          const r = (0.8 + rng() * 2.0).toFixed(2), o = (0.1 + rng() * 0.5).toFixed(2);
+          h += '<span style="position:absolute;left:' + x + "px;top:" + y + "px;width:" + r + "px;height:" + r +
+            "px;border-radius:50%;background:#dcorrhtml;opacity:" + o + ";box-shadow:0 0 6px rgba(210,225,255,.7)\"></span>";
+        }
+        el.innerHTML = h.replace(/#dcorrhtml/g, "#dbe8ff");
+      }
+      fillStars(document.getElementById("starsA"), 130, 11, 2160);
+      fillStars(document.getElementById("starsB"), 110, 22, 2160);
+      fillStars(document.getElementById("starsD"), 120, 33, 2160);
+      fillStars(document.getElementById("starsE"), 140, 44, 2160);
+
+      /* =========================================================
+         MASTER TIMELINE
+         ========================================================= */
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+      gsap.set(["#sceneA", "#sceneB", "#sceneC", "#sceneD", "#sceneE"], { autoAlpha: 0 });
+      function sceneWindow(sel, inAt, outAt) {
+        tl.to(sel, { autoAlpha: 1, duration: 0.6, ease: "power2.out" }, inAt);
+        if (outAt !== null) tl.to(sel, { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, outAt - 0.6);
+      }
+      sceneWindow("#sceneA", 0.0, 5.8);
+      sceneWindow("#sceneB", 5.2, 11.8);
+      sceneWindow("#sceneC", 11.2, 17.8);
+      sceneWindow("#sceneD", 17.2, 23.8);
+      sceneWindow("#sceneE", 23.2, null);
+
+      /* ---------- SCENE A: filament draw + energy trace + RGB title ---------- */
+      const fil = document.getElementById("filament");
+      const filLen = fil.getTotalLength();
+      gsap.set(fil, { attr: { "stroke-dasharray": filLen, "stroke-dashoffset": filLen } });
+      tl.to(fil, { attr: { "stroke-dashoffset": 0 }, duration: 2.4, ease: "power2.inOut" }, 0.2);
+
+      // energy particles racing along the filament path
+      const filP = document.getElementById("filParticles");
+      const FILN = 46;
+      const filDots = [];
+      for (let i = 0; i < FILN; i++) {
+        const d = document.createElement("div");
+        const sz = 6 + (i % 5) * 2;
+        d.style.cssText = "position:absolute;left:0;top:0;width:" + sz + "px;height:" + sz +
+          "px;border-radius:50%;background:" + spectral(i / FILN, 70) +
+          ";box-shadow:0 0 16px " + spectral(i / FILN, 60) + ";opacity:0;will-change:transform,opacity";
+        filP.appendChild(d);
+        filDots.push({ el: d, off: (i / FILN) * filLen, sp: 620 + (i % 7) * 60 });
+      }
+      const filDriver = { u: 0 };
+      function updateFil() {
+        const u = filDriver.u;
+        for (const p of filDots) {
+          const dist = (p.off + u * p.sp) % filLen;
+          const pt = fil.getPointAtLength(dist);
+          // fade in over first 0.6s of travel, twinkle
+          const vis = Math.min(1, u * 1.6) * (0.55 + 0.45 * Math.sin(u * 6 + p.off));
+          p.el.style.transform = "translate(" + pt.x + "px," + pt.y + "px)";
+          p.el.style.opacity = Math.max(0, vis).toFixed(3);
+        }
+      }
+      updateFil();
+      tl.to(filDriver, { u: 5.6, duration: 5.6, ease: "none", onUpdate: updateFil }, 0.2);
+
+      // RGB-split title converging to clean white
+      gsap.set(["#tA_r", "#tA_g", "#tA_b"], { opacity: 0 });
+      tl.to("#tA_r", { opacity: 0.9, duration: 0.5, ease: "power2.out" }, 2.2);
+      tl.to("#tA_g", { opacity: 0.9, duration: 0.5, ease: "power2.out" }, 2.2);
+      tl.to("#tA_b", { opacity: 0.9, duration: 0.5, ease: "power2.out" }, 2.2);
+      tl.fromTo("#tA_r", { x: -46, y: -14, filter: "blur(6px)" }, { x: 0, y: 0, filter: "blur(0px)", duration: 1.4, ease: "expo.out" }, 2.2);
+      tl.fromTo("#tA_g", { x: 40, y: 10, filter: "blur(6px)" }, { x: 0, y: 0, filter: "blur(0px)", duration: 1.4, ease: "expo.out" }, 2.2);
+      tl.fromTo("#tA_b", { x: 12, y: 30, filter: "blur(6px)" }, { x: 0, y: 0, filter: "blur(0px)", duration: 1.4, ease: "expo.out" }, 2.2);
+      tl.to("#tA_w", { opacity: 1, duration: 0.6, ease: "power2.out" }, 3.4);
+      tl.to(["#tA_r", "#tA_g", "#tA_b"], { opacity: 0.35, duration: 0.6, ease: "power2.out" }, 3.4);
+      tl.to("#subA", { opacity: 1, duration: 0.8, ease: "power2.out" }, 3.6);
+
+      /* ---------- SCENE B: superformula mandala (re-morphs every frame) ---------- */
+      const sfMain = document.getElementById("sfMain");
+      const sfEcho1 = document.getElementById("sfEcho1");
+      const sfEcho2 = document.getElementById("sfEcho2");
+      const SF_PTS = 260;
+      function superPath(u, scale, mBias, rot) {
+        const m = 6 + mBias + 4 * Math.sin(u * 0.5);
+        const n1 = 0.3 + 0.25 * (1 + Math.sin(u * 0.6));
+        const n2 = 1.7 + 1.2 * Math.sin(u * 0.4 + 1);
+        const n3 = 1.7 + 1.2 * Math.cos(u * 0.33 + 0.5);
+        const a = 1, b = 1;
+        let d = "";
+        for (let i = 0; i <= SF_PTS; i++) {
+          const phi = (i / SF_PTS) * Math.PI * 2;
+          const t1 = Math.pow(Math.abs(Math.cos((m * phi) / 4) / a), n2);
+          const t2 = Math.pow(Math.abs(Math.sin((m * phi) / 4) / b), n3);
+          let r = Math.pow(t1 + t2, -1 / n1);
+          if (!isFinite(r)) r = 0;
+          r = Math.min(r, 1.9); // clamp spikes so the shape stays on-frame
+          const rr = r * scale;
+          const ang = phi + rot;
+          const x = Math.cos(ang) * rr, y = Math.sin(ang) * rr;
+          d += (i === 0 ? "M" : "L") + x.toFixed(1) + " " + y.toFixed(1);
+        }
+        return d + "Z";
+      }
+      const sfDriver = { u: 0 };
+      function updateSF() {
+        const u = sfDriver.u;
+        sfMain.setAttribute("d", superPath(u, 410, 0, u * 0.18));
+        sfEcho1.setAttribute("d", superPath(u * 0.9 + 3, 410, 2, -u * 0.12));
+        sfEcho2.setAttribute("d", superPath(u * 1.1 + 7, 410, 4, u * 0.08));
+      }
+      updateSF();
+      gsap.set("#mandalaWrap", { scale: 0.6, opacity: 0, transformOrigin: "50% 50%" });
+      tl.to("#mandalaWrap", { scale: 1, opacity: 1, duration: 1.4, ease: "expo.out" }, 5.3);
+      tl.to(sfDriver, { u: 6.6, duration: 6.6, ease: "none", onUpdate: updateSF }, 5.2);
+      tl.fromTo("#sfCore", { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 1.0, ease: "back.out(2)" }, 5.6);
+      tl.to("#ebB", { opacity: 1, duration: 0.8, ease: "power2.out" }, 6.4);
+
+      /* ---------- SCENE C: flow-field particle river (closed-form, seek-safe) ---------- */
+      const flow = document.getElementById("flow");
+      const FLOWN = 240;
+      const fps = [];
+      const frng = makeRng(88);
+      for (let i = 0; i < FLOWN; i++) {
+        const d = document.createElement("div");
+        d.className = "fp";
+        const sz = 4 + frng() * 12;
+        const col = spectral(frng(), 66);
+        d.style.width = sz + "px"; d.style.height = sz + "px";
+        d.style.background = col; d.style.boxShadow = "0 0 14px " + col;
+        flow.appendChild(d);
+        fps.push({
+          el: d, y0: frng() * 2160, x0: frng() * 3840, sp: 220 + frng() * 360,
+          amp: 60 + frng() * 220, fr: 0.6 + frng() * 1.6, ph: frng() * 6.28, o: 0.4 + frng() * 0.5,
+        });
+      }
+      const flowDriver = { u: 0 };
+      function updateFlow() {
+        const u = flowDriver.u;
+        for (const p of fps) {
+          let x = (p.x0 + u * p.sp) % 4000 - 80;
+          const y = p.y0 + Math.sin((x * 0.0016) * p.fr + p.ph + u * 0.6) * p.amp
+                        + Math.cos((x * 0.0009) - u * 0.4 + p.ph) * p.amp * 0.5;
+          const edge = Math.min(1, (x + 80) / 240) * Math.min(1, (3920 - x) / 240);
+          p.el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+          p.el.style.opacity = (p.o * Math.max(0, edge)).toFixed(3);
+        }
+      }
+      updateFlow();
+      tl.to(flowDriver, { u: 6.6, duration: 6.6, ease: "none", onUpdate: updateFlow }, 11.2);
+      tl.to("#ebC", { opacity: 1, duration: 0.8, ease: "power2.out" }, 11.9);
+
+      /* ---------- SCENE D: rotating projected 3D point cloud ---------- */
+      const sphereEl = document.getElementById("sphere");
+      const SPN = 200, R3 = 620, CX = 1920, CY = 1080, FOCAL = 1500;
+      const pts3 = [];
+      for (let i = 0; i < SPN; i++) {
+        // fibonacci sphere
+        const y = 1 - (i / (SPN - 1)) * 2;
+        const rad = Math.sqrt(1 - y * y);
+        const theta = i * 2.399963229728653;
+        pts3.push({ x: Math.cos(theta) * rad, y: y, z: Math.sin(theta) * rad });
+        const d = document.createElement("div");
+        d.className = "pt";
+        sphereEl.appendChild(d);
+        pts3[i].el = d;
+        pts3[i].col = spectral((y + 1) / 2, 70);
+      }
+      const sphDriver = { u: 0 };
+      function updateSphere() {
+        const u = sphDriver.u;
+        const ay = u * 0.6, ax = 0.35 * Math.sin(u * 0.4);
+        const cay = Math.cos(ay), say = Math.sin(ay), cax = Math.cos(ax), sax = Math.sin(ax);
+        for (const p of pts3) {
+          let x = p.x, y = p.y, z = p.z;
+          let x1 = x * cay - z * say, z1 = x * say + z * cay;      // rotate Y
+          let y2 = y * cax - z1 * sax, z2 = y * sax + z1 * cax;    // rotate X
+          const s = FOCAL / (FOCAL + z2 * R3);
+          const sx = CX + x1 * R3 * s, sy = CY + y2 * R3 * s;
+          const depth = (z2 + 1) / 2; // 0 back .. 1 front
+          const size = (3 + depth * 12).toFixed(1);
+          p.el.style.width = size + "px"; p.el.style.height = size + "px";
+          p.el.style.background = p.col;
+          p.el.style.boxShadow = "0 0 " + (depth * 16).toFixed(0) + "px " + p.col;
+          p.el.style.transform = "translate(" + (sx - size / 2).toFixed(1) + "px," + (sy - size / 2).toFixed(1) + "px)";
+          p.el.style.opacity = (0.2 + depth * 0.8).toFixed(3);
+        }
+      }
+      updateSphere();
+      gsap.set("#sphere", { opacity: 0 });
+      gsap.set("#sphereRings", { opacity: 0, scale: 0.7, transformOrigin: "50% 50%" });
+      tl.to("#sphere", { opacity: 1, duration: 1.0, ease: "power2.out" }, 17.4);
+      tl.to("#sphereRings", { opacity: 1, scale: 1, duration: 1.4, ease: "expo.out" }, 17.4);
+      tl.to(sphDriver, { u: 6.6, duration: 6.6, ease: "none", onUpdate: updateSphere }, 17.2);
+      tl.to("#ring1", { rotation: 60, duration: 6.6, ease: "sine.inOut", transformOrigin: "50% 50%" }, 17.2);
+      tl.to("#ring2", { rotation: -50, duration: 6.6, ease: "sine.inOut", transformOrigin: "50% 50%" }, 17.2);
+      tl.to("#ring3", { rotation: 40, duration: 6.6, ease: "sine.inOut", transformOrigin: "50% 50%" }, 17.2);
+      tl.to("#ebD", { opacity: 1, duration: 0.8, ease: "power2.out" }, 17.9);
+
+      /* ---------- SCENE E: convergence spiral + lockup ---------- */
+      const conv = document.getElementById("converge");
+      const CVN = 180;
+      const cvs = [];
+      const crng = makeRng(123);
+      for (let i = 0; i < CVN; i++) {
+        const d = document.createElement("div");
+        d.className = "cp";
+        const sz = 4 + crng() * 10;
+        const col = spectral(crng(), 68);
+        d.style.width = sz + "px"; d.style.height = sz + "px";
+        d.style.background = col; d.style.boxShadow = "0 0 14px " + col;
+        conv.appendChild(d);
+        cvs.push({ el: d, ang: crng() * 6.28, rad: 900 + crng() * 900, turn: 1.5 + crng() * 2.5, o: 0.5 + crng() * 0.5 });
+      }
+      const cvDriver = { p: 0 };
+      function updateConverge() {
+        const p = cvDriver.p; // 0..1
+        const ease = p * p;
+        for (const c of cvs) {
+          const rad = c.rad * (1 - ease);
+          const ang = c.ang + p * c.turn * 6.28;
+          const x = 1920 + Math.cos(ang) * rad, y = 1080 + Math.sin(ang) * rad;
+          c.el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+          c.el.style.opacity = (c.o * (1 - p) * Math.min(1, (1 - p) * 4 + 0.2)).toFixed(3);
+        }
+      }
+      updateConverge();
+      tl.to(cvDriver, { p: 1, duration: 2.6, ease: "power2.in", onUpdate: updateConverge }, 23.3);
+
+      // light rays sweep + fade
+      tl.fromTo("#rays", { opacity: 0, rotation: -40, scale: 0.8 }, { opacity: 1, rotation: 20, scale: 1.05, duration: 2.6, ease: "power2.out", transformOrigin: "50% 50%" }, 24.4);
+      tl.to("#rays", { rotation: 60, opacity: 0.5, duration: 3.4, ease: "sine.inOut", transformOrigin: "50% 50%" }, 27.0);
+
+      // wordmark reveal
+      const wmE = document.getElementById("wmE");
+      for (const ch of "SPECTRA") { const s = document.createElement("span"); s.className = "ltr"; s.textContent = ch; wmE.appendChild(s); }
+      tl.from(wmE.querySelectorAll(".ltr"), { yPercent: 120, opacity: 0, duration: 1.0, ease: "expo.out", stagger: 0.06 }, 25.4);
+      tl.to("#ebE", { opacity: 1, duration: 0.8, ease: "power2.out" }, 25.6);
+      tl.to("#lockLine", { width: 820, duration: 1.1, ease: "expo.out" }, 26.2);
+      tl.to("#subE", { opacity: 1, duration: 0.9, ease: "power2.out" }, 26.8);
+      tl.fromTo("#lockup", { scale: 1.04 }, { scale: 1.0, duration: 1.8, ease: "power3.out", transformOrigin: "50% 50%" }, 25.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
