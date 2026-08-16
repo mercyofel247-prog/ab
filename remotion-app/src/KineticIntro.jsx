@@ -3,29 +3,33 @@
  * ---------------------------------------------------------------------------
  * Money-doc / editorial register: dark dimensional metal, single gold accent,
  * heavy grotesk display type over a mono utility face. Every entrance, exit
- * and accent is driven off a single beat grid — nothing is hand-timed.
+ * and accent is driven off a single 120 BPM beat grid — nothing hand-timed.
  *
- * SETUP
- *   npm install remotion @remotion/cli @remotion/google-fonts \
- *               react react-dom
- *   # place two audio files (swap points):
- *   #   public/music.mp3   — music bed  (played at ~0.6 volume)
- *   #   public/vo.mp3      — VO narration (full volume, enters on a beat)
+ * Advanced motion layer:
+ *   • A real 3D chrome hero (@remotion/three) rotating behind the type,
+ *     catching gold key + steel-blue rim light, breathing on the beat.
+ *   • A camera rig: slow push-in + parallax + a subtle downbeat shake.
+ *   • Velocity-based motion blur on every slide (fast = smeared).
+ *   • Gold spark bursts + a bloom flash on every downbeat.
+ *   • Chromatic-split logo lockup on the outro.
  *
- * PREVIEW
- *   npx remotion studio
+ * AUDIO
+ *   public/music.mp3 — music bed (~0.6 vol)
+ *   public/vo.mp3    — VO narration (full vol; lines pre-placed on the beats)
  *
- * RENDER
- *   npx remotion render KineticIntro out/KineticIntro.mp4
+ * SETUP   npm install remotion @remotion/cli @remotion/three @remotion/fonts \
+ *                     three @react-three/fiber react react-dom
+ * PREVIEW npx remotion studio
+ * RENDER  npx remotion render KineticIntro out/KineticIntro.mp4
  *
  * RE-KEYING
  *   • Retune tempo: change BPM (one line) — beat()/grid re-derive.
- *   • Re-time to a real VO stress map: edit the ACTS start beats and the
- *     local beat indices inside each act.
+ *   • Re-time to the VO stress map: edit the ACTS start beats + local indices.
  *   • Edit copy/target: see COPY and COUNT_TARGET below.
  */
 
 import { loadFont } from "@remotion/fonts";
+import { ThreeCanvas } from "@remotion/three";
 import {
   AbsoluteFill,
   Audio,
@@ -38,25 +42,14 @@ import {
   useVideoConfig,
 } from "remotion";
 
-// --- Fonts (heavy grotesk display + mono utility) --------------------------
-// Self-hosted woff2 (public/fonts) loaded via @remotion/fonts, which wraps
-// delayRender() so the render waits for the faces before snapshotting. Swap
-// these for `@remotion/google-fonts` if you prefer fetching from Google.
+// --- Fonts (self-hosted woff2 via @remotion/fonts; offline & reproducible) --
 const DISPLAY = "Archivo";
 const MONO = "JetBrains Mono";
-loadFont({
-  family: DISPLAY,
-  url: staticFile("fonts/archivo-800.woff2"),
-  weight: "800",
-});
-loadFont({
-  family: MONO,
-  url: staticFile("fonts/jetbrainsmono-500.woff2"),
-  weight: "500",
-});
+loadFont({ family: DISPLAY, url: staticFile("fonts/archivo-800.woff2"), weight: "800" });
+loadFont({ family: MONO, url: staticFile("fonts/jetbrainsmono-500.woff2"), weight: "500" });
 
 // ===========================================================================
-// BEAT GRID — the single source of truth for all timing
+// BEAT GRID — single source of truth for all timing
 // ===========================================================================
 const FPS = 30;
 const BPM = 120; // ← retune here; everything below re-derives (one-line change)
@@ -65,14 +58,12 @@ const FRAMES_PER_BEAT = Math.round((FPS * 60) / BPM); // 120 BPM @ 30fps = 15
 /** The ONE timing helper: beat index → frame. */
 const beat = (b) => b * FRAMES_PER_BEAT;
 
-// Shared motion language: one slow-out easing family + one locked, deliberately
-// slow speed register (entrances/exits span multiple beats).
-const EASE = Easing.bezier(0.16, 1, 0.3, 1);
-const ENTER_BEATS = 2.4; // "uncomfortably slow" in
-const EXIT_BEATS = 2.0; // and out
+const EASE = Easing.bezier(0.16, 1, 0.3, 1); // shared slow-out family
+const ENTER_BEATS = 2.4; // locked, deliberately slow speed register
+const EXIT_BEATS = 2.0;
 
 // ---------------------------------------------------------------------------
-// EDITABLE CONTENT — placeholder money-doc copy
+// EDITABLE CONTENT — placeholder money-doc copy (matches the VO lines)
 // ---------------------------------------------------------------------------
 const COPY = {
   eyebrow: "CASE FILE · 07",
@@ -86,17 +77,15 @@ const COPY = {
   logo: "OBIOBI",
   cta: "THE FULL BREAKDOWN →",
 };
-const COUNT_TARGET = 47000000; // ← the key figure the count-up snaps to
+const COUNT_TARGET = 47000000; // the key figure the count-up snaps to
 
-// Act windows on the GLOBAL beat grid. Each act is a <Sequence> whose start is
-// a multiple of the beat, so local beat indices inside it stay grid-aligned.
+// Act windows on the GLOBAL beat grid (each Sequence starts on a downbeat).
 const ACTS = {
   hook: { start: beat(0), len: beat(17) },
   number: { start: beat(15), len: beat(20) },
   turn: { start: beat(33), len: beat(15) },
   outro: { start: beat(46), len: beat(50) - beat(46) + FRAMES_PER_BEAT },
 };
-const VO_START = beat(2); // narration enters on the grid
 
 // --- Palette ---------------------------------------------------------------
 const INK = "#0a0a0c";
@@ -110,18 +99,23 @@ const TEXT = "#f2f1ec";
 // HOOKS — factored, reusable motion primitives
 // ===========================================================================
 
-/** Subtle scale spike (~5%) that decays within each beat: on-screen breathing. */
+/** Subtle scale spike (~5%) decaying within each beat: on-screen breathing. */
 function useBeatPulse(amp = 0.05) {
   const f = useCurrentFrame();
-  const phase = (f % FRAMES_PER_BEAT) / FRAMES_PER_BEAT; // 0 at downbeat → 1
-  const spike = Math.pow(1 - phase, 3); // sharp at the downbeat, decays out
-  return 1 + amp * spike; // amplitude band 3–6%
+  const phase = (f % FRAMES_PER_BEAT) / FRAMES_PER_BEAT;
+  return 1 + amp * Math.pow(1 - phase, 3); // amplitude band 3–6%
+}
+
+/** Sharp global downbeat envelope (0..1) for flashes/sparks/shake. */
+function useDownbeat() {
+  const f = useCurrentFrame();
+  const phase = (f % FRAMES_PER_BEAT) / FRAMES_PER_BEAT;
+  return Math.pow(1 - phase, 4);
 }
 
 /**
- * Slide an element in (and optionally back out) along ONE clean vector.
- * All timing is expressed in beats; the shared EASE gives every move the
- * same slow-out feel.
+ * Slide in (and optionally back out) along ONE clean vector. Also returns a
+ * velocity-derived motion blur so fast moves smear.
  */
 function useSlide({
   inBeat,
@@ -134,38 +128,21 @@ function useSlide({
   const f = useCurrentFrame();
   const eIn0 = beat(inBeat);
   const eIn1 = beat(inBeat) + enter * FRAMES_PER_BEAT;
-  let value;
-  let opacity;
-  if (outBeat === null) {
-    value = interpolate(f, [eIn0, eIn1], [from, 0], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-      easing: EASE,
-    });
-    opacity = interpolate(f, [eIn0, eIn1], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
-  } else {
-    const oIn0 = beat(outBeat);
-    const oIn1 = beat(outBeat) + exit * FRAMES_PER_BEAT;
-    // Exits continue along the same vector (never back the way it came).
-    value = interpolate(f, [eIn0, eIn1, oIn0, oIn1], [from, 0, 0, -from], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-      easing: EASE,
-    });
-    opacity = interpolate(f, [eIn0, eIn1, oIn0, oIn1], [0, 1, 1, 0], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    });
-  }
+  const keys = outBeat === null ? [eIn0, eIn1] : [eIn0, eIn1, beat(outBeat), beat(outBeat) + exit * FRAMES_PER_BEAT];
+  const vals = outBeat === null ? [from, 0] : [from, 0, 0, -from];
+  const opac = outBeat === null ? [0, 1] : [0, 1, 1, 0];
+  const cfg = { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE };
+
+  const value = interpolate(f, keys, vals, cfg);
+  const prev = interpolate(f - 1, keys, vals, cfg);
+  const velocity = value - prev; // px/frame
+  const blur = Math.min(7, Math.abs(velocity) * 0.12);
+  const opacity = interpolate(f, keys, opac, { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const transform = axis === "x" ? `translateX(${value}px)` : `translateY(${value}px)`;
-  return { transform, opacity, value };
+  return { transform, opacity, value, velocity, blur };
 }
 
-/** Count from 0 → target across beats; rounds each frame so it snaps on the
- * end downbeat. */
+/** Count 0 → target across beats; rounds each frame so it snaps on a downbeat. */
 function useCountUp(target, startBeat, endBeat) {
   const f = useCurrentFrame();
   const p = interpolate(f, [beat(startBeat), beat(endBeat)], [0, 1], {
@@ -179,122 +156,157 @@ function useCountUp(target, startBeat, endBeat) {
 /** Reveal via clip-path wipe (left → right). */
 function useWipe(inBeat, enter = ENTER_BEATS) {
   const f = useCurrentFrame();
-  const r = interpolate(
-    f,
-    [beat(inBeat), beat(inBeat) + enter * FRAMES_PER_BEAT],
-    [0, 100],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: EASE },
-  );
+  const r = interpolate(f, [beat(inBeat), beat(inBeat) + enter * FRAMES_PER_BEAT], [0, 100], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: EASE,
+  });
   return `inset(0 ${100 - r}% 0 0)`;
 }
 
 // ===========================================================================
-// CONTINUITY MOTIF — persists across every hard cut (rendered at root, global
-// frame): a drifting metal-dust field + a gold rim-light bar sweeping the floor.
+// 3D CHROME HERO — dimensional metal depth anchor (persists across cuts)
 // ===========================================================================
+const HeroKnot = () => {
+  const frame = useCurrentFrame();
+  const pulse = useBeatPulse(0.07);
+  // Deterministic rotation from the frame (R3F's own ticker is real-time).
+  return (
+    <mesh rotation={[frame * 0.009, frame * 0.014, frame * 0.004]} scale={2.05 * pulse}>
+      <torusKnotGeometry args={[1, 0.3, 140, 20]} />
+      <meshStandardMaterial color="#8b909b" metalness={1} roughness={0.24} />
+    </mesh>
+  );
+};
 
-// Deterministic dust motes (seeded so renders are reproducible).
+const Hero3D = ({ width, height }) => (
+  <ThreeCanvas
+    width={width}
+    height={height}
+    camera={{ position: [0, 0, 6], fov: 45 }}
+    style={{ position: "absolute", inset: 0 }}
+    gl={{ alpha: true, antialias: true }}
+  >
+    {/* Gold key + steel-blue rim + soft fill so the metal reads dimensional. */}
+    <ambientLight intensity={0.28} />
+    <directionalLight position={[5, 5, 5]} intensity={2.4} color={GOLD_HI} />
+    <directionalLight position={[-6, -2, 2]} intensity={1.5} color="#3a6fd8" />
+    <pointLight position={[0, 0, 5]} intensity={1.1} color="#ffffff" />
+    <HeroKnot />
+  </ThreeCanvas>
+);
+
+// ===========================================================================
+// CONTINUITY MOTIF — drifting metal-dust + gold rim-light bar sweeping floor
+// ===========================================================================
 const DUST = Array.from({ length: 90 }, (_, i) => {
   const r = (n) => {
     const x = Math.sin(i * 97.13 + n * 13.71) * 43758.5453;
     return x - Math.floor(x);
   };
-  return {
-    x: r(1),
-    y: r(2),
-    size: 0.6 + r(3) * 2.2,
-    speed: 0.15 + r(4) * 0.5,
-    amp: 8 + r(5) * 26,
-    phase: r(6) * Math.PI * 2,
-  };
+  return { x: r(1), y: r(2), size: 0.6 + r(3) * 2.2, speed: 0.15 + r(4) * 0.5, amp: 8 + r(5) * 26, phase: r(6) * Math.PI * 2 };
 });
 
 const ContinuityMotif = () => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
-
-  // Gold rim-light bar sweeping the floor, looping every 8 beats.
   const sweep = (frame % beat(8)) / beat(8);
   const sweepX = interpolate(sweep, [0, 1], [-35, 135]);
-
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
-      {/* Metal-dust field */}
       {DUST.map((d, i) => {
         const drift = (frame * d.speed) % (height + 60);
-        const y = (d.y * height + drift) % (height + 60) - 30;
+        const y = ((d.y * height + drift) % (height + 60)) - 30;
         const x = d.x * width + Math.sin(frame * 0.01 * d.speed + d.phase) * d.amp;
         return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: x,
-              top: y,
-              width: d.size,
-              height: d.size,
-              borderRadius: "50%",
-              background: GOLD_HI,
-              opacity: 0.08 + d.size * 0.03,
-              filter: "blur(0.5px)",
-            }}
-          />
+          <div key={i} style={{ position: "absolute", left: x, top: y, width: d.size, height: d.size, borderRadius: "50%", background: GOLD_HI, opacity: 0.08 + d.size * 0.03, filter: "blur(0.5px)" }} />
         );
       })}
-
-      {/* Gold rim-light bar sweeping across the low floor */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "16%",
-          left: `${sweepX}%`,
-          width: "42%",
-          height: 3,
-          transform: "translateX(-50%)",
-          background: `linear-gradient(90deg, transparent, ${GOLD_HI}, transparent)`,
-          filter: "blur(2px)",
-          opacity: 0.55,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "16%",
-          left: `${sweepX}%`,
-          width: "50%",
-          height: 130,
-          transform: "translateX(-50%)",
-          background: `radial-gradient(ellipse at center, ${GOLD}33, transparent 70%)`,
-          filter: "blur(12px)",
-          opacity: 0.5,
-        }}
-      />
+      <div style={{ position: "absolute", bottom: "16%", left: `${sweepX}%`, width: "42%", height: 3, transform: "translateX(-50%)", background: `linear-gradient(90deg, transparent, ${GOLD_HI}, transparent)`, filter: "blur(2px)", opacity: 0.55 }} />
+      <div style={{ position: "absolute", bottom: "16%", left: `${sweepX}%`, width: "50%", height: 130, transform: "translateX(-50%)", background: `radial-gradient(ellipse at center, ${GOLD}33, transparent 70%)`, filter: "blur(12px)", opacity: 0.5 }} />
     </AbsoluteFill>
   );
 };
 
-// --- Dimensional stage dressing (static): floor, rim light, vignette --------
+// ===========================================================================
+// BEAT FX — gold spark bursts + bloom flash on every downbeat (global frame)
+// ===========================================================================
+const SPARKS = Array.from({ length: 26 }, (_, p) => {
+  const r = (n) => {
+    const x = Math.sin(p * 51.7 + n * 7.13) * 24019.31;
+    return x - Math.floor(x);
+  };
+  return { angle: r(1) * Math.PI * 2, speed: 180 + r(2) * 260, size: 1 + r(3) * 2.4 };
+});
+
+const BeatFX = () => {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  const cx = width / 2;
+  const cy = height / 2;
+  const life = 0.5; // seconds
+
+  const nodes = [];
+  const maxBeat = Math.ceil(750 / FRAMES_PER_BEAT);
+  for (let b = 0; b <= maxBeat; b++) {
+    const bf = beat(b);
+    const age = (frame - bf) / FPS;
+    if (age < 0 || age > life) continue;
+    const prog = age / life;
+    for (let s = 0; s < SPARKS.length; s++) {
+      const sp = SPARKS[s];
+      const jitter = ((b * 31 + s * 17) % 13) / 13 - 0.5;
+      const ang = sp.angle + jitter * 0.6;
+      const dist = sp.speed * age * (1 - prog * 0.3);
+      nodes.push(
+        <circle key={`${b}-${s}`} cx={cx + Math.cos(ang) * dist} cy={cy + Math.sin(ang) * dist} r={Math.max(0, sp.size * (1 - prog))} fill={s % 3 === 0 ? "#ffffff" : GOLD_HI} opacity={(1 - prog) * 0.85} />,
+      );
+    }
+  }
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <svg width={width} height={height}>{nodes}</svg>
+    </AbsoluteFill>
+  );
+};
+
+const DownbeatBloom = () => {
+  const db = useDownbeat();
+  return (
+    <AbsoluteFill
+      style={{
+        pointerEvents: "none",
+        background: `radial-gradient(circle at 50% 46%, ${GOLD_HI}22 0%, transparent 45%)`,
+        opacity: db * 0.5,
+        mixBlendMode: "screen",
+      }}
+    />
+  );
+};
+
+// ===========================================================================
+// CAMERA RIG — slow push-in + parallax + subtle downbeat shake on all layers
+// ===========================================================================
+const CameraRig = ({ children }) => {
+  const frame = useCurrentFrame();
+  const db = useDownbeat();
+  const scale = interpolate(frame, [0, 750], [1.04, 1.12], { easing: Easing.inOut(Easing.sin), extrapolateRight: "clamp" });
+  const driftY = interpolate(frame, [0, 750], [14, -14], { extrapolateRight: "clamp" });
+  const shakeX = Math.sin(frame * 1.7) * db * 4;
+  const shakeY = Math.cos(frame * 1.9) * db * 4;
+  return (
+    <AbsoluteFill style={{ transform: `scale(${scale}) translate(${shakeX}px, ${driftY + shakeY}px)` }}>
+      {children}
+    </AbsoluteFill>
+  );
+};
+
+// --- Dimensional stage dressing (static) -----------------------------------
 const Stage = () => (
   <AbsoluteFill>
-    {/* Low horizon: deep foreground floor anchor */}
-    <AbsoluteFill
-      style={{
-        background: `linear-gradient(180deg, ${INK} 0%, #0c0e13 58%, #040406 100%)`,
-      }}
-    />
-    {/* Dimensional rim light from upper-right */}
-    <AbsoluteFill
-      style={{
-        background: `radial-gradient(120% 90% at 78% 8%, ${STEEL_HI}55 0%, transparent 45%)`,
-      }}
-    />
-    {/* Foreground vignette for depth */}
-    <AbsoluteFill
-      style={{
-        background:
-          "radial-gradient(circle at 50% 42%, transparent 38%, rgba(0,0,0,0.72) 100%)",
-      }}
-    />
+    <AbsoluteFill style={{ background: `linear-gradient(180deg, ${INK} 0%, #0c0e13 58%, #040406 100%)` }} />
+    <AbsoluteFill style={{ background: `radial-gradient(120% 90% at 78% 8%, ${STEEL_HI}55 0%, transparent 45%)` }} />
+    <AbsoluteFill style={{ background: "radial-gradient(circle at 50% 42%, transparent 38%, rgba(0,0,0,0.72) 100%)" }} />
   </AbsoluteFill>
 );
 
@@ -321,303 +333,151 @@ const displayStyle = (size) => ({
   margin: 0,
   textTransform: "uppercase",
 });
-const labelStyle = {
-  fontFamily: MONO,
-  fontWeight: 500,
-  fontSize: 26,
-  letterSpacing: 8,
-  color: GOLD,
-  textTransform: "uppercase",
-};
+const labelStyle = { fontFamily: MONO, fontWeight: 500, fontSize: 26, letterSpacing: 8, color: GOLD, textTransform: "uppercase" };
 
 // ===========================================================================
-// ACT 1 — HOOK (local beats 0–15): panels slide in, headlines counter-slide,
-// eyebrow wipes in.
+// ACT 1 — HOOK: panels slide in, headlines counter-slide, eyebrow wipes in.
 // ===========================================================================
 const ActHook = () => {
   const pulse = useBeatPulse();
   const leftPanel = useSlide({ inBeat: 0, outBeat: 12, axis: "x", from: -900 });
   const rightPanel = useSlide({ inBeat: 1, outBeat: 13, axis: "x", from: 900 });
-  // Headlines on OPPOSING vectors: one on X, one on Y (one clean vector each).
-  const hookA = useSlide({ inBeat: 3, outBeat: 13, axis: "x", from: -520 });
-  const hookB = useSlide({ inBeat: 5, outBeat: 14, axis: "y", from: 340 });
+  const hookA = useSlide({ inBeat: 3, outBeat: 13, axis: "x", from: -520 }); // X vector
+  const hookB = useSlide({ inBeat: 5, outBeat: 14, axis: "y", from: 340 }); // Y vector
   const eyebrowClip = useWipe(1);
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", padding: "0 180px" }}>
-      {/* Metal panels sliding in from both sides */}
-      <Panel
-        style={{
-          position: "absolute",
-          left: 0,
-          top: "24%",
-          width: 520,
-          height: 360,
-          transform: leftPanel.transform,
-          opacity: leftPanel.opacity,
-        }}
-      />
-      <Panel
-        style={{
-          position: "absolute",
-          right: 0,
-          top: "42%",
-          width: 460,
-          height: 300,
-          transform: rightPanel.transform,
-          opacity: rightPanel.opacity,
-        }}
-      />
+      <Panel style={{ position: "absolute", left: 0, top: "24%", width: 520, height: 360, transform: leftPanel.transform, opacity: leftPanel.opacity, filter: `blur(${leftPanel.blur}px)` }} />
+      <Panel style={{ position: "absolute", right: 0, top: "42%", width: 460, height: 300, transform: rightPanel.transform, opacity: rightPanel.opacity, filter: `blur(${rightPanel.blur}px)` }} />
 
-      {/* Eyebrow label — clip-path wipe */}
-      <div style={{ ...labelStyle, clipPath: eyebrowClip, marginBottom: 34 }}>
-        {COPY.eyebrow}
-      </div>
+      <div style={{ ...labelStyle, clipPath: eyebrowClip, marginBottom: 34 }}>{COPY.eyebrow}</div>
 
-      {/* Counter-sliding headlines with beat-pulse breathing */}
-      <h1
-        style={{
-          ...displayStyle(150),
-          transform: `${hookA.transform} scale(${pulse})`,
-          opacity: hookA.opacity,
-          transformOrigin: "left center",
-        }}
-      >
-        {COPY.hookA}
-      </h1>
-      <h1
-        style={{
-          ...displayStyle(150),
-          color: GOLD_HI,
-          transform: `${hookB.transform} scale(${pulse})`,
-          opacity: hookB.opacity,
-          transformOrigin: "left center",
-        }}
-      >
-        {COPY.hookB}
-      </h1>
+      <h1 style={{ ...displayStyle(150), transform: `${hookA.transform} scale(${pulse})`, opacity: hookA.opacity, transformOrigin: "left center", filter: `blur(${hookA.blur}px)` }}>{COPY.hookA}</h1>
+      <h1 style={{ ...displayStyle(150), color: GOLD_HI, transform: `${hookB.transform} scale(${pulse})`, opacity: hookB.opacity, transformOrigin: "left center", filter: `blur(${hookB.blur}px)` }}>{COPY.hookB}</h1>
     </AbsoluteFill>
   );
 };
 
 // ===========================================================================
-// ACT 2 — THE NUMBER (local beats 0–18): count-up snaps on a downbeat,
-// support line rises from below.
+// ACT 2 — THE NUMBER: count-up snaps on a downbeat, support line rises.
 // ===========================================================================
 const ActNumber = () => {
   const pulse = useBeatPulse(0.06);
   const value = useCountUp(COUNT_TARGET, 1, 12); // reaches target ON beat 12
   const eyebrowClip = useWipe(0);
-  const framePanel = useSlide({ inBeat: 0, outBeat: 17, axis: "y", from: -260 });
-  const support = useSlide({ inBeat: 6, outBeat: 17, axis: "y", from: 160 });
-  const numberOut = useSlide({ inBeat: 2, outBeat: 16, axis: "y", from: 60 });
-
+  // Exit by local beat 15 (→ global beat 30) so the turn enters a clear frame.
+  const framePanel = useSlide({ inBeat: 0, outBeat: 15, axis: "y", from: -260 });
+  const support = useSlide({ inBeat: 6, outBeat: 15, axis: "y", from: 160 });
+  const numberOut = useSlide({ inBeat: 2, outBeat: 15, axis: "y", from: 60 });
   const formatted = "$" + value.toLocaleString("en-US");
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      {/* Framing metal slab behind the figure */}
-      <Panel
-        style={{
-          position: "absolute",
-          width: 1500,
-          height: 520,
-          transform: framePanel.transform,
-          opacity: framePanel.opacity * 0.9,
-        }}
-      />
+      <Panel style={{ position: "absolute", width: 1500, height: 520, transform: framePanel.transform, opacity: framePanel.opacity * 0.9, filter: `blur(${framePanel.blur}px)` }} />
 
-      <div style={{ ...labelStyle, clipPath: eyebrowClip, marginBottom: 20 }}>
-        {COPY.numberEyebrow}
-      </div>
+      <div style={{ ...labelStyle, clipPath: eyebrowClip, marginBottom: 20 }}>{COPY.numberEyebrow}</div>
 
-      <div
-        style={{
-          fontFamily: DISPLAY,
-          fontWeight: 800,
-          fontSize: 220,
-          letterSpacing: -4,
-          color: GOLD_HI,
-          lineHeight: 1,
-          opacity: numberOut.opacity,
-          transform: `${numberOut.transform} scale(${pulse})`,
-          textShadow: `0 0 60px ${GOLD}55`,
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {formatted}
-      </div>
+      <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 220, letterSpacing: -4, color: GOLD_HI, lineHeight: 1, opacity: numberOut.opacity, transform: `${numberOut.transform} scale(${pulse})`, textShadow: `0 0 60px ${GOLD}55`, fontVariantNumeric: "tabular-nums" }}>{formatted}</div>
 
-      <div
-        style={{
-          ...displayStyle(60),
-          color: "#9aa0ab",
-          opacity: numberOut.opacity,
-          letterSpacing: 2,
-          marginTop: 30,
-        }}
-      >
-        {COPY.numberSuffix}
-      </div>
+      <div style={{ ...displayStyle(60), color: "#9aa0ab", opacity: numberOut.opacity, letterSpacing: 2, marginTop: 30 }}>{COPY.numberSuffix}</div>
 
-      {/* Supporting line rising from below */}
-      <div
-        style={{
-          fontFamily: MONO,
-          fontSize: 30,
-          letterSpacing: 2,
-          color: "#b9bcc4",
-          marginTop: 40,
-          transform: support.transform,
-          opacity: support.opacity,
-        }}
-      >
-        {COPY.numberSupport}
-      </div>
+      <div style={{ fontFamily: MONO, fontSize: 30, letterSpacing: 2, color: "#b9bcc4", marginTop: 40, transform: support.transform, opacity: support.opacity, filter: `blur(${support.blur}px)` }}>{COPY.numberSupport}</div>
     </AbsoluteFill>
   );
 };
 
 // ===========================================================================
-// ACT 3 — THE TURN (local beats 0–13): reframe headline pair, panels sweep.
+// ACT 3 — THE TURN: reframe headline pair, gold accent bars sweep.
 // ===========================================================================
 const ActTurn = () => {
   const pulse = useBeatPulse();
-  const barLeft = useSlide({ inBeat: 0, outBeat: 12, axis: "x", from: -1200 });
-  const barRight = useSlide({ inBeat: 1, outBeat: 12, axis: "x", from: 1200 });
-  const turnA = useSlide({ inBeat: 2, outBeat: 12, axis: "x", from: 560 }); // X vector
-  const turnB = useSlide({ inBeat: 5, outBeat: 13, axis: "y", from: 300 }); // Y vector
+  // Exit by local beat 11 (→ global beat 46) so the outro enters a clear frame.
+  const barLeft = useSlide({ inBeat: 0, outBeat: 11, axis: "x", from: -1200 });
+  const barRight = useSlide({ inBeat: 1, outBeat: 11, axis: "x", from: 1200 });
+  const turnA = useSlide({ inBeat: 2, outBeat: 11, axis: "x", from: 560 }); // X vector
+  const turnB = useSlide({ inBeat: 5, outBeat: 11, axis: "y", from: 300 }); // Y vector
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      {/* Thin gold accent bars sweeping in from opposite sides */}
-      <div
-        style={{
-          position: "absolute",
-          top: "38%",
-          left: 0,
-          width: "46%",
-          height: 6,
-          background: `linear-gradient(90deg, transparent, ${GOLD})`,
-          transform: barLeft.transform,
-          opacity: barLeft.opacity,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "62%",
-          right: 0,
-          width: "46%",
-          height: 6,
-          background: `linear-gradient(90deg, ${GOLD}, transparent)`,
-          transform: barRight.transform,
-          opacity: barRight.opacity,
-        }}
-      />
+      <div style={{ position: "absolute", top: "38%", left: 0, width: "46%", height: 6, background: `linear-gradient(90deg, transparent, ${GOLD})`, transform: barLeft.transform, opacity: barLeft.opacity }} />
+      <div style={{ position: "absolute", top: "62%", right: 0, width: "46%", height: 6, background: `linear-gradient(90deg, ${GOLD}, transparent)`, transform: barRight.transform, opacity: barRight.opacity }} />
 
-      <h1
-        style={{
-          ...displayStyle(130),
-          transform: `${turnA.transform} scale(${pulse})`,
-          opacity: turnA.opacity,
-        }}
-      >
-        {COPY.turnA}
-      </h1>
-      <h1
-        style={{
-          ...displayStyle(130),
-          color: GOLD_HI,
-          transform: `${turnB.transform} scale(${pulse})`,
-          opacity: turnB.opacity,
-        }}
-      >
-        {COPY.turnB}
-      </h1>
+      <h1 style={{ ...displayStyle(130), transform: `${turnA.transform} scale(${pulse})`, opacity: turnA.opacity, filter: `blur(${turnA.blur}px)` }}>{COPY.turnA}</h1>
+      <h1 style={{ ...displayStyle(130), color: GOLD_HI, transform: `${turnB.transform} scale(${pulse})`, opacity: turnB.opacity, filter: `blur(${turnB.blur}px)` }}>{COPY.turnB}</h1>
     </AbsoluteFill>
   );
 };
 
 // ===========================================================================
-// ACT 4 — OUTRO (local beats 0–4): logo lockup with spring + beat pulse, CTA.
+// ACT 4 — OUTRO: spring logo lockup with chromatic split + beat pulse, CTA.
 // ===========================================================================
 const ActOutro = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pulse = useBeatPulse(0.05);
-
-  // Spring-driven logo entrance on the downbeat.
-  const enter = spring({
-    frame,
-    fps,
-    config: { damping: 12, mass: 0.9, stiffness: 120 },
-  });
+  const db = useDownbeat();
+  const enter = spring({ frame, fps, config: { damping: 12, mass: 0.9, stiffness: 120 } });
   const logoScale = interpolate(enter, [0, 1], [0.7, 1]) * pulse;
-  // Wipe starts on beat 1 and finishes well before the 750-frame end.
   const ctaClip = useWipe(1, 1.6);
+  const split = 2 + db * 8; // chromatic aberration widens on the downbeat
+
+  const logoBase = { position: "absolute", fontFamily: DISPLAY, fontWeight: 800, fontSize: 200, letterSpacing: 6, margin: 0 };
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      <div
-        style={{
-          fontFamily: DISPLAY,
-          fontWeight: 800,
-          fontSize: 200,
-          letterSpacing: 6,
-          color: TEXT,
-          opacity: enter,
-          transform: `scale(${logoScale})`,
-          textShadow: `0 0 80px ${GOLD}44`,
-        }}
-      >
-        {COPY.logo}
+      <div style={{ position: "relative", opacity: enter, transform: `scale(${logoScale})` }}>
+        {/* Chromatic-split copies (red/cyan) under the white master. */}
+        <div style={{ ...logoBase, color: "#ff2d55", transform: `translateX(${-split}px)`, mixBlendMode: "screen", opacity: 0.9 }}>{COPY.logo}</div>
+        <div style={{ ...logoBase, color: "#2dd4ff", transform: `translateX(${split}px)`, mixBlendMode: "screen", opacity: 0.9 }}>{COPY.logo}</div>
+        <div style={{ ...logoBase, position: "relative", color: TEXT, textShadow: `0 0 80px ${GOLD}44` }}>{COPY.logo}</div>
       </div>
-      <div
-        style={{
-          width: 220,
-          height: 3,
-          background: GOLD,
-          margin: "28px 0",
-          transform: `scaleX(${enter})`,
-        }}
-      />
-      <div style={{ ...labelStyle, color: GOLD_HI, clipPath: ctaClip }}>
-        {COPY.cta}
-      </div>
+      <div style={{ width: 220, height: 3, background: GOLD, margin: "28px 0", transform: `scaleX(${enter})` }} />
+      <div style={{ ...labelStyle, color: GOLD_HI, clipPath: ctaClip }}>{COPY.cta}</div>
     </AbsoluteFill>
   );
 };
 
 // ===========================================================================
-// ROOT SCENE — audio + continuity motif + beat-gridded acts
+// ROOT SCENE — audio + 3D hero + continuity + beat FX + gridded acts
 // ===========================================================================
 export const KineticIntro = () => {
+  const { width, height } = useVideoConfig();
   return (
     <AbsoluteFill style={{ backgroundColor: INK, overflow: "hidden" }}>
-      {/* Audio — swap these two files for the real bed + VO. */}
+      {/* Audio — VO lines are pre-placed on the beats inside the file. */}
       <Audio src={staticFile("music.mp3")} volume={0.6} />
-      <Sequence from={VO_START}>
-        <Audio src={staticFile("vo.mp3")} />
-      </Sequence>
+      <Audio src={staticFile("vo.mp3")} />
 
-      {/* Static dimensional stage + persistent continuity motif */}
       <Stage />
-      <ContinuityMotif />
 
-      {/* Acts on the global beat grid (each Sequence starts on a downbeat) */}
-      <Sequence from={ACTS.hook.start} durationInFrames={ACTS.hook.len}>
-        <ActHook />
-      </Sequence>
-      <Sequence from={ACTS.number.start} durationInFrames={ACTS.number.len}>
-        <ActNumber />
-      </Sequence>
-      <Sequence from={ACTS.turn.start} durationInFrames={ACTS.turn.len}>
-        <ActTurn />
-      </Sequence>
-      <Sequence from={ACTS.outro.start} durationInFrames={ACTS.outro.len}>
-        <ActOutro />
-      </Sequence>
+      <CameraRig>
+        {/* 3D chrome hero behind a darkening scrim for depth */}
+        <AbsoluteFill style={{ opacity: 0.6 }}>
+          <Hero3D width={width} height={height} />
+        </AbsoluteFill>
+        <AbsoluteFill style={{ background: "radial-gradient(circle at 50% 46%, rgba(6,8,14,0.55) 0%, rgba(4,5,9,0.86) 62%)" }} />
+
+        <ContinuityMotif />
+
+        {/* Acts on the global beat grid (each Sequence starts on a downbeat) */}
+        <Sequence from={ACTS.hook.start} durationInFrames={ACTS.hook.len}><ActHook /></Sequence>
+        <Sequence from={ACTS.number.start} durationInFrames={ACTS.number.len}><ActNumber /></Sequence>
+        <Sequence from={ACTS.turn.start} durationInFrames={ACTS.turn.len}><ActTurn /></Sequence>
+        <Sequence from={ACTS.outro.start} durationInFrames={ACTS.outro.len}><ActOutro /></Sequence>
+      </CameraRig>
+
+      {/* Beat accents sit above the rig so they read as camera-plane light. */}
+      <BeatFX />
+      <DownbeatBloom />
+
+      {/* Film grain */}
+      <AbsoluteFill style={{ mixBlendMode: "overlay", opacity: 0.06, pointerEvents: "none" }}>
+        <svg width="100%" height="100%">
+          <filter id="kiGrain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /></filter>
+          <rect width="100%" height="100%" filter="url(#kiGrain)" />
+        </svg>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };
