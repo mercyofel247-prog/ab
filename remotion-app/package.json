@@ -8,6 +8,8 @@
   "dependencies": {
     "@react-three/fiber": "9.7.0",
     "@remotion/cli": "4.0.509",
+    "@remotion/fonts": "^4.0.509",
+    "@remotion/google-fonts": "^4.0.509",
     "@remotion/media-utils": "^4.0.509",
     "@remotion/motion-blur": "4.0.509",
     "@remotion/tailwind-v4": "4.0.509",

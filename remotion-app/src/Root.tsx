@@ -1,6 +1,8 @@
 import "./index.css";
 import { Composition } from "remotion";
 import { MyComposition } from "./Composition";
+// KineticIntro self-hosts its fonts (see the loadFont calls in the module).
+import { KineticIntro } from "./KineticIntro";
 import {
   StageDepthParallax,
   stageDepthParallaxDefaultProps,
@@ -32,6 +34,14 @@ export const RemotionRoot: React.FC = () => {
         width={1920}
         height={1080}
         defaultProps={beatSyncDefaultProps}
+      />
+      <Composition
+        id="KineticIntro"
+        component={KineticIntro}
+        durationInFrames={750}
+        fps={30}
+        width={1920}
+        height={1080}
       />
     </>
   );

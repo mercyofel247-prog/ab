@@ -9,6 +9,8 @@
     "lib": ["es2019"],
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noUnusedLocals": true
