@@ -28,7 +28,7 @@
       }
 
       /* Z0 — hero plate. Locked: object-fit:cover frames it once, statically;
-         the only motion permitted on it afterward is the GSAP scale push below. */
+         the only motion permitted on it afterward is the faster GSAP scale push below. */
       #plate-layer {
         position: absolute;
         inset: 0;
@@ -65,45 +65,46 @@
     </style>
   </head>
   <body>
-    <div id="stage" data-composition-id="main" data-start="0" data-duration="3.5" data-width="1920" data-height="1080">
+    <div id="stage" data-composition-id="main" data-start="0" data-duration="2" data-width="1920" data-height="1080">
       <div
         id="plate-layer"
         class="clip"
         data-start="0"
-        data-duration="3.5"
+        data-duration="2"
         data-track-index="1"
         data-layout-allow-overflow="true"
       >
         <img data-color-grading="{&quot;preset&quot;:&quot;deep-contrast&quot;,&quot;intensity&quot;:0.6,&quot;adjust&quot;:{&quot;exposure&quot;:-0.03,&quot;contrast&quot;:0.2,&quot;highlights&quot;:-0.08,&quot;shadows&quot;:-0.08,&quot;whites&quot;:0,&quot;blacks&quot;:-0.12,&quot;temperature&quot;:0,&quot;tint&quot;:0,&quot;vibrance&quot;:0,&quot;saturation&quot;:0.06},&quot;details&quot;:{&quot;vignette&quot;:0,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.65,&quot;grain&quot;:0,&quot;grainSize&quot;:0.25,&quot;grainRoughness&quot;:0.5},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" id="plate" src="assets/plate.jpg" alt="">
       </div>
 
-      <div id="haze" class="clip" data-start="0" data-duration="3.5" data-track-index="2"></div>
+      <div id="haze" class="clip" data-start="0" data-duration="2" data-track-index="2"></div>
     </div>
 
     <script>
       window.__timelines = window.__timelines || {};
       gsap.registerPlugin(CustomEase);
 
-      // Path 2 brief, authored in frames @24fps (f0-f84 = 0-3.5s):
-      // hero scale rides a registered CustomEase equal to the CSS "ease" cubic-bezier
-      // (0.25, 0.1, 0.25, 1) — spelled out explicitly per spec, never a built-in named ease.
-      CustomEase.create("heroPush", "M0,0,C0.25,0.1,0.25,1,1,1");
+      // Faster/more dynamic pass, authored in frames @24fps (f0-f48 = 0-2.0s):
+      // hero scale rides a registered CustomEase equal to the "easeOutQuint" cubic-bezier
+      // (0.22, 1, 0.36, 1) — a hard, fast launch into a long glide, spelled out explicitly
+      // per spec, never a built-in named ease.
+      CustomEase.create("heroPush", "M0,0,C0.22,1,0.36,1,1,1");
 
       const tl = gsap.timeline({ paused: true });
 
-      // HERO — plane Z0, locked. No transform beyond a 4% scale push (1.00 -> 1.04).
+      // HERO — plane Z0, locked. No transform beyond a 10% scale push (1.00 -> 1.10).
       // Base-still pixels are never displaced, cropped, or warped; this is the one
       // permitted transform on the plate element itself.
-      tl.fromTo("#plate", { scale: 1.0 }, { scale: 1.04, duration: 3.5, ease: "heroPush" }, 0);
+      tl.fromTo("#plate", { scale: 1.0 }, { scale: 1.1, duration: 2, ease: "heroPush" }, 0);
 
       // DEPTH — plane Z1 haze sprite. Drifts at 60% of the hero's scale delta
-      // (0.6 * 0.04 = 0.024) so it reads as farther back and slower than the subject —
+      // (0.6 * 0.10 = 0.06) so it reads as farther back and slower than the subject —
       // the parallax read that sells depth. Strictly linear time: atmosphere, not the
       // eased hero, so opacity and the coupled drift both use ease "none".
       tl.fromTo(
         "#haze",
         { scale: 1.0, opacity: 0.15 },
-        { scale: 1.024, opacity: 0.22, duration: 3.5, ease: "none" },
+        { scale: 1.06, opacity: 0.3, duration: 2, ease: "none" },
         0,
       );
 
