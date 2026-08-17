@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>HyperFrames — Path 2 / Route C — Parallax Push</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* Track-2 oxblood palette (safety colours only — the real tone lives in
+         the plane PNGs; the master grade LUT is applied later in DaVinci). */
+      :root {
+        --ground-0: #0b0b0c;
+        --ground-1: #141416;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      #stage {
+        position: relative;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      /* The "camera": one group holding the whole 3-plane stack. The dolly-in
+         (scale) and the base pan live here, with the transform-origin pinned to
+         the subject's EYE so the push converges on the eye. */
+      #cam {
+        position: absolute;
+        inset: 0;
+        transform-origin: 33.1% 21.8%; /* subject's eye */
+        will-change: transform;
+      }
+
+      /* Depth planes. Each is oversized (inset -8%) so parallax translation and
+         scale never reveal an edge. Only translateX + a tiny uniform scale are
+         ever applied — NO rotate / skew / matrix warp: the "rotation" is pure
+         parallax separation between planes, so the base pixels are never warped
+         (warp-proof LOCK). */
+      .plane {
+        position: absolute;
+        inset: -8%;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: cover;
+        will-change: transform;
+        transform-origin: center;
+      }
+
+      .z2 {
+        background-image: url("assets/z2-void.png");
+      }
+      .z1 {
+        background-image: url("assets/z1-subject.png");
+      }
+      .z0 {
+        background-image: url("assets/z0-desk.png");
+      }
+
+      /* Haze belongs to the far plane (Z2). It sits in front of the void and
+         "parts toward camera": it scales up past the lens and thins out as the
+         push comes in. */
+      .haze {
+        position: absolute;
+        inset: -8%;
+        transform-origin: 55% 82%;
+        will-change: transform, opacity;
+        opacity: 0.9;
+        background:
+          radial-gradient(
+            60% 46% at 57% 82%,
+            rgba(58, 58, 62, 0.55) 0%,
+            rgba(58, 58, 62, 0.22) 42%,
+            rgba(11, 11, 12, 0) 72%
+          );
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      /* Settle emphasis: a soft focus bloom that fades up on the eye over the
+         last 0.6s as the camera locks. Emissive only — never a flat fill. */
+      .focus {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background: radial-gradient(
+          9% 12% at 33.1% 21.8%,
+          rgba(237, 232, 221, 0.1) 0%,
+          rgba(237, 232, 221, 0.04) 45%,
+          rgba(237, 232, 221, 0) 75%
+        );
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3.5"
+      data-width="3840"
+      data-height="2160"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.5" data-track-index="1">
+        <div id="cam" data-layout-allow-overflow>
+          <!-- Z2 far: void + haze -->
+          <div id="z2" class="plane z2" data-layout-allow-overflow></div>
+          <div id="haze" class="haze" data-layout-allow-overflow></div>
+          <!-- Z1 mid: subject -->
+          <div id="z1" class="plane z1" data-layout-allow-overflow></div>
+          <!-- Z0 near: foreground desk edge -->
+          <div id="z0" class="plane z0" data-layout-allow-overflow></div>
+        </div>
+        <div id="focus" class="focus"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // --- Shot constants ----------------------------------------------------
+      const DUR = 3.5; // seconds (84 frames @ 24fps)
+      const FRAME_W = 3840;
+      const PAN = FRAME_W * 0.08; // ~8% horizontal pan amplitude ≈ 307px
+      const EASE = "power3.inOut"; // matches the briefed CustomEase "power3.inOut"
+
+      // Everything is placed at position 0 with the SAME ease and duration, so
+      // the dolly and every parallax plane stay in perfect lockstep. power3.inOut
+      // decelerates to a dead stop, so its tail IS the "settle" — the last ~0.6s
+      // eases the pan velocity to zero while the eye-origin keeps the eye framed.
+      const tl = gsap.timeline({ paused: true, defaults: { ease: EASE, duration: DUR } });
+
+      // Camera dolly-in (14% scale) + base pan, converging on the eye.
+      tl.fromTo("#cam", { scale: 1.0, x: 0, y: 0 }, { scale: 1.14, x: -PAN * 0.6, y: -26 }, 0);
+
+      // Differential parallax — near/far planes shear apart so the subject reads
+      // as swinging slightly. Pure translateX (+ a whisker of scale for depth).
+      // z0 (near) and z2 (far) diverge by ~0.35·frame width ≈ the 8% shear.
+      tl.fromTo("#z2", { x: 0, scale: 1.0 }, { x: PAN * 0.35, scale: 1.012 }, 0); // far, least
+      tl.fromTo("#z1", { x: 0, scale: 1.0 }, { x: PAN * 0.12, scale: 1.028 }, 0); // subject, near-anchored
+      tl.fromTo("#z0", { x: 0, scale: 1.0 }, { x: -PAN * 0.75, scale: 1.05 }, 0); // near, most
+
+      // Haze on Z2 parts toward camera: grows past the lens and thins out.
+      tl.fromTo("#haze", { scale: 1.0, y: 0, opacity: 0.9 }, { scale: 1.28, y: 44, opacity: 0.4 }, 0);
+
+      // Settle (last 0.6s): focus bloom fades up on the eye as the frame locks.
+      tl.fromTo("#focus", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, DUR - 0.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

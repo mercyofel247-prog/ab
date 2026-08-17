@@ -1,0 +1,12 @@
+{
+  "name": "hyperframes-path2-parallax",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.107 preview",
+    "check": "npx --yes hyperframes@0.7.107 check",
+    "render": "npx --yes hyperframes@0.7.107 render -f 24 -q high",
+    "planes": "python3 tools/make_planes.py",
+    "publish": "npx --yes hyperframes@0.7.107 publish"
+  }
+}
