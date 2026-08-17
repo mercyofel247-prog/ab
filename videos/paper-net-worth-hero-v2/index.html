@@ -59,9 +59,9 @@
       }
       .plate {
         position: absolute;
-        inset: -18%; /* overscan so pan+scale never reveals a frame edge */
+        inset: 0; /* exact plate framing (matches the base still) */
         background: url("assets/base-plate.jpg") center / cover no-repeat;
-        transform-origin: 30% 24%; /* dolly converges on the eye */
+        transform-origin: 50% 40%; /* scale about centre → symmetric cover */
         will-change: transform;
       }
 
@@ -71,8 +71,8 @@
       }
       #z2 .z2move {
         position: absolute;
-        inset: -18%;
-        transform-origin: 30% 24%;
+        inset: 0;
+        transform-origin: 50% 40%;
         will-change: transform;
       }
       #z2 .void {
@@ -245,13 +245,15 @@
 
       // Differential dolly + pan. Nearer planes travel & scale MORE than
       // far ones → the planes shear, so the subject appears to rotate.
-      // Camera nominal (subject / hero): scale 1.00→1.14, pan 8% (307px).
+      // Scale about centre; +x pan drifts the subject inward so the move
+      // settles framed on the eye. Each plane keeps overscan ((s-1)*1920) ≥
+      // its pan so a uniform scale always covers the frame (no edge reveal).
       // Z0 near desk  — travels most  (parallax > camera)
-      tl.to("#z0 .plate", { scale: 1.165, x: 360, duration: MOVE, ease: E }, 0);
-      // Z1 subject     — the stated camera dolly
-      tl.to("#z1 .plate", { scale: 1.14, x: 307, duration: MOVE, ease: E }, 0);
+      tl.to("#z0 .plate", { scale: 1.19, x: 330, duration: MOVE, ease: E }, 0);
+      // Z1 subject     — the camera dolly (scale ~1.14)
+      tl.to("#z1 .plate", { scale: 1.14, x: 250, duration: MOVE, ease: E }, 0);
       // Z2 far void    — travels least
-      tl.to("#z2 .z2move", { scale: 1.075, x: 150, duration: MOVE, ease: E }, 0);
+      tl.to("#z2 .z2move", { scale: 1.08, x: 130, duration: MOVE, ease: E }, 0);
 
       // Haze on Z2 parts toward camera (splits + scales up), opacity linear.
       tl.to(".haze-l", { x: -160, scale: 1.24, duration: MOVE, ease: "power2.out" }, 0);
