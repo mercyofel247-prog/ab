@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>Paper Net Worth — Hero v2 · Route C [LAND:billionaire]</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* Track 2 — oxblood look-block palette. No other hue. */
+      :root {
+        --ground-0: #0b0b0c;
+        --ground-1: #141416;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      #stage {
+        position: relative;
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      /* ---------------------------------------------------------------- *
+       * DEPTH PLANES (Route C 2.5D parallax).
+       *
+       * The still is warp-proof: each plane is a uniformly transformed
+       * (translate + scale only) copy of the untouched plate, shaped by a
+       * soft alpha mask. The subject's LIT pixels live on exactly one
+       * plane (Z1); every other plane carries only near-black void or dark
+       * desk, so overlaps are dark-on-dark and invisible. The apparent
+       * "rotation" is pure parallax shear between planes — no pixel warp.
+       *
+       * Z2 far  = synthetic void + haze  (no subject → no ghost)
+       * Z1 mid  = subject                (the only plane with lit pixels)
+       * Z0 near = foreground desk edge   (dark)
+       * ---------------------------------------------------------------- */
+      .plane {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .plate {
+        position: absolute;
+        inset: -18%; /* overscan so pan+scale never reveals a frame edge */
+        background: url("assets/base-plate.jpg") center / cover no-repeat;
+        transform-origin: 30% 24%; /* dolly converges on the eye */
+        will-change: transform;
+      }
+
+      /* Z2 — synthetic void reproducing the studio backdrop, + parting haze */
+      #z2 {
+        z-index: 0;
+      }
+      #z2 .z2move {
+        position: absolute;
+        inset: -18%;
+        transform-origin: 30% 24%;
+        will-change: transform;
+      }
+      #z2 .void {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(58% 54% at 58% 45%, rgba(58, 58, 62, 0.55) 0%, rgba(20, 20, 22, 0) 62%),
+          radial-gradient(120% 100% at 50% 48%, #141416 0%, #0b0b0c 72%);
+        background-color: var(--ground-0);
+      }
+      #z2 .haze {
+        position: absolute;
+        inset: -12%;
+        filter: blur(30px);
+        mix-blend-mode: screen;
+        transform-origin: 50% 60%;
+        will-change: transform, opacity;
+      }
+      #z2 .haze-l {
+        background: radial-gradient(40% 44% at 42% 60%, rgba(58, 58, 62, 0.5) 0%, rgba(58, 58, 62, 0) 70%);
+      }
+      #z2 .haze-r {
+        background: radial-gradient(44% 48% at 66% 66%, rgba(58, 58, 62, 0.42) 0%, rgba(11, 11, 12, 0) 72%);
+      }
+
+      /* Z1 — subject. Soft elliptical matte over the lit figure. */
+      #z1 {
+        z-index: 1;
+        -webkit-mask-image: radial-gradient(52% 66% at 30% 36%, #000 42%, transparent 80%);
+        mask-image: radial-gradient(52% 66% at 30% 36%, #000 42%, transparent 80%);
+      }
+
+      /* Z0 — foreground desk edge. Bottom band only. */
+      #z0 {
+        z-index: 2;
+        -webkit-mask-image: linear-gradient(to bottom, transparent 70%, #000 88%);
+        mask-image: linear-gradient(to bottom, transparent 70%, #000 88%);
+      }
+
+      /* ---------------------------------------------------------------- *
+       * GRADE — one master-LUT-style pass held at 60%. Two-temperature:
+       * graphite cool base (~4300K) + single oxblood accent (~2600K) as an
+       * emissive edge glow only. Heavy vignette + faint edge-only CA.
+       * ---------------------------------------------------------------- */
+      #grade {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+      #grade .cool {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: soft-light;
+        background: radial-gradient(90% 90% at 65% 45%, rgba(58, 58, 62, 0.55) 0%, rgba(11, 11, 12, 0.75) 100%);
+        opacity: 0.5;
+      }
+      #grade .warm {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        background:
+          radial-gradient(24% 32% at 28% 32%, rgba(122, 22, 14, 0.4) 0%, rgba(122, 22, 14, 0) 68%),
+          radial-gradient(15% 20% at 24% 19%, rgba(122, 22, 14, 0.28) 0%, rgba(122, 22, 14, 0) 70%);
+        opacity: 0.85;
+      }
+      #grade .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(78% 82% at 50% 46%, rgba(0, 0, 0, 0) 38%, rgba(11, 11, 12, 0.55) 78%, rgba(11, 11, 12, 0.9) 100%);
+      }
+      #grade .ca {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        opacity: 0.5;
+        -webkit-mask-image: radial-gradient(118% 118% at 50% 50%, transparent 84%, #000 100%);
+        mask-image: radial-gradient(118% 118% at 50% 50%, transparent 84%, #000 100%);
+      }
+      #grade .ca-a {
+        background: linear-gradient(90deg, rgba(122, 22, 14, 0.2) 0%, rgba(122, 22, 14, 0) 12%, rgba(58, 58, 62, 0) 88%, rgba(58, 58, 62, 0.18) 100%);
+        transform: translateX(2px);
+      }
+      #grade .ca-b {
+        background: linear-gradient(90deg, rgba(58, 58, 62, 0.18) 0%, rgba(58, 58, 62, 0) 12%, rgba(122, 22, 14, 0) 88%, rgba(122, 22, 14, 0.2) 100%);
+        transform: translateX(-2px);
+      }
+
+      /* GRAIN — fine 35mm grain ~6%, deterministic, gentle film wander. */
+      #grain {
+        position: absolute;
+        inset: -12%;
+        z-index: 4;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+        opacity: 0.06;
+        will-change: transform;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-size: 240px 240px;
+        background-repeat: repeat;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="root"
+      data-start="0"
+      data-duration="3.5"
+      data-fps="24"
+      data-width="3840"
+      data-height="2160"
+    >
+      <section
+        id="stage"
+        class="clip"
+        data-start="0"
+        data-duration="3.5"
+        data-track-index="1"
+      >
+        <!-- Z2 far: synthetic void + parting haze -->
+        <div class="plane" id="z2" data-layout-allow-overflow>
+          <div class="z2move">
+            <div class="void"></div>
+            <div class="haze haze-l" data-layout-allow-overflow></div>
+            <div class="haze haze-r" data-layout-allow-overflow></div>
+          </div>
+        </div>
+
+        <!-- Z1 mid: subject -->
+        <div class="plane" id="z1">
+          <div class="plate" data-layout-allow-overflow></div>
+        </div>
+
+        <!-- Z0 near: foreground desk edge -->
+        <div class="plane" id="z0">
+          <div class="plate" data-layout-allow-overflow></div>
+        </div>
+
+        <div id="grade">
+          <div class="cool"></div>
+          <div class="warm"></div>
+          <div class="ca ca-a"></div>
+          <div class="ca ca-b"></div>
+          <div class="vignette"></div>
+        </div>
+
+        <div id="grain" data-layout-allow-overflow></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Timeline authored in FRAMES @ 24fps. 3.5s dwell = 84 frames.
+      const F = 1 / 24;
+      const MOVE = 84 * F; // full-length dolly; power3.inOut ease-out tail
+      //            is the ~0.6s settle, landing framed on the eye (origin).
+      const E = "power3.inOut";
+
+      // Initial state.
+      gsap.set("#z2 .z2move", { scale: 1, x: 0 });
+      gsap.set("#z1 .plate", { scale: 1, x: 0 });
+      gsap.set("#z0 .plate", { scale: 1, x: 0 });
+      gsap.set([".haze-l", ".haze-r"], { scale: 1, x: 0, opacity: 0.15 });
+      gsap.set("#grain", { x: 0, y: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // Differential dolly + pan. Nearer planes travel & scale MORE than
+      // far ones → the planes shear, so the subject appears to rotate.
+      // Camera nominal (subject / hero): scale 1.00→1.14, pan 8% (307px).
+      // Z0 near desk  — travels most  (parallax > camera)
+      tl.to("#z0 .plate", { scale: 1.165, x: 360, duration: MOVE, ease: E }, 0);
+      // Z1 subject     — the stated camera dolly
+      tl.to("#z1 .plate", { scale: 1.14, x: 307, duration: MOVE, ease: E }, 0);
+      // Z2 far void    — travels least
+      tl.to("#z2 .z2move", { scale: 1.075, x: 150, duration: MOVE, ease: E }, 0);
+
+      // Haze on Z2 parts toward camera (splits + scales up), opacity linear.
+      tl.to(".haze-l", { x: -160, scale: 1.24, duration: MOVE, ease: "power2.out" }, 0);
+      tl.to(".haze-r", { x: 160, scale: 1.24, duration: MOVE, ease: "power2.out" }, 0);
+      tl.to([".haze-l", ".haze-r"], { opacity: 0.24, duration: MOVE, ease: "none" }, 0);
+
+      // GRAIN — deterministic film wander.
+      tl.to("#grain", { x: 11, y: -8, duration: 1.75, ease: "sine.inOut" }, 0)
+        .to("#grain", { x: -8, y: 11, duration: 1.75, ease: "sine.inOut" }, 1.75);
+
+      window.__timelines["root"] = tl;
+    </script>
+  </body>
+</html>
