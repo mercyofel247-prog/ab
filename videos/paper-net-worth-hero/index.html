@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Paper Net Worth — Hero [LAND:billionaire]</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* Track 2 — oxblood look-block palette. No other hue. */
+      :root {
+        --ground-0: #0b0b0c;
+        --ground-1: #141416;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground-0);
+      }
+
+      /* ---------------------------------------------------------------- *
+       * Z0 — BASE STILL (locked plate).
+       * Uniform scale only (the 4% dolly push). object-fit:cover so the
+       * plate always overfills the frame: no pixel warp, no edge reveal.
+       * ---------------------------------------------------------------- */
+      #plate-wrap {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+      #plate {
+        width: 1920px;
+        height: 1080px;
+        object-fit: cover;
+        object-position: 46% 50%;
+        transform-origin: 42% 47%; /* dolly favours the subject, camera-left */
+        will-change: transform;
+        display: block;
+      }
+
+      /* ---------------------------------------------------------------- *
+       * Z1 — HAZE SPRITE (single sprite, atmospheric depth).
+       * Drifts + scales at 60% of camera speed → parallax vs the subject.
+       * ---------------------------------------------------------------- */
+      #haze {
+        position: absolute;
+        inset: -14%;
+        z-index: 1;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        transform-origin: 50% 55%;
+        will-change: transform, opacity;
+        filter: blur(34px);
+        background:
+          radial-gradient(46% 40% at 60% 62%, rgba(58, 58, 62, 0.5) 0%, rgba(58, 58, 62, 0) 72%),
+          radial-gradient(38% 34% at 30% 40%, rgba(237, 232, 221, 0.06) 0%, rgba(237, 232, 221, 0) 70%),
+          radial-gradient(60% 55% at 78% 78%, rgba(58, 58, 62, 0.32) 0%, rgba(11, 11, 12, 0) 76%);
+      }
+
+      /* ---------------------------------------------------------------- *
+       * GRADE — one master-LUT-style pass, held at 60% (#grade opacity).
+       * Two-temperature: cool desaturated base (~4300K, graphite) + a
+       * single warm oxblood accent (~2600K) as an emissive edge glow only.
+       * Plus heavy soft vignette and faint edge-only chromatic aberration.
+       * ---------------------------------------------------------------- */
+      #grade {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        opacity: 0.6; /* master LUT applied at ~60% */
+      }
+      #grade .cool {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: soft-light;
+        background:
+          radial-gradient(90% 90% at 65% 45%, rgba(58, 58, 62, 0.55) 0%, rgba(11, 11, 12, 0.75) 100%);
+        opacity: 0.5;
+      }
+      #grade .warm {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        /* soft oxblood accent hugging the subject's rim, never a flat fill */
+        background:
+          radial-gradient(26% 34% at 28% 34%, rgba(122, 22, 14, 0.4) 0%, rgba(122, 22, 14, 0) 68%),
+          radial-gradient(16% 22% at 24% 20%, rgba(122, 22, 14, 0.28) 0%, rgba(122, 22, 14, 0) 70%);
+        opacity: 0.85;
+      }
+      #grade .vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(78% 82% at 50% 46%, rgba(0, 0, 0, 0) 38%, rgba(11, 11, 12, 0.55) 78%, rgba(11, 11, 12, 0.9) 100%);
+      }
+      /* Faint chromatic aberration, extreme edges only (palette-locked
+         warm/graphite fringes masked to the outer frame). */
+      #grade .ca {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        opacity: 0.5;
+        -webkit-mask-image: radial-gradient(118% 118% at 50% 50%, transparent 84%, #000 100%);
+        mask-image: radial-gradient(118% 118% at 50% 50%, transparent 84%, #000 100%);
+      }
+      #grade .ca-a {
+        background: linear-gradient(
+          90deg,
+          rgba(122, 22, 14, 0.2) 0%,
+          rgba(122, 22, 14, 0) 12%,
+          rgba(58, 58, 62, 0) 88%,
+          rgba(58, 58, 62, 0.18) 100%
+        );
+        transform: translateX(1.5px);
+      }
+      #grade .ca-b {
+        background: linear-gradient(
+          90deg,
+          rgba(58, 58, 62, 0.18) 0%,
+          rgba(58, 58, 62, 0) 12%,
+          rgba(122, 22, 14, 0) 88%,
+          rgba(122, 22, 14, 0.2) 100%
+        );
+        transform: translateX(-1.5px);
+      }
+
+      /* ---------------------------------------------------------------- *
+       * GRAIN — fine 35mm cinematic grain at ~6%, on top of the grade.
+       * Deterministic feTurbulence tile, wandered a few px for film move.
+       * ---------------------------------------------------------------- */
+      #grain {
+        position: absolute;
+        inset: -12%;
+        z-index: 3;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+        opacity: 0.06;
+        will-change: transform;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-size: 220px 220px;
+        background-repeat: repeat;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="root"
+      data-start="0"
+      data-duration="3.5"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section
+        id="stage"
+        class="clip"
+        data-start="0"
+        data-duration="3.5"
+        data-track-index="1"
+      >
+        <div id="plate-wrap">
+          <img id="plate" src="assets/base-plate.jpg" alt="" />
+        </div>
+
+        <div id="haze" data-layout-allow-overflow></div>
+
+        <div id="grade">
+          <div class="cool"></div>
+          <div class="warm"></div>
+          <div class="ca ca-a"></div>
+          <div class="ca ca-b"></div>
+          <div class="vignette"></div>
+        </div>
+
+        <div id="grain" data-layout-allow-overflow></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ------------------------------------------------------------------
+      // CustomEase "cubic .25,.1,.25,1" — registered as a real non-linear
+      // GSAP ease. (Default / linear easing is forbidden for the hero.)
+      // Newton-Raphson cubic-bezier solver, control points p1=(.25,.1),
+      // p2=(.25,1).
+      // ------------------------------------------------------------------
+      function cubicBezierEase(x1, y1, x2, y2) {
+        const cx = 3 * x1;
+        const bx = 3 * (x2 - x1) - cx;
+        const ax = 1 - cx - bx;
+        const cy = 3 * y1;
+        const by = 3 * (y2 - y1) - cy;
+        const ay = 1 - cy - by;
+        const fx = (t) => ((ax * t + bx) * t + cx) * t;
+        const fy = (t) => ((ay * t + by) * t + cy) * t;
+        const dfx = (t) => (3 * ax * t + 2 * bx) * t + cx;
+        return function (p) {
+          if (p <= 0) return 0;
+          if (p >= 1) return 1;
+          let t = p;
+          for (let i = 0; i < 8; i++) {
+            const x = fx(t) - p;
+            if (Math.abs(x) < 1e-6) break;
+            const d = dfx(t);
+            if (Math.abs(d) < 1e-6) break;
+            t -= x / d;
+          }
+          return fy(Math.max(0, Math.min(1, t)));
+        };
+      }
+      gsap.registerEase("cubic25", cubicBezierEase(0.25, 0.1, 0.25, 1));
+
+      // Frame → seconds (timeline authored in frames @ 30fps).
+      const F = 1 / 30;
+
+      // Initial state.
+      gsap.set("#plate", { scale: 1.0 });
+      gsap.set("#haze", { scale: 1.0, x: 0, opacity: 0.15 });
+      gsap.set("#grain", { x: 0, y: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // HERO — base still dolly push, f0–f84, scale 1.00→1.04 on cubic25.
+      tl.fromTo(
+        "#plate",
+        { scale: 1.0 },
+        { scale: 1.04, duration: 84 * F, ease: "cubic25" },
+        0,
+      );
+
+      // DEPTH — haze parallax scale at 60% of camera speed (2.4%), same
+      // window + ease so it tracks the dolly but lags in depth.
+      tl.fromTo(
+        "#haze",
+        { scale: 1.0 },
+        { scale: 1.024, duration: 84 * F, ease: "cubic25" },
+        0,
+      );
+
+      // ATMOSPHERE — haze opacity 0.15→0.22, LINEAR time only (not eased
+      // hero), across the full 3.5s dwell.
+      tl.fromTo(
+        "#haze",
+        { opacity: 0.15 },
+        { opacity: 0.22, duration: 3.5, ease: "none" },
+        0,
+      );
+      // Slow lateral haze drift (atmosphere), linear across the dwell.
+      tl.fromTo(
+        "#haze",
+        { x: 0 },
+        { x: -30, duration: 3.5, ease: "none" },
+        0,
+      );
+
+      // GRAIN — deterministic film wander, a couple px, gently non-linear.
+      tl.to("#grain", { x: 9, y: -6, duration: 1.75, ease: "sine.inOut" }, 0)
+        .to("#grain", { x: -6, y: 8, duration: 1.75, ease: "sine.inOut" }, 1.75);
+
+      window.__timelines["root"] = tl;
+    </script>
+  </body>
+</html>
