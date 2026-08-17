@@ -1,0 +1,12 @@
+{
+  "name": "valuation-metal-3d",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.107 preview",
+    "check": "npx --yes hyperframes@0.7.107 check",
+    "render": "npx --yes hyperframes@0.7.107 render -f 30 -q high",
+    "build:assets": "cd tools && npm install && node build-font.mjs && npx --yes esbuild@0.24.0 three-entry.mjs --bundle --format=iife --minify --outfile=../vendor/three.bundle.js --legal-comments=none",
+    "publish": "npx --yes hyperframes@0.7.107 publish"
+  }
+}

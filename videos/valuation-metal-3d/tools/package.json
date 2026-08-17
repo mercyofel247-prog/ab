@@ -1,0 +1,10 @@
+{
+  "name": "valuation-metal-3d-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build-time only: generate the vendored three bundle + hero typeface JSON. Not needed at render time.",
+  "dependencies": {
+    "opentype.js": "1.3.4",
+    "three": "^0.185.1"
+  }
+}
