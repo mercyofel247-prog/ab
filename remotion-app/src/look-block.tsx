@@ -17,13 +17,13 @@ export const PALETTE = {
   bone: "#EDE8DD",
 } as const;
 
-/** Format contract for the series: strict 16:9, 1080p, 30fps, 3s dwell. */
+/** Format contract for the series: strict 16:9, 1080p, 30fps, 6s beat. */
 export const LOOK = {
   fps: 30,
   width: 1920,
   height: 1080,
-  /** Dwell of a single beat: 3s @ 30fps. */
-  dwellInFrames: 90,
+  /** Full length of a single beat: 6s @ 30fps. */
+  durationInFrames: 180,
   /** Film grain strength — 6%. */
   grainOpacity: 0.06,
 } as const;

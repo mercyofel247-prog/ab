@@ -8,7 +8,7 @@ export const RemotionRoot: React.FC = () => {
     <Composition
       id="MetalNumeral"
       component={MetalNumeral}
-      durationInFrames={LOOK.dwellInFrames}
+      durationInFrames={LOOK.durationInFrames}
       fps={LOOK.fps}
       width={LOOK.width}
       height={LOOK.height}
