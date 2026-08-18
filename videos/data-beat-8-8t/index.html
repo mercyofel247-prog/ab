@@ -86,6 +86,7 @@
         width: 420px;
         left: 0;
         transform: translateX(-420px);
+        will-change: transform, opacity;
         background: linear-gradient(
           100deg,
           rgba(255, 255, 255, 0) 0%,
@@ -135,6 +136,7 @@
         stroke-width: 3;
         stroke-linecap: round;
         filter: drop-shadow(0 0 10px rgba(127, 214, 255, 0.55));
+        will-change: filter, opacity, stroke-dashoffset;
       }
 
       .amount-col {
@@ -175,6 +177,9 @@
         background-clip: text;
         color: transparent;
         filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.55));
+        /* Promote to its own compositor layer so the per-frame text update
+           re-rasterizes only this element instead of the whole stage. */
+        will-change: transform, opacity, filter;
       }
 
       .readout {
@@ -193,6 +198,7 @@
         background: radial-gradient(60% 55% at 50% 46%, rgba(200, 232, 255, 0.5) 0%, rgba(200, 232, 255, 0) 70%);
         opacity: 0;
         pointer-events: none;
+        will-change: opacity;
       }
     </style>
   </head>
@@ -252,11 +258,39 @@
       ringFill.style.strokeDasharray = String(CIRCUMFERENCE);
       ringFill.style.strokeDashoffset = String(CIRCUMFERENCE);
 
+      // Reuse one formatter instead of rebuilding it on every frame.
+      const usd = new Intl.NumberFormat("en-US");
+
+      // Cache the last written value for each node. The count-up's onUpdate
+      // fires every frame (~230 frames), but the *visible* strings change far
+      // less often — the amount ("$8.8T") takes only ~88 distinct values. The
+      // amount element is the costly one (190px gradient text with a
+      // background-clip + drop-shadow filter), so skipping its no-op writes
+      // avoids re-rasterizing it on ~60% of frames.
+      let lastAmount = null;
+      let lastReadout = null;
+      let lastOffset = null;
+
       function renderCount(trillions) {
         const bounded = Math.max(0, Math.min(TARGET_T, trillions));
-        amountEl.textContent = "$" + bounded.toFixed(1) + "T";
-        readoutEl.textContent = "$" + Math.round(bounded * 1e12).toLocaleString("en-US");
-        ringFill.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - bounded / TARGET_T));
+
+        const amountStr = "$" + bounded.toFixed(1) + "T";
+        if (amountStr !== lastAmount) {
+          amountEl.textContent = amountStr;
+          lastAmount = amountStr;
+        }
+
+        const readoutStr = "$" + usd.format(Math.round(bounded * 1e12));
+        if (readoutStr !== lastReadout) {
+          readoutEl.textContent = readoutStr;
+          lastReadout = readoutStr;
+        }
+
+        const offset = CIRCUMFERENCE * (1 - bounded / TARGET_T);
+        if (offset !== lastOffset) {
+          ringFill.style.strokeDashoffset = String(offset);
+          lastOffset = offset;
+        }
       }
 
       renderCount(0);

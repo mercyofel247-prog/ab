@@ -128,7 +128,10 @@ export const MyComponent: React.FC<Props> = () => {
         <pointLight position={[10, 10, 10]} />
         <RotatingCube />
       </ThreeCanvas>
-      <CameraMotionBlur shutterAngle={180} samples={10}>
+      {/* Each sample re-renders the wrapped subtree once, so render cost for
+          this layer scales linearly with `samples`. 4 samples reads as smooth
+          motion blur at 30fps while costing ~2.5x less than 10. */}
+      <CameraMotionBlur shutterAngle={180} samples={4}>
         <MovingBox />
       </CameraMotionBlur>
     </AbsoluteFill>

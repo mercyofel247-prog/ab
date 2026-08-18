@@ -20,5 +20,8 @@ if (existsSync(sandboxHeadlessShell)) {
 
 Config.setRspack(true);
 Config.setVideoImageFormat("jpeg");
+// Capturing each frame as a JPEG at 80 quality is visually indistinguishable
+// from the default here but noticeably cheaper to encode per frame.
+Config.setJpegQuality(80);
 Config.setOverwriteOutput(true);
 Config.overrideBundlerConfig(enableTailwind);
