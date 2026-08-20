@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Theranos · Ch1 · 06 — $0 Collapse (TRUE 3D)</title>
+    <!--
+      HyperFrames Path 1 — REAL Three.js scene (extruded TextGeometry, PBR metal,
+      real spotlight + shadows, procedural PMREM env, moving camera). NOT div-based.
+      SHOT CONTEXT: 1920x1080 @24fps, ground #0B0B0C, bone #EDE8DD, graphite #3A3A3E.
+      This shot's light is DEAD: no warm, no oxblood, no emissive. Silent (VO/LUT in Resolve).
+      three.js + addons + font are vendored locally (org egress policy blocks CDNs;
+      local vendoring is also strictly more deterministic — see RENDER-VALID LOCKS).
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/loaders/FontLoader.js": "./vendor/three/FontLoader.js",
+          "three/addons/geometries/TextGeometry.js": "./vendor/three/TextGeometry.js"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+      /* grade overlay (post): heavy vignette + light static grain. Scene is real 3D; this is grade only. */
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(68% 60% at 50% 48%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.62) 100%);
+      }
+      #grain {
+        position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+        background-size: 320px 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="5"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <canvas id="scene" width="1920" height="1080"></canvas>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </section>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic PRNG (no Math.random / Date.now / network) ----
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const W = 1920, H = 1080;
+      const canvas = document.getElementById("scene");
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x0b0b0c, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.28;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 100);
+      const P0 = new THREE.Vector3(2.4, 1.45, 5.65); // 3/4 view — extrusion side visible
+      const TARGET = new THREE.Vector3(0, 0.36, 0);
+
+      // ---- procedural studio env (dim graphite gradient) -> PMREM, so metal has something to reflect ----
+      function makeEnvTexture() {
+        const c = document.createElement("canvas");
+        c.width = 512; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0.0, "#a6adb7");
+        g.addColorStop(0.42, "#6a7079");
+        g.addColorStop(0.62, "#23262b");
+        g.addColorStop(1.0, "#0a0b0d");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+        // a bright soft band -> the specular streak the camera drift sweeps across the metal
+        const s = ctx.createLinearGradient(150, 0, 370, 0);
+        s.addColorStop(0.0, "rgba(226,233,242,0)");
+        s.addColorStop(0.5, "rgba(226,233,242,0.95)");
+        s.addColorStop(1.0, "rgba(226,233,242,0)");
+        ctx.fillStyle = s; ctx.fillRect(150, 0, 220, 168);
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      const envRT = pmrem.fromEquirectangular(makeEnvTexture());
+      scene.environment = envRT.texture;
+
+      // ---- backdrop gradient plane far behind (depth) ----
+      (function backdrop() {
+        const c = document.createElement("canvas");
+        c.width = 16; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, "#191b1f"); g.addColorStop(0.55, "#0e0f11"); g.addColorStop(1, "#070708");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 256);
+        const tex = new THREE.CanvasTexture(c);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(30, 17),
+          new THREE.MeshBasicMaterial({ map: tex, toneMapped: true }),
+        );
+        m.position.set(0, 0.5, -6.5);
+        scene.add(m);
+      })();
+
+      // ---- lights: ONE hard cool key from upper-left + a very low cool fill. DEAD light. ----
+      const KEY_BASE = 12.5;
+      const keyLight = new THREE.SpotLight(0xd0d7de, KEY_BASE, 0, 0.6, 0.3, 0.0);
+      keyLight.position.set(-4.2, 5.0, 3.6);
+      keyLight.target.position.set(0, 0, 0);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.set(2048, 2048);
+      keyLight.shadow.bias = -0.0004;
+      keyLight.shadow.camera.near = 1;
+      keyLight.shadow.camera.far = 16;
+      scene.add(keyLight);
+      scene.add(keyLight.target);
+
+      const fill = new THREE.DirectionalLight(0x9fb0c4, 0.85);
+      fill.position.set(4.5, 1.2, 3.5);
+      scene.add(fill);
+      // a whisper of cool ambient so the shadow side never crushes to pure black
+      scene.add(new THREE.HemisphereLight(0x2a2f36, 0x070708, 0.25));
+
+      // ---- hero group (extruded $0 + fracture), moved/scaled as one rigid block ----
+      const heroGroup = new THREE.Group();
+      scene.add(heroGroup);
+
+      const metal = new THREE.MeshStandardMaterial({
+        color: 0x3d3d44, metalness: 0.8, roughness: 0.46, envMapIntensity: 3.3,
+      });
+
+      const fractureGroup = new THREE.Group();
+      fractureGroup.scale.x = 0.0001;
+      heroGroup.add(fractureGroup);
+
+      // ---- plummeting count readout on a canvas texture (tabular, no reflow) ----
+      const rcanvas = document.createElement("canvas");
+      rcanvas.width = 1600; rcanvas.height = 360;
+      const rctx = rcanvas.getContext("2d");
+      const rtex = new THREE.CanvasTexture(rcanvas);
+      rtex.colorSpace = THREE.SRGBColorSpace;
+      rtex.anisotropy = 4;
+      const readoutMat = new THREE.MeshBasicMaterial({ map: rtex, transparent: true, opacity: 1, depthWrite: false, toneMapped: false });
+      const readout = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6 * 360 / 1600), readoutMat);
+      readout.position.set(0, 1.02, 0.35);
+      scene.add(readout);
+      function drawReadout(value) {
+        rctx.clearRect(0, 0, 1600, 360);
+        rctx.fillStyle = "#ede8dd";
+        rctx.font = "700 150px 'Courier New', ui-monospace, monospace";
+        rctx.textAlign = "center";
+        rctx.textBaseline = "middle";
+        const n = Math.max(0, Math.round(value));
+        rctx.fillText("$" + n.toLocaleString("en-US"), 800, 190);
+        rtex.needsUpdate = true;
+      }
+
+      // ---- dust: 120 Points with deterministic base + drift ----
+      const DUST_N = 120;
+      const dustBase = new Float32Array(DUST_N * 3);
+      const dustVel = new Float32Array(DUST_N * 3);
+      const dustGeo = new THREE.BufferGeometry();
+      const dustPos = new Float32Array(DUST_N * 3);
+      (function seedDust() {
+        const r = mulberry32(0x51ed5);
+        for (let i = 0; i < DUST_N; i++) {
+          const x = (r() - 0.5) * 8.5, y = (r() - 0.5) * 5.0, z = (r() - 0.5) * 5.5 - 0.5;
+          dustBase[i * 3] = x; dustBase[i * 3 + 1] = y; dustBase[i * 3 + 2] = z;
+          dustVel[i * 3] = (r() - 0.5) * 0.5;
+          dustVel[i * 3 + 1] = (r() - 0.3) * 0.6; // gentle upward bias
+          dustVel[i * 3 + 2] = (r() - 0.5) * 0.4;
+          dustPos[i * 3] = x; dustPos[i * 3 + 1] = y; dustPos[i * 3 + 2] = z;
+        }
+      })();
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      const dust = new THREE.Points(
+        dustGeo,
+        new THREE.PointsMaterial({ color: 0xaeb6c0, size: 0.035, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false }),
+      );
+      scene.add(dust);
+      // a few "crack dust" motes dislodge when the fracture creeps
+      const crackIdx = [3, 17, 42, 68, 91];
+      function updateDust(dt, fractureReveal) {
+        for (let i = 0; i < DUST_N; i++) {
+          let extra = 0;
+          if (crackIdx.includes(i)) extra = fractureReveal * 0.25;
+          dustPos[i * 3] = dustBase[i * 3] + dustVel[i * 3] * dt;
+          dustPos[i * 3 + 1] = dustBase[i * 3 + 1] + dustVel[i * 3 + 1] * dt + extra;
+          dustPos[i * 3 + 2] = dustBase[i * 3 + 2] + dustVel[i * 3 + 2] * dt;
+        }
+        dustGeo.attributes.position.needsUpdate = true;
+      }
+
+      // ---- animated state, all driven by the GSAP master timeline ----
+      const S = {
+        count: 4500000000,
+        heroY: 0, heroScale: 1,
+        keyFactor: 1,
+        fracture: 0,
+        readoutY: 1.02, readoutOpacity: 1,
+        camDrift: 0, dustT: 0,
+        _pad: 0,
+      };
+
+      function apply() {
+        drawReadout(S.count);
+        heroGroup.position.y = S.heroY;
+        heroGroup.scale.setScalar(S.heroScale);
+        keyLight.intensity = KEY_BASE * S.keyFactor;
+        fractureGroup.scale.x = Math.max(0.0001, S.fracture);
+        fractureGroup.visible = S.fracture > 0.002;
+        readout.position.y = S.readoutY;
+        readoutMat.opacity = S.readoutOpacity;
+
+        // camera: tiny continuous dolly-in + ~1deg orbit drift, ambient parallax
+        const ang = (1.0 * Math.PI / 180) * S.camDrift;
+        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const dolly = 1 - 0.05 * S.camDrift;
+        const x = (P0.x * ca - P0.z * sa) * dolly;
+        const z = (P0.x * sa + P0.z * ca) * dolly;
+        camera.position.set(x, P0.y - 0.03 * S.camDrift, z);
+        camera.lookAt(TARGET);
+
+        updateDust(S.dustT, S.fracture);
+        renderer.render(scene, camera);
+      }
+
+      // ---- build the extruded $0, then the timeline (registered only when ready) ----
+      const fontLoader = new FontLoader();
+      fontLoader.load("vendor/three/helvetiker_bold.typeface.json", (font) => {
+        const geo = new TextGeometry("$0", {
+          font,
+          size: 0.98,
+          height: 0.2, // extrude depth ~0.25 of cap height
+          curveSegments: 8,
+          bevelEnabled: true,
+          bevelThickness: 0.02,
+          bevelSize: 0.015,
+          bevelOffset: 0,
+          bevelSegments: 3,
+        });
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox;
+        const cx = (bb.max.x + bb.min.x) / 2;
+        const cy = (bb.max.y + bb.min.y) / 2;
+        const cz = (bb.max.z + bb.min.z) / 2;
+        geo.translate(-cx, -cy, -cz);
+        geo.computeVertexNormals();
+
+        const hero = new THREE.Mesh(geo, metal);
+        hero.castShadow = true;
+        hero.receiveShadow = true;
+        heroGroup.add(hero);
+
+        const glyphHalfH = (bb.max.y - bb.min.y) / 2;
+        const glyphHalfW = (bb.max.x - bb.min.x) / 2;
+        const glyphFrontZ = (bb.max.z - bb.min.z) / 2;
+
+        // shadow-catcher floor just under the number
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(24, 24),
+          new THREE.ShadowMaterial({ opacity: 0.62 }),
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -glyphHalfH - 0.02;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // fracture: thin dark bar drawn across the zero (right glyph). Reveals from one end.
+        const crackLen = glyphHalfW * 1.05;
+        const crackGeo = new THREE.BoxGeometry(crackLen, 0.022, 0.03);
+        crackGeo.translate(crackLen / 2, 0, 0); // origin at left end -> scaleX draws it across
+        const crack = new THREE.Mesh(crackGeo, new THREE.MeshStandardMaterial({ color: 0x050506, roughness: 1, metalness: 0 }));
+        fractureGroup.add(crack);
+        fractureGroup.position.set(glyphHalfW * 0.42 - crackLen / 2, 0.05, glyphFrontZ + 0.02);
+        fractureGroup.rotation.z = -0.42; // slight diagonal tear
+
+        drawReadout(S.count);
+
+        // ================= GSAP MASTER TIMELINE (paused) =================
+        const tl = gsap.timeline({ paused: true });
+
+        // 0.0-0.9  the fall: value plummets + the whole number drops in Y (weight), power4.in
+        tl.to(S, { count: 0, duration: 0.9, ease: "power4.in" }, 0);
+        tl.to(S, { heroY: -0.09, duration: 0.9, ease: "power4.in" }, 0);
+        tl.to(S, { readoutY: 0.46, duration: 0.9, ease: "power4.in" }, 0);
+        tl.to(S, { readoutOpacity: 0, duration: 0.24, ease: "power2.out" }, 0.7);
+
+        // 0.9-1.05 HARD LAND: fast anticipation dip then snap settle to 0.98 — dead stop, no bounce
+        tl.to(S, { heroScale: 0.94, duration: 0.06, ease: "power4.in" }, 0.9);
+        tl.to(S, { heroScale: 0.98, duration: 0.09, ease: "power4.out" }, 0.96);
+
+        // 1.05-1.4 THE LIGHT DIES, staggered AFTER the land (expo.out) — cascade, don't sync
+        tl.to(S, { keyFactor: 0.35, duration: 0.35, ease: "expo.out" }, 1.05);
+
+        // 1.3-1.9 THE FRACTURE CREEPS across the zero (slow tear), sine.inOut
+        tl.to(S, { fracture: 1, duration: 0.6, ease: "sine.inOut" }, 1.3);
+
+        // 0.0-4.5 SECONDARY: continuous camera drift + dust, easing to rest before the static tail
+        tl.to(S, { camDrift: 1, duration: 4.5, ease: "sine.inOut" }, 0);
+        tl.to(S, { dustT: 1, duration: 4.5, ease: "sine.inOut" }, 0);
+
+        // pad the timeline to a full 5.0s (last ~0.4s: everything at rest -> static last 8 frames)
+        tl.to(S, { _pad: 1, duration: 0.5, ease: "none" }, 4.5);
+
+        tl.eventCallback("onUpdate", apply);
+        apply(); // seat frame 0
+
+        window.__timelines["main-video"] = tl;
+      });
+    </script>
+  </body>
+</html>
