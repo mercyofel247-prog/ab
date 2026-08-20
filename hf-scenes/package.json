@@ -1,0 +1,12 @@
+{
+  "name": "hf-scenes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.107 preview",
+    "check": "npx --yes hyperframes@0.7.107 check",
+    "render": "npx --yes hyperframes@0.7.107 render",
+    "render:fast": "npx --yes hyperframes@0.7.107 render -f 24 -q draft -w auto --gpu --browser-gpu --strict",
+    "publish": "npx --yes hyperframes@0.7.107 publish"
+  }
+}
