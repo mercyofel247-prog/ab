@@ -30,7 +30,11 @@
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc"
+    "lint": "eslint src && tsc",
+    "remotion:versions": "remotion versions",
+    "remotion:browser": "remotion browser ensure",
+    "remotion:fast": "remotion render --concurrency=100% --scale=0.5 --image-format=jpeg",
+    "remotion:final": "remotion render --concurrency=100% --image-format=png --crf=18"
   },
   "sideEffects": [
     "*.css"
