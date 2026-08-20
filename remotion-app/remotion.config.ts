@@ -22,3 +22,19 @@ Config.setRspack(true);
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
 Config.overrideBundlerConfig(enableTailwind);
+
+// --- Peak render tuning: hyper-fast, high-quality output ------------------
+// Concurrency defaults to all available CPU cores, so it is left unset here
+// (hardcoding a value would cap faster machines) — pass --concurrency to
+// override per render.
+//
+// Higher intermediate-frame quality than the default 80. Frames are the
+// source the H.264 encoder sees, so this lifts final output quality at a
+// negligible speed cost.
+Config.setJpegQuality(90);
+// bt709 is the standard HD color space; more accurate color than the default.
+Config.setColorSpace("bt709");
+// Software ANGLE (swangle) renders WebGL / Three.js (<ThreeCanvas />)
+// deterministically in headless Chrome with no GPU — the reliable choice for
+// sandbox / cloud rendering. Use "angle" instead on a machine with a real GPU.
+Config.setChromiumOpenGlRenderer("swangle");
