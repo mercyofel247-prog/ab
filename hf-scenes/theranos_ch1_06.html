@@ -34,7 +34,6 @@
         height: 1080px;
         overflow: hidden;
         background: var(--ground-0);
-        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       }
 
       #stage {
@@ -42,26 +41,26 @@
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: radial-gradient(78% 78% at 50% 47%, var(--ground-1) 0%, var(--ground-0) 62%, #050505 100%);
+        background: radial-gradient(74% 76% at 50% 46%, var(--ground-1) 0%, var(--ground-0) 60%, #040404 100%);
       }
 
-      /* ---- z1: cold dust (static, slightly out of focus for shallow DoF) ---- */
-      #dust {
+      /* ---- z1: cold dust, far + near (shallow DoF: both softened, hero stays crisp) ---- */
+      .dust {
         position: absolute;
         inset: 0;
-        filter: blur(0.6px);
-        opacity: 0.5;
         z-index: 1;
       }
+      #dust-far { filter: blur(3px); opacity: 0.45; }
+      #dust-near { filter: blur(1.1px); opacity: 0.6; }
       .mote {
         position: absolute;
         width: 2px;
         height: 2px;
         border-radius: 50%;
-        background: #aeb4bd;
+        background: #b3b8c0;
       }
 
-      /* ---- z2: hero deck (no glow) ---- */
+      /* ---- z2: hero deck ---- */
       #deck {
         position: absolute;
         inset: 0;
@@ -74,77 +73,103 @@
         position: relative;
         display: grid;
         place-items: center;
-        width: 900px;
-        height: 520px;
+        width: 1100px;
+        height: 560px;
       }
 
-      /* the dying oxblood underglow — emissive edge only, extinguishes to black */
+      /* the dying oxblood ember — emissive edge only, extinguishes to black */
       #underglow {
         position: absolute;
         left: 50%;
-        top: 54%;
-        width: 760px;
-        height: 300px;
+        top: 55%;
+        width: 720px;
+        height: 260px;
         transform: translate(-50%, -50%);
         background: radial-gradient(
           50% 50% at 50% 50%,
-          rgba(122, 22, 14, 0.55) 0%,
-          rgba(122, 22, 14, 0.22) 42%,
-          rgba(122, 22, 14, 0) 72%
+          rgba(122, 22, 14, 0.6) 0%,
+          rgba(122, 22, 14, 0.24) 40%,
+          rgba(122, 22, 14, 0) 70%
         );
         z-index: 1;
+      }
+
+      /* soft contact shadow grounding the machined numeral */
+      #contact {
+        position: absolute;
+        left: 50%;
+        top: 76%;
+        width: 620px;
+        height: 90px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 72%);
+        filter: blur(6px);
+        z-index: 2;
       }
 
       /* ghosted prior value, plummeting 4,500,000,000 -> 0 */
       #ghost {
         position: absolute;
         left: 50%;
-        top: 2%;
-        transform: translateX(-50%);
-        font-size: 40px;
+        top: 4%;
+        font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 42px;
         font-weight: 500;
         letter-spacing: 0.06em;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         text-align: center;
-        color: #6c6a66;
-        opacity: 0.55;
-        z-index: 3;
+        color: #6e6c67;
+        opacity: 0.5;
+        z-index: 4;
       }
 
-      /* extruded brushed-graphite HERO "$0" — bone face, machined depth, contact shadow */
+      /* HERO: machined brushed-metal "$0" built from a real stacked extrusion (JS-filled).
+         GSAP scales #hero as one rigid block (the landing thud). */
       #hero {
         position: relative;
-        font-size: 340px;
+        width: 640px;
+        height: 380px;
+        z-index: 5;
+      }
+      .glyph {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        font-size: 360px;
         font-weight: 800;
-        line-height: 0.9;
-        letter-spacing: -0.02em;
+        line-height: 1;
+        letter-spacing: -0.03em;
         font-variant-numeric: tabular-nums;
-        color: var(--bone);
-        /* brushed specular face */
-        background: linear-gradient(
-          178deg,
-          #fefcf6 0%,
-          #ede8dd 32%,
-          #cbc6ba 52%,
-          #ede8dd 62%,
-          #ddd8cc 100%
-        );
+        white-space: nowrap;
+        color: #2a2a2e;
+      }
+      /* the lit bone face: brushed banding + a single top-left studio key */
+      #face {
+        z-index: 60;
+        color: transparent;
+        background:
+          linear-gradient(
+            174deg,
+            #fffdf8 0%,
+            #efeadf 24%,
+            #ded9cd 48%,
+            #f3eee3 62%,
+            #d7d2c6 82%,
+            #e7e2d6 100%
+          ),
+          repeating-linear-gradient(
+            3deg,
+            rgba(255, 255, 255, 0.10) 0px,
+            rgba(255, 255, 255, 0) 2px,
+            rgba(30, 28, 24, 0.09) 3px,
+            rgba(255, 255, 255, 0) 5px
+          );
+        background-blend-mode: soft-light;
         -webkit-background-clip: text;
         background-clip: text;
-        -webkit-text-fill-color: transparent;
-        /* extrusion in graphite going down, ending in a soft contact shadow */
-        text-shadow:
-          0 1px 0 #4a4a4e,
-          0 2px 0 #434347,
-          0 3px 0 #3d3d41,
-          0 4px 0 #3a3a3e,
-          0 6px 0 #333337,
-          0 8px 0 #2c2c30,
-          0 10px 0 #252528,
-          0 12px 0 #1d1d20,
-          0 26px 30px rgba(0, 0, 0, 0.62);
-        z-index: 4;
+        text-shadow: -2px -2px 0 rgba(255, 255, 255, 0.22);
       }
 
       /* single hairline fracture across the zero */
@@ -158,29 +183,29 @@
           90deg,
           rgba(11, 11, 12, 0) 0%,
           rgba(11, 11, 12, 0.9) 12%,
-          rgba(230, 224, 213, 0.85) 50%,
+          rgba(240, 234, 223, 0.9) 50%,
           rgba(11, 11, 12, 0.9) 88%,
           rgba(11, 11, 12, 0) 100%
         );
         opacity: 0;
-        z-index: 5;
+        z-index: 70;
       }
 
       /* ---- z3: vignette ---- */
       #vignette {
         position: absolute;
         inset: 0;
-        background: radial-gradient(72% 64% at 50% 47%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.72) 100%);
+        background: radial-gradient(70% 62% at 50% 47%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.74) 100%);
         z-index: 6;
         pointer-events: none;
       }
 
-      /* grade: 8% grain, no bloom (static, deterministic) */
+      /* grade: ~8% grain, no bloom (static, deterministic) */
       #grain {
         position: absolute;
         inset: 0;
         z-index: 7;
-        opacity: 0.08;
+        opacity: 0.075;
         mix-blend-mode: overlay;
         pointer-events: none;
         background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
@@ -199,13 +224,15 @@
       data-duration="3"
     >
       <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
-        <div id="dust"></div>
+        <div id="dust-far" class="dust"></div>
+        <div id="dust-near" class="dust"></div>
 
         <div id="deck">
           <div class="hero-wrap">
             <div id="underglow"></div>
+            <div id="contact"></div>
             <div id="ghost">$4,500,000,000</div>
-            <div id="hero">$0</div>
+            <div id="hero"><!-- extrusion + face injected here --></div>
             <div id="fracture"></div>
           </div>
         </div>
@@ -218,7 +245,7 @@
     <script>
       window.__timelines = window.__timelines || {};
 
-      // deterministic PRNG for the static cold-dust field (no Math.random)
+      // deterministic PRNG (no Math.random / Date.now / network)
       function mulberry32(a) {
         return function () {
           a |= 0;
@@ -229,54 +256,87 @@
         };
       }
 
+      // --- cold-dust fields (static) ---
       (function seedDust() {
-        const rand = mulberry32(0x51ed5);
-        const dust = document.getElementById("dust");
-        const frag = document.createDocumentFragment();
-        for (let i = 0; i < 90; i++) {
-          const m = document.createElement("div");
-          m.className = "mote";
-          const s = 0.6 + rand() * 1.8;
-          m.style.left = (5 + rand() * 90).toFixed(3) + "%";
-          m.style.top = (6 + rand() * 88).toFixed(3) + "%";
-          m.style.transform = "scale(" + s.toFixed(3) + ")";
-          m.style.opacity = (0.12 + rand() * 0.4).toFixed(3);
-          frag.appendChild(m);
+        function fill(el, count, seed, sMin, sMax) {
+          const rand = mulberry32(seed);
+          const frag = document.createDocumentFragment();
+          for (let i = 0; i < count; i++) {
+            const m = document.createElement("div");
+            m.className = "mote";
+            const s = sMin + rand() * (sMax - sMin);
+            m.style.left = (4 + rand() * 92).toFixed(3) + "%";
+            m.style.top = (5 + rand() * 90).toFixed(3) + "%";
+            m.style.transform = "scale(" + s.toFixed(3) + ")";
+            m.style.opacity = (0.1 + rand() * 0.4).toFixed(3);
+            frag.appendChild(m);
+          }
+          el.appendChild(frag);
         }
-        dust.appendChild(frag);
+        fill(document.getElementById("dust-far"), 55, 0x9a13, 1.2, 3.2);
+        fill(document.getElementById("dust-near"), 70, 0x51ed5, 0.6, 1.6);
       })();
 
-      // ghost counter — tabular, centered, no layout shift of tracked elements
+      // --- machined extrusion: stack N graphite side-wall copies, then the lit bone face on top ---
+      (function buildHero() {
+        const hero = document.getElementById("hero");
+        const DEPTH = 26; // extrusion layers
+        const DX = 1.15;
+        const DY = 1.25; // extrude down-right, away from the top-left key
+        const frag = document.createDocumentFragment();
+        for (let i = DEPTH; i >= 1; i--) {
+          const t = i / DEPTH; // 1 = deepest, ~0 = just under the face
+          // bevel catches the key on the first couple of layers, then falls into shadow
+          const lum = i <= 2 ? 0.34 : 0.22 - 0.16 * (1 - t);
+          const c = Math.round(255 * lum);
+          const g = document.createElement("div");
+          g.className = "glyph side";
+          g.textContent = "$0";
+          g.style.zIndex = String(10 + (DEPTH - i));
+          g.style.color = "rgb(" + c + "," + c + "," + (c + 4) + ")";
+          g.style.transform =
+            "translate(-50%, -50%) translate(" + (i * DX).toFixed(2) + "px," + (i * DY).toFixed(2) + "px)";
+          frag.appendChild(g);
+        }
+        const face = document.createElement("div");
+        face.className = "glyph";
+        face.id = "face";
+        face.textContent = "$0";
+        face.style.transform = "translate(-50%, -50%)";
+        frag.appendChild(face);
+        hero.appendChild(frag);
+      })();
+
+      // --- ghost counter (tabular, centered by GSAP so the plummet-drift owns the transform) ---
       const ghostEl = document.getElementById("ghost");
       const ghost = { v: 4500000000 };
       function renderGhost() {
-        const n = Math.max(0, Math.round(ghost.v));
-        ghostEl.textContent = "$" + n.toLocaleString("en-US");
+        ghostEl.textContent = "$" + Math.max(0, Math.round(ghost.v)).toLocaleString("en-US");
       }
       renderGhost();
 
       // TRANSFORMS + OPACITY ONLY. Easing matched to meaning. Never linear.
       const tl = gsap.timeline({ paused: true });
 
-      // 0-500ms: prior $4.5B plummets to 0 — accelerating collapse (power4.in)
-      tl.to(
-        ghost,
-        { v: 0, duration: 0.5, ease: "power4.in", onUpdate: renderGhost, onComplete: renderGhost },
+      // 0-500ms: prior $4.5B plummets to 0 — accelerating collapse (power4.in), with a physical drop
+      tl.to(ghost, { v: 0, duration: 0.5, ease: "power4.in", onUpdate: renderGhost, onComplete: renderGhost }, 0);
+      tl.fromTo(
+        "#ghost",
+        { xPercent: -50, y: 0, opacity: 0.5 },
+        { xPercent: -50, y: 34, opacity: 0.5, duration: 0.5, ease: "power4.in" },
         0,
       );
-      // the ghost dies as it lands
-      tl.to("#ghost", { opacity: 0, duration: 0.18, ease: "power2.out" }, 0.44);
+      tl.to("#ghost", { opacity: 0, duration: 0.16, ease: "power2.out" }, 0.44);
 
-      // 400-600ms: oxblood underglow EXTINGUISHES to black (expo.out)
+      // 400-600ms: oxblood ember EXTINGUISHES to black (expo.out)
       tl.to("#underglow", { opacity: 0, duration: 0.2, ease: "expo.out" }, 0.4);
 
-      // inverted sub-boom landing — a hollow thud on 'nothing' (subtle, transform-only)
-      tl.to("#hero", { scale: 0.99, duration: 0.05, ease: "power4.in" }, 0.5);
-      tl.to("#hero", { scale: 1, duration: 0.12, ease: "power2.out" }, 0.55);
+      // inverted sub-boom landing — a hollow thud on 'nothing' (subtle, transform-only, rigid block)
+      tl.to("#hero", { scale: 0.986, duration: 0.05, ease: "power4.in" }, 0.5);
+      tl.to("#hero", { scale: 1, duration: 0.14, ease: "power2.out" }, 0.55);
 
       // 550ms: single hairline fracture snaps across the zero (opacity pop, transform-only) — then dead stop.
-      // GSAP owns the whole transform (centering + rotation + scaleX) via fromTo, so nothing snaps
-      // under frame-seek capture. immediateRender seats the centered/invisible state at frame 0.
+      // GSAP owns the whole transform (centering + rotation + scaleX) via fromTo, so nothing snaps under seek.
       tl.fromTo(
         "#fracture",
         { xPercent: -50, yPercent: -50, rotation: -24, scaleX: 0.94, opacity: 0 },
