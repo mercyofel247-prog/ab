@@ -13,6 +13,29 @@ a web session.
 
 ---
 
+## Automatic vs. opt-in (important)
+
+**The two tools do NOT behave the same.** Only HyperFrames uses the GPU on its own.
+
+| Tool | Uses your AMD GPU automatically? | What you actually do |
+|---|---|---|
+| **HyperFrames** `render` | ✅ **Yes** — `--browser-gpu` defaults to *auto*: it probes for a GPU on launch and uses it, falling back to software only if none is found. | Nothing. Just run `npx hyperframes render …`. Pass `--browser-gpu` only to *force* it (turns a silent software fallback into a hard error, so you can be sure). |
+| **Remotion** `render` (CLI) | ❌ **No** — the headless renderer defaults to a **software** GL backend (`swangle`) for deterministic output. It will NOT grab your discrete GPU by itself. | Pass **`--gl=angle-egl`** (Linux; or `--gl=vulkan`). On Windows/macOS you can usually omit it. |
+| **Remotion** `studio` (preview) | ✅ Yes | Nothing — the desktop preview uses the GPU. Only the *render* needs the flag. |
+
+Two shared prerequisites for "automatic" to mean anything:
+1. **Working drivers** — the OS must expose the GPU to Chrome. On Linux that's
+   Mesa/RADV + `/dev/dri` (verify with `glxinfo -B` showing **AMD**, not `llvmpipe`).
+   Windows/macOS have this out of the box.
+2. Without (1), **both** tools silently fall back to software no matter what flags
+   you pass. (That's exactly why they ran software in the Claude cloud session —
+   that container has no GPU at all.)
+
+The GPU-encode flag (`--gpu` in HyperFrames) is **never** automatic and is
+NVENC-oriented — leave it off on AMD.
+
+---
+
 ## 1. Confirm the GPU is usable
 
 **Linux**
