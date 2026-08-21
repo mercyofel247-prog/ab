@@ -126,6 +126,16 @@ npx remotion render Ch1-06 out/ch1_06_gpu.mp4 --concurrency=100%
   repo still renders on GPU-less machines (it falls back to software).
 - `--concurrency=100%` uses all CPU cores for the CPU-side work.
 
+**GPU *encode* for Remotion (optional):** Remotion always encodes on the CPU. To
+also put the final H.264 encode on your AMD GPU, use the wrapper — it renders, then
+hardware-encodes with `h264_vaapi` (Linux) / `h264_amf` (Windows) / `h264_videotoolbox`
+(macOS), falling back to CPU if no GPU encoder is usable:
+```bash
+./remotion-amf.sh Ch1-06 out/ch1_06.mp4 --concurrency=100%
+```
+(For these short clips the CPU encode is already sub-second, so this mostly matters
+for long/4K output.)
+
 ---
 
 ## 5. Prove it's actually using the GPU
