@@ -20,7 +20,7 @@ a web session.
 | Tool | Uses your AMD GPU automatically? | What you actually do |
 |---|---|---|
 | **HyperFrames** `render` | ✅ **Yes** — `--browser-gpu` defaults to *auto*: it probes for a GPU on launch and uses it, falling back to software only if none is found. | Nothing. Just run `npx hyperframes render …`. Pass `--browser-gpu` only to *force* it (turns a silent software fallback into a hard error, so you can be sure). |
-| **Remotion** `render` (CLI) | ❌ **No** — the headless renderer defaults to a **software** GL backend (`swangle`) for deterministic output. It will NOT grab your discrete GPU by itself. | Pass **`--gl=angle-egl`** (Linux; or `--gl=vulkan`). On Windows/macOS you can usually omit it. |
+| **Remotion** `render` (CLI) | ✅ **Yes, now** — `remotion.config.ts` auto-selects a GPU GL backend when a GPU is detected (`/dev/dri` on Linux, or macOS/Windows), and stays on software otherwise. Remotion's *own* default is software, so this only works because of that config. | Nothing. Override if needed with `--gl=vulkan` / `--gl=swangle`. |
 | **Remotion** `studio` (preview) | ✅ Yes | Nothing — the desktop preview uses the GPU. Only the *render* needs the flag. |
 
 Two shared prerequisites for "automatic" to mean anything:
@@ -99,16 +99,17 @@ npx hyperframes render -c theranos_ch1_06.html -q high -w auto -o renders/2d.mp4
 
 ## 4. Remotion — render on the AMD GPU
 
+`remotion.config.ts` now auto-selects a GPU GL backend when a GPU is present, so
+no flag is needed:
 ```bash
 cd ../remotion-app && npm install
-
-# AMD Linux: use the GPU-backed GL backend
-npx remotion render Ch1-06 out/ch1_06_gpu.mp4 --gl=angle-egl --concurrency=100%
-# if angle-egl doesn't engage the GPU, try:
-npx remotion render Ch1-06 out/ch1_06_gpu.mp4 --gl=vulkan   --concurrency=100%
+npx remotion render Ch1-06 out/ch1_06_gpu.mp4 --concurrency=100%
 ```
-- **Windows / macOS (AMD):** omit `--gl` entirely — Remotion uses the GPU by default.
-- `--concurrency=100%` uses all CPU cores for the parts that stay on CPU.
+- On AMD Linux the config picks `angle-egl`; on macOS/Windows it picks `angle`.
+- If `angle-egl` doesn't engage your card, override once: `--gl=vulkan`.
+- The config only opts in when a GPU is detected (`/dev/dri` on Linux), so the same
+  repo still renders on GPU-less machines (it falls back to software).
+- `--concurrency=100%` uses all CPU cores for the CPU-side work.
 
 ---
 
