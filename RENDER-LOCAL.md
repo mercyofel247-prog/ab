@@ -7,9 +7,12 @@ your own machine, with your AMD GPU, the hardware WebGL path makes those renders
 several times faster. These are the commands to run **on your machine**, not in
 a web session.
 
-> The big 3D speedup comes from **hardware WebGL rasterization**, which is
-> GPU-vendor-agnostic (works on AMD via Mesa). GPU *video encoding* is a separate,
-> NVENC-oriented thing and is intentionally left off here — encoding is cheap.
+> Two independent GPU jobs: **rasterization** (drawing the WebGL frames) and
+> **video encoding** (compressing them to H.264). HyperFrames accelerates BOTH on
+> AMD automatically (`--browser-gpu` for raster, `--gpu` for encode — its `--gpu`
+> auto-detects `h264_vaapi` on Linux / `h264_amf` on Windows, it is NOT NVENC-only).
+> For these short clips the encode step is already sub-second, so `--gpu` is
+> optional; the raster path is the real win.
 
 ---
 
@@ -31,8 +34,17 @@ Two shared prerequisites for "automatic" to mean anything:
    you pass. (That's exactly why they ran software in the Claude cloud session —
    that container has no GPU at all.)
 
-The GPU-encode flag (`--gpu` in HyperFrames) is **never** automatic and is
-NVENC-oriented — leave it off on AMD.
+**GPU video encoding on AMD:**
+- **HyperFrames** `--gpu` **auto-detects the AMD encoder** — it runs `ffmpeg -encoders`,
+  probes each candidate (`nvenc → videotoolbox → vaapi → qsv → amf`) with a real
+  1-frame test, and uses the first that works: **`h264_vaapi` on Linux** (via
+  `/dev/dri/renderD128`) or **`h264_amf` on Windows**, falling back to CPU `libx264`
+  if none is usable. So just add `--gpu`; nothing manual needed. (This IS automatic —
+  an earlier version of this note wrongly said otherwise.)
+- **Remotion** has **no hardware-encode option** — it always encodes frames on the
+  CPU (`libx264`/ProRes/etc). There's no built-in way to make it use VAAPI/AMF; the
+  only route is a post-render `ffmpeg -c:v h264_vaapi`/`h264_amf` transcode (a
+  wrapper), which for short clips isn't worth it.
 
 ---
 
@@ -70,22 +82,25 @@ npm install
 
 ## 3. HyperFrames — render on the AMD GPU
 
-The flag that matters is **`--browser-gpu`** (use the GPU for the WebGL capture):
+Two GPU flags — `--browser-gpu` (WebGL raster) and `--gpu` (video encode). Both
+auto-detect AMD, so this uses your Radeon end to end:
 
 ```bash
 # 3D scene (the one that benefits most)
 npx hyperframes render -c countdown_50k_3d.html -q high \
-  --browser-gpu -w auto -o renders/countdown_gpu.mp4
+  --browser-gpu --gpu -w auto -o renders/countdown_gpu.mp4
 
 # other 3D scene
 npx hyperframes render -c theranos_ch1_06_3d.html -q high \
-  --browser-gpu -w auto -o renders/theranos_ch1_06_3d_gpu.mp4
+  --browser-gpu --gpu -w auto -o renders/theranos_ch1_06_3d_gpu.mp4
 ```
 
-- `--browser-gpu` → hardware WebGL on your Radeon (the speedup).
+- `--browser-gpu` → hardware WebGL on your Radeon (the big speedup).
+- `--gpu` → GPU video encode; on AMD it auto-selects **`h264_vaapi`** (Linux) or
+  **`h264_amf`** (Windows) after probing, and safely falls back to CPU `libx264` if
+  neither works — so it's safe to leave on. (Optional: encoding these short clips is
+  already sub-second on CPU.)
 - `-w auto` → multiple parallel workers (safe on real hardware).
-- **Do not** add `--gpu` on AMD — that selects NVENC-style GPU encoding and may
-  error or silently fall back. Leave encoding on the CPU (it's fast).
 - If `--browser-gpu` still falls back to software on Linux, your Mesa/`libEGL`
   install is incomplete (see step 1), or you're in a bare headless session with
   no DRM access — run inside a desktop (X/Wayland) session.
