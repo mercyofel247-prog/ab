@@ -6,9 +6,11 @@
 #   macOS         -> h264_videotoolbox
 # If no hardware encoder is usable, it keeps Remotion's CPU (libx264) output.
 #
-# Why this exists: Remotion has no built-in hardware-encode option (it always
-# encodes on the CPU). HyperFrames already auto-detects the GPU encoder; this
-# gives Remotion the same "automatic" behaviour. The WebGL *rasterization* still
+# Why this exists: Remotion's built-in hardware encode (--hardware-acceleration)
+# only supports NVENC (Linux/Windows) and VideoToolbox (macOS) — there is NO AMD
+# VAAPI/AMF path, so on an AMD GPU it falls back to CPU libx264. This wrapper adds
+# the AMD encoders. HyperFrames already auto-detects them. The WebGL *rasterization*
+# still
 # runs on the GPU automatically via remotion.config.ts — this only swaps the
 # final H.264 encode onto the GPU.
 #

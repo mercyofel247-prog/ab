@@ -41,10 +41,12 @@ Two shared prerequisites for "automatic" to mean anything:
   `/dev/dri/renderD128`) or **`h264_amf` on Windows**, falling back to CPU `libx264`
   if none is usable. So just add `--gpu`; nothing manual needed. (This IS automatic —
   an earlier version of this note wrongly said otherwise.)
-- **Remotion** has **no hardware-encode option** — it always encodes frames on the
-  CPU (`libx264`/ProRes/etc). There's no built-in way to make it use VAAPI/AMF; the
-  only route is a post-render `ffmpeg -c:v h264_vaapi`/`h264_amf` transcode (a
-  wrapper), which for short clips isn't worth it.
+- **Remotion** *does* have a built-in `--hardware-acceleration` encode option, but
+  for H.264 it only supports **NVENC** (Linux/Windows) and **VideoToolbox** (macOS)
+  — **no AMD VAAPI/AMF**. So on an AMD GPU it can't hardware-encode natively (it
+  falls back to CPU `libx264`). The route for AMD is a post-render
+  `h264_vaapi`/`h264_amf` transcode — see `remotion-app/remotion-amf.sh`, which does
+  it automatically. (For short clips it isn't worth it; matters for long/4K output.)
 
 ---
 
