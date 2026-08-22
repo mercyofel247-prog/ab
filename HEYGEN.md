@@ -1,75 +1,103 @@
-# HeyGen API setup
+# HeyGen cloud rendering (HyperFrames)
 
-This repo uses HeyGen in two ways: the **HyperFrames CLI** (video-as-code, under
-`videos/`) and the **HeyGen REST API** (via `scripts/heygen.mjs`). Both read the
-same `HEYGEN_API_KEY`.
+HyperFrames can render compositions on **HeyGen's cloud** — no local Chrome or
+FFmpeg needed. This doc covers how the API key is supplied and how to run a
+cloud render.
 
-## 1. Get your API key
+## How authentication works
 
-1. Log in at [app.heygen.com](https://app.heygen.com).
-2. Go to **Settings → API** (<https://app.heygen.com/settings/api>).
-3. Copy the **API Key**. Treat it like a password.
-
-## 2. Add it locally
+The HyperFrames CLI authenticates to HeyGen with an API key read from the
+**`HEYGEN_API_KEY`** environment variable. Confirm what it sees with:
 
 ```bash
-cp .env.example .env
-# then edit .env and paste your key after HEYGEN_API_KEY=
+npx hyperframes auth status
+# Source: env (HEYGEN_API_KEY)
+# Type:   api_key
 ```
 
-`.env` is git-ignored, so your real key never gets committed. Confirm:
+There are two ways to provide the key:
+
+1. **Environment variable (used by this environment).**
+   This Claude Code environment already injects a real `HEYGEN_API_KEY`, so the
+   CLI is authenticated automatically — nothing to add. To set it yourself
+   elsewhere:
+   ```bash
+   export HEYGEN_API_KEY=sk_...        # your key from app.heygen.com → Settings → API
+   ```
+   For local dev you can keep it in a git-ignored `.env` (see `.env.example`) and
+   load it with `node --env-file=.env`, or `export` it in your shell.
+
+2. **Stored credential via `auth login`** (persists to the CLI's config, no env
+   var needed afterward):
+   ```bash
+   npx hyperframes auth login --api-key      # prompts for the key on stdin
+   # or OAuth in a browser:
+   npx hyperframes auth login
+   ```
+
+Get your key at **app.heygen.com → Settings → API**
+(<https://app.heygen.com/settings/api>). Treat it like a password — it is
+git-ignored via `.env`; never commit it or paste it into source/issues.
+
+## Running a cloud render
+
+From a video project directory (e.g. `videos/data-beat-8-8t`):
 
 ```bash
-git check-ignore .env   # prints ".env"
-```
-
-## 3. Use it with the HyperFrames CLI
-
-The CLI reads `HEYGEN_API_KEY` from the environment. Export it, then run the
-publish script from a video folder:
-
-```bash
-export HEYGEN_API_KEY=your_key_here
 cd videos/data-beat-8-8t
-npm run publish
+
+npm run auth:status            # verify the key is picked up
+npm run render:cloud           # cloud render index.html → renders/<id>.mp4
+npm run cloud:list             # list recent cloud renders
 ```
 
-Or inline for a single command:
+`render:cloud` maps to `hyperframes cloud render`. Useful flags (pass after `--`,
+e.g. `npm run render:cloud -- --quality high`):
 
+- `--quality draft|standard|high` (default `standard`)
+- `--resolution 1080p|4k` (4k billed at 1.5x)
+- `--aspect-ratio 16:9|9:16|1:1`
+- `--fps <1-240>` (default 30)
+- `-c, --composition <file>` — entry HTML (default `index.html`)
+- `--no-wait` — submit and exit with the render id (fire-and-forget)
+- `-o, --output <path>` — where to save the downloaded video
+- `--dry-run` — build/inspect the zip without authenticating or uploading
+
+Manage renders with `hyperframes cloud list | get <id> | delete <id>`.
+
+## Network requirement (Claude Code on web)
+
+Cloud rendering calls `api.heygen.com`. This environment's **network egress
+policy currently blocks that host** (`403 Host not in allowlist`), so a cloud
+render started from a web session will fail until `api.heygen.com` is added to
+the environment's allowed egress hosts. It works without any change from your
+local machine. To allow it for web sessions, add `api.heygen.com` to the
+environment's network settings — see
+<https://code.claude.com/docs/en/claude-code-on-the-web>.
+
+Quick check from inside a session:
 ```bash
-HEYGEN_API_KEY=your_key_here npm run publish
+npx hyperframes auth status
+# "API check failed: ... Host not in allowlist: api.heygen.com" → egress blocked
+# a clean status line                                            → reachable
 ```
 
-## 4. Use it with the REST API
+## Raw REST API helper (optional)
 
-`scripts/heygen.mjs` wraps the HeyGen v2 API. Node 20.6+ can load `.env`
-directly with `--env-file`:
+`scripts/heygen.mjs` is a small wrapper over HeyGen's REST API (avatars, voices,
+video generation) — separate from HyperFrames cloud rendering, handy for
+scripting or verifying the key against the API directly. It also reads
+`HEYGEN_API_KEY`:
 
 ```bash
-# Verify the key is accepted
 node --env-file=.env scripts/heygen.mjs check
-
-# Discover ids you can use
-node --env-file=.env scripts/heygen.mjs avatars
-node --env-file=.env scripts/heygen.mjs voices
-
-# Generate a video (needs HEYGEN_AVATAR_ID and HEYGEN_VOICE_ID in .env)
-node --env-file=.env scripts/heygen.mjs generate "Hello from HeyGen"
-
-# Poll its status
-node --env-file=.env scripts/heygen.mjs status <video_id>
-```
-
-You can also `import` the helpers from other Node code:
-
-```js
-import { generateVideo, getVideoStatus } from "./scripts/heygen.mjs";
 ```
 
 ## Troubleshooting
 
-- **401 Unauthorized** — the key is wrong or not being read. Check `.env` and
-  that you passed `--env-file=.env` (or exported the variable).
-- **`HEYGEN_API_KEY is not set`** — you ran the script without loading `.env`.
-- Never paste your key into source, commit messages, or issues. Rotate it in the
-  HeyGen dashboard if it leaks.
+- **`Host not in allowlist: api.heygen.com`** — egress policy blocking the host
+  (see the network section above). Not a key problem.
+- **401 Unauthorized** — the key is wrong or expired. Rotate it in the HeyGen
+  dashboard and re-set `HEYGEN_API_KEY`.
+- **`auth status` shows no credential** — export `HEYGEN_API_KEY` or run
+  `hyperframes auth login`.

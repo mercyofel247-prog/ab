@@ -6,6 +6,9 @@
     "dev": "npx --yes hyperframes@0.7.107 preview",
     "check": "npx --yes hyperframes@0.7.107 check",
     "render": "npx --yes hyperframes@0.7.107 render",
+    "render:cloud": "npx --yes hyperframes@0.7.107 cloud render",
+    "cloud:list": "npx --yes hyperframes@0.7.107 cloud list",
+    "auth:status": "npx --yes hyperframes@0.7.107 auth status",
     "publish": "npx --yes hyperframes@0.7.107 publish"
   }
 }
