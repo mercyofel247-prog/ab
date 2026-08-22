@@ -1,2 +1,7 @@
 node_modules/
 snapshots/
+
+# Cloud/local renders download as renders/<render-id>.mp4 — ephemeral and
+# reproducible. Keep only the canonical project render under version control.
+renders/*
+!renders/data-beat-8-8t.mp4
