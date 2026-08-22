@@ -137,13 +137,13 @@
       })();
 
       // lights
-      const key = new THREE.DirectionalLight(0xf6ddd6, 1.25); key.position.set(-3.2, 4.4, 3.6); scene.add(key);
-      const rim = new THREE.DirectionalLight(0xd79a8c, 0.7); rim.position.set(3.0, 1.0, -3.2); scene.add(rim);
+      const key = new THREE.DirectionalLight(0xfff4ec, 2.1); key.position.set(-3.2, 4.4, 3.6); scene.add(key);
+      const rim = new THREE.DirectionalLight(0xffe0d2, 0.75); rim.position.set(3.0, 1.0, -3.2); scene.add(rim);
       scene.add(new THREE.HemisphereLight(0x3a1a18, 0x070405, 0.35));
 
       // OXBLOOD machined metal (slight emissive so glyphs read on the warm bg)
       const metal = new THREE.MeshStandardMaterial({
-        color: 0x5a0f08, emissive: 0x260603, emissiveIntensity: 0.32, metalness: 0.55, roughness: 0.5, envMapIntensity: 0.9,
+        color: 0xece7db, emissive: 0x000000, emissiveIntensity: 0.0, metalness: 0.55, roughness: 0.38, envMapIntensity: 1.4,
       });
 
       const group = new THREE.Group();
