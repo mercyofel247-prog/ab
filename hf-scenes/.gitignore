@@ -1,4 +1,5 @@
 node_modules/
+package-lock.json
 .hyperframes/
 renders/*.mp4
 renders/_*.mp4
