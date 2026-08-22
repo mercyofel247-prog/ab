@@ -6,6 +6,12 @@
     "dev": "npx --yes hyperframes@0.7.107 preview",
     "check": "npx --yes hyperframes@0.7.107 check",
     "render": "npx --yes hyperframes@0.7.107 render",
-    "publish": "npx --yes hyperframes@0.7.107 publish"
+    "publish": "npx --yes hyperframes@0.7.107 publish",
+    "cloud:auth": "npx --yes hyperframes@0.7.107 auth login",
+    "cloud:auth:device": "npx --yes hyperframes@0.7.107 auth login --device",
+    "cloud:auth:status": "npx --yes hyperframes@0.7.107 auth status",
+    "cloud:auth:logout": "npx --yes hyperframes@0.7.107 auth logout",
+    "cloud:render": "npx --yes hyperframes@0.7.107 cloud render",
+    "cloud:list": "npx --yes hyperframes@0.7.107 cloud list"
   }
 }

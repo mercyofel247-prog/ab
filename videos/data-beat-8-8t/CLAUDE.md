@@ -35,12 +35,36 @@ The domain skills (`/hyperframes-core`, `/hyperframes-animation`, `/hyperframes-
 ```bash
 npm run dev          # start the preview server (long-running — keep it alive in background)
 npm run check        # lint + runtime + layout + motion + contrast (one command)
-npm run render       # render to MP4
+npm run render       # render to MP4 (local Chrome + ffmpeg)
 npm run publish      # publish and get a shareable link
+npm run cloud:render # render on HeyGen's cloud (no local Chrome/ffmpeg — requires auth)
+npm run cloud:list   # list recent cloud renders
 npx hyperframes lint --verbose  # include info-level findings
 npx hyperframes lint --json     # machine-readable output for CI
 npx hyperframes docs <topic> # reference docs in terminal
 ```
+
+### Cloud auth (HeyGen)
+
+Cloud rendering (and HeyGen-backed voice/music) needs a HeyGen credential stored in
+`~/.heygen` on the machine that runs the render — nothing is written into the repo or a
+per-repo `.env`, so signing in on one machine does not carry to CI or another session.
+
+```bash
+npm run cloud:auth          # browser OAuth sign-in / sign-up (default)
+npm run cloud:auth:device   # attended device-code flow for SSH / headless terminals
+npm run cloud:auth:status   # show the active credential
+npm run cloud:auth:logout   # remove the stored credential
+```
+
+To use a long-lived API key instead of OAuth (get one at app.heygen.com/settings/api):
+
+```bash
+npx hyperframes@0.7.107 auth login --api-key   # paste the key at the prompt
+```
+
+Not signed in? Voice & music fall back to local engines (Kokoro / MusicGen), but cloud
+rendering is unavailable.
 
 > **`npm run dev` is a long-running server, not a one-shot command.** It blocks until stopped.
 > In Claude Code, always run it with `run_in_background: true`. Never run it as a foreground
