@@ -8,6 +8,7 @@
 import { Config } from "@remotion/cli/config";
 import { enableTailwind } from '@remotion/tailwind-v4';
 import { existsSync } from "node:fs";
+import os from "node:os";
 
 // Some sandboxes block Remotion's own headless-shell download but ship a
 // Playwright Chromium instead. Point at it only when it's actually there,
@@ -22,3 +23,9 @@ Config.setRspack(true);
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
 Config.overrideBundlerConfig(enableTailwind);
+
+// Speed: render across every available core. Remotion's default concurrency
+// is only a fraction of the CPUs; pinning it to the full core count is a
+// quality-neutral throughput win (each worker still renders full-quality
+// frames — only parallelism changes). Falls back safely to 1 on odd hosts.
+Config.setConcurrency(Math.max(1, os.cpus().length));

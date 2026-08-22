@@ -6,6 +6,8 @@
     "dev": "npx --yes hyperframes@0.7.107 preview",
     "check": "npx --yes hyperframes@0.7.107 check",
     "render": "npx --yes hyperframes@0.7.107 render",
+    "render:fast": "npx --yes hyperframes@0.7.107 render --workers auto --quality standard --page-side-compositing",
+    "render:draft": "npx --yes hyperframes@0.7.107 render --workers auto --quality draft",
     "publish": "npx --yes hyperframes@0.7.107 publish"
   }
 }
