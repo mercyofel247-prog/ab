@@ -41,18 +41,31 @@ git-ignored via `.env`; never commit it or paste it into source/issues.
 
 ## Running a cloud render
 
+**Rendering defaults to the cloud.** `npm run render` runs `hyperframes cloud
+render` — the local Puppeteer/FFmpeg path is kept as `npm run render:local` for
+when you explicitly want an on-machine render.
+
 From a video project directory (e.g. `videos/data-beat-8-8t`):
 
 ```bash
 cd videos/data-beat-8-8t
 
 npm run auth:status            # verify the key is picked up
-npm run render:cloud           # cloud render index.html → renders/<id>.mp4
+npm run render                 # cloud render index.html → renders/<id>.mp4 (default)
 npm run cloud:list             # list recent cloud renders
+npm run render:local           # opt out to a local render instead
 ```
 
-`render:cloud` maps to `hyperframes cloud render`. Useful flags (pass after `--`,
-e.g. `npm run render:cloud -- --quality high`):
+Every network-touching script (`render`, `render:cloud`, `cloud:list`,
+`auth:status`, `publish`) sets `NODE_USE_ENV_PROXY=1` so the HyperFrames CLI's
+`fetch` honors the session proxy in Claude Code web environments (see the network
+section below). This is harmless on a local machine. On **Windows `cmd`** the
+inline `VAR=1 ...` prefix isn't supported — run cloud renders from Git Bash/WSL,
+or set `NODE_USE_ENV_PROXY=1` in your shell first; locally the proxy isn't
+involved at all, so `render:local` needs nothing.
+
+`render` / `render:cloud` map to `hyperframes cloud render`. Useful flags (pass
+after `--`, e.g. `npm run render -- --quality high`):
 
 - `--quality draft|standard|high` (default `standard`)
 - `--resolution 1080p|4k` (4k billed at 1.5x)
@@ -67,19 +80,27 @@ Manage renders with `hyperframes cloud list | get <id> | delete <id>`.
 
 ## Network requirement (Claude Code on web)
 
-Cloud rendering calls `api.heygen.com`. This environment's **network egress
-policy currently blocks that host** (`403 Host not in allowlist`), so a cloud
-render started from a web session will fail until `api.heygen.com` is added to
-the environment's allowed egress hosts. It works without any change from your
-local machine. To allow it for web sessions, add `api.heygen.com` to the
-environment's network settings — see
-<https://code.claude.com/docs/en/claude-code-on-the-web>.
+Cloud rendering calls `api.heygen.com`, so two things must be true in a Claude
+Code web session:
 
-Quick check from inside a session:
+1. **`api.heygen.com` is on the environment's egress allowlist.** Set the
+   environment's **Network access** to **Custom** and add `api.heygen.com` under
+   **Allowed domains** (keep "Also include default list of common package
+   managers" checked). See
+   <https://code.claude.com/docs/en/cloud-environments#access-levels>.
+2. **`NODE_USE_ENV_PROXY=1` is set** so the CLI's `fetch` routes through the
+   session proxy. The npm scripts already set this; it's also worth adding to the
+   environment's variables so ad-hoc `npx hyperframes …` commands work too.
+
+Neither is needed on a local machine — there's no proxy, and `render:local`
+avoids `api.heygen.com` entirely.
+
+Quick check from inside a session (use the same proxy var):
 ```bash
-npx hyperframes auth status
-# "API check failed: ... Host not in allowlist: api.heygen.com" → egress blocked
-# a clean status line                                            → reachable
+NODE_USE_ENV_PROXY=1 npx hyperframes auth status
+# Account / Wallet lines                            → reachable and authenticated
+# "... Host not in allowlist: api.heygen.com"       → egress not allowlisted,
+#                                                      OR NODE_USE_ENV_PROXY unset
 ```
 
 ## Raw REST API helper (optional)
@@ -95,8 +116,9 @@ node --env-file=.env scripts/heygen.mjs check
 
 ## Troubleshooting
 
-- **`Host not in allowlist: api.heygen.com`** — egress policy blocking the host
-  (see the network section above). Not a key problem.
+- **`Host not in allowlist: api.heygen.com`** — either `api.heygen.com` isn't on
+  the environment's egress allowlist, or `NODE_USE_ENV_PROXY=1` wasn't set so the
+  CLI bypassed the proxy. See the network section above. Not a key problem.
 - **401 Unauthorized** — the key is wrong or expired. Rotate it in the HeyGen
   dashboard and re-set `HEYGEN_API_KEY`.
 - **`auth status` shows no credential** — export `HEYGEN_API_KEY` or run
