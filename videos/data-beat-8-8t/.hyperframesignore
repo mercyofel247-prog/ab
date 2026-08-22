@@ -1,0 +1,3 @@
+# Files not needed by the cloud renderer — keeps the upload zip small/fast.
+# (Local renders are unaffected; this only trims what `cloud render` uploads.)
+*.md

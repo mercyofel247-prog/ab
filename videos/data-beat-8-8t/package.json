@@ -8,6 +8,10 @@
     "render": "npx --yes hyperframes@0.7.107 render",
     "render:fast": "npx --yes hyperframes@0.7.107 render --workers auto --quality standard --page-side-compositing",
     "render:draft": "npx --yes hyperframes@0.7.107 render --workers auto --quality draft",
+    "render:cloud": "npx --yes hyperframes@0.7.107 cloud render --quality standard --resolution 1080p --aspect-ratio 16:9",
+    "render:cloud:4k": "npx --yes hyperframes@0.7.107 cloud render --quality high --resolution 4k --aspect-ratio 16:9",
+    "cloud:list": "npx --yes hyperframes@0.7.107 cloud list",
+    "cloud:auth": "npx --yes hyperframes@0.7.107 auth status",
     "publish": "npx --yes hyperframes@0.7.107 publish"
   }
 }
