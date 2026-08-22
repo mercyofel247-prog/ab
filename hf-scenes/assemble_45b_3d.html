@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Assemble — $4,500,000,000 (TRUE 3D, oxblood)</title>
+    <!--
+      Real Three.js scene: the 14 glyphs of "$4,500,000,000" streak in from
+      different directions (deterministic), tumbling, and lock into place. Digits in
+      OXBLOOD machined metal; background is a mixture of oxblood and black (radial
+      ember on near-black). 1920x1080 @24fps, 5s. Premium SFX: rising whooshes into a
+      slam on the lock (assets/assemble_45b.wav). three.js + font vendored locally.
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/loaders/FontLoader.js": "./vendor/three/FontLoader.js",
+          "three/addons/geometries/TextGeometry.js": "./vendor/three/TextGeometry.js"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0a0607; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+      /* vignette darkens the edges to black, leaving the oxblood glow centre */
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(72% 66% at 50% 50%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.72) 100%);
+      }
+      #grain {
+        position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+        background-size: 320px 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="5"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <canvas id="scene" width="1920" height="1080"></canvas>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </section>
+
+      <audio id="sfx" data-start="0" data-duration="5" data-track-index="2" src="assets/assemble_45b.wav" data-volume="1"></audio>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rnd = mulberry32(0x45bA55E);
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+      const easeOutCubic = (p) => 1 - Math.pow(1 - p, 3);
+
+      const W = 1920, H = 1080;
+      const canvas = document.getElementById("scene");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x0a0607, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+      camera.position.set(1.35, 0.55, 6.1);
+      camera.lookAt(0, 0.02, 0);
+
+      // env (dim, warm) for oxblood metal sheen
+      function makeEnv() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 256;
+        const x = c.getContext("2d");
+        const g = x.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, "#8a5b52"); g.addColorStop(0.5, "#3a1f1c"); g.addColorStop(1, "#0a0506");
+        x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+        const s = x.createLinearGradient(150, 0, 360, 0);
+        s.addColorStop(0, "rgba(240,220,214,0)"); s.addColorStop(0.5, "rgba(240,220,214,0.7)"); s.addColorStop(1, "rgba(240,220,214,0)");
+        x.fillStyle = s; x.fillRect(150, 0, 210, 150);
+        const t = new THREE.CanvasTexture(c); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnv()).texture;
+
+      // ---- background: mixture of oxblood and black (radial ember on near-black) ----
+      (function backdrop() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 288;
+        const x = c.getContext("2d");
+        x.fillStyle = "#050303"; x.fillRect(0, 0, 512, 288);
+        const g = x.createRadialGradient(256, 150, 20, 256, 150, 300);
+        g.addColorStop(0, "#55100a"); g.addColorStop(0.32, "#2c0a07"); g.addColorStop(0.62, "#120506"); g.addColorStop(1, "#050303");
+        x.fillStyle = g; x.fillRect(0, 0, 512, 288);
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(34, 19), new THREE.MeshBasicMaterial({ map: t, toneMapped: true }));
+        m.position.set(0, 0, -7);
+        scene.add(m);
+      })();
+      // soft additive ember right behind the number
+      (function ember() {
+        const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+        const x = c.getContext("2d");
+        const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+        g.addColorStop(0, "rgba(150,30,18,0.85)"); g.addColorStop(0.45, "rgba(105,20,12,0.35)"); g.addColorStop(1, "rgba(105,20,12,0)");
+        x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.4), new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        m.position.set(0, 0, -1.6);
+        scene.add(m);
+      })();
+
+      // lights
+      const key = new THREE.DirectionalLight(0xffe9e2, 2.0); key.position.set(-3.2, 4.4, 3.6); scene.add(key);
+      const rim = new THREE.DirectionalLight(0xffbfae, 0.7); rim.position.set(3.0, 1.0, -3.2); scene.add(rim);
+      scene.add(new THREE.HemisphereLight(0x3a1a18, 0x070405, 0.35));
+
+      // OXBLOOD machined metal (slight emissive so glyphs read on the warm bg)
+      const metal = new THREE.MeshStandardMaterial({
+        color: 0x8c1a11, emissive: 0x54100a, emissiveIntensity: 0.62, metalness: 0.5, roughness: 0.4, envMapIntensity: 1.35,
+      });
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      let tl = null;
+
+      const TEXT = "$4,500,000,000";
+      const SIZE = 0.5, TRACK = 0.03;
+      const glyphs = [];
+
+      function easeOut(p) { return easeOutCubic(clamp01(p)); }
+
+      function apply() {
+        const t = tl.time();
+
+        // per-glyph fly-in
+        for (const gd of glyphs) {
+          const e = easeOut((t - gd.t0) / gd.dur);
+          gd.mesh.position.set(
+            lerp(gd.sx, gd.hx, e),
+            lerp(gd.sy, 0, e),
+            lerp(gd.sz, 0, e),
+          );
+          gd.mesh.rotation.set(lerp(gd.rx, 0, e), lerp(gd.ry, 0, e), lerp(gd.rz, 0, e));
+        }
+
+        // lock pop (slam) at 1.8s, then a gentle damped Y sway that settles to rest
+        const LOCK = 1.8;
+        let s = 1;
+        if (t >= LOCK) {
+          const q = t - LOCK;
+          s = 1 + 0.03 * Math.max(0, 1 - q / 0.24) * (q < 0.06 ? q / 0.06 : 1);
+          group.rotation.y = 0.12 * Math.sin(q * 1.15) * Math.max(0, 1 - q / 2.6);
+        } else {
+          group.rotation.y = 0;
+        }
+        group.scale.setScalar(s);
+
+        renderer.render(scene, camera);
+      }
+
+      new FontLoader().load("vendor/three/helvetiker_bold.typeface.json", (font) => {
+        // build + lay out each glyph, then assign a random fly-in vector
+        const chars = TEXT.split("");
+        let cursor = 0;
+        const metrics = [];
+        for (const ch of chars) {
+          const geo = new TextGeometry(ch, { font, size: SIZE, height: 0.2, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.013, bevelSegments: 2 });
+          geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          const w = bb.max.x - bb.min.x;
+          // origin at glyph left, vertically centred
+          geo.translate(-bb.min.x, -(bb.max.y + bb.min.y) / 2, -(bb.max.z + bb.min.z) / 2);
+          geo.computeVertexNormals();
+          const adv = (isFinite(w) && w > 0 ? w : SIZE * 0.28) + TRACK;
+          metrics.push({ geo, x: cursor, w: adv });
+          cursor += adv;
+        }
+        const total = cursor - TRACK;
+        const shift = -total / 2;
+
+        // deterministic arrival order
+        const order = metrics.map((_, i) => i);
+        for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+
+        metrics.forEach((m, i) => {
+          const mesh = new THREE.Mesh(m.geo, metal);
+          group.add(mesh);
+          const hx = m.x + shift;
+          // random incoming direction, far off, with tumble
+          const ang = rnd() * Math.PI * 2;
+          const dist = 7 + rnd() * 7;
+          const arrival = order.indexOf(i);
+          glyphs.push({
+            mesh, hx,
+            sx: hx + Math.cos(ang) * dist,
+            sy: Math.sin(ang) * dist * 0.7,
+            sz: (rnd() - 0.5) * 9,
+            rx: (rnd() - 0.5) * 7, ry: (rnd() - 0.5) * 7, rz: (rnd() - 0.5) * 7,
+            t0: 0.1 + arrival * 0.075,
+            dur: 0.72,
+          });
+        });
+
+        tl = gsap.timeline({ paused: true });
+        tl.to({}, { duration: 5, ease: "none" }, 0); // span the full 5s
+        tl.eventCallback("onUpdate", apply);
+        apply();
+        window.__timelines["main-video"] = tl;
+      });
+    </script>
+  </body>
+</html>
