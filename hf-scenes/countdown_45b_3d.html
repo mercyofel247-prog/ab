@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Countdown — $4,500,000,000 → $0 (TRUE 3D, graphite)</title>
+    <!--
+      Real Three.js scene: extruded 3D number in COLD DEAD GRAPHITE-GREY machined
+      metal (no glow, no emissive), on near-black. Rotates slowly on its Y axis while
+      counting $4,500,000,000 -> $0; on hitting $0 a hairline crack snaps across the
+      zero and it stops dead. 1920x1080 @24fps, 5s. Premium SFX with a hollow final
+      thud (assets/countdown_45b.wav), impact synced to the land. three.js + font
+      vendored locally.
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/loaders/FontLoader.js": "./vendor/three/FontLoader.js",
+          "three/addons/geometries/TextGeometry.js": "./vendor/three/TextGeometry.js"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(66% 60% at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.7) 100%);
+      }
+      #grain {
+        position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+        background-size: 320px 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="5"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <canvas id="scene" width="1920" height="1080"></canvas>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </section>
+
+      <audio
+        id="sfx"
+        data-start="0"
+        data-duration="5"
+        data-track-index="2"
+        src="assets/countdown_45b.wav"
+        data-volume="1"
+      ></audio>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const W = 1920, H = 1080;
+      const canvas = document.getElementById("scene");
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x0b0b0c, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+      camera.position.set(2.0, 0.85, 5.9);
+      camera.lookAt(0, 0.03, 0);
+
+      // dim cool env so the machined metal has something to reflect (no glow)
+      function makeEnvTexture() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0.0, "#a3aab4"); g.addColorStop(0.42, "#666c75"); g.addColorStop(0.62, "#222429"); g.addColorStop(1.0, "#0a0b0d");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+        const s = ctx.createLinearGradient(150, 0, 370, 0);
+        s.addColorStop(0, "rgba(222,229,238,0)"); s.addColorStop(0.5, "rgba(222,229,238,0.9)"); s.addColorStop(1, "rgba(222,229,238,0)");
+        ctx.fillStyle = s; ctx.fillRect(150, 0, 220, 165);
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnvTexture()).texture;
+
+      // lights: one cool key + low cool fill. Dead light, no warmth.
+      const KEY_BASE = 11.0;
+      const key = new THREE.SpotLight(0xd2d8e0, KEY_BASE, 0, 0.6, 0.32, 0.0);
+      key.position.set(-4.0, 5.0, 3.6); key.target.position.set(0, 0, 0);
+      scene.add(key); scene.add(key.target);
+      const fill = new THREE.DirectionalLight(0x9fb0c4, 0.5);
+      fill.position.set(4.4, 1.2, 3.2); scene.add(fill);
+      scene.add(new THREE.HemisphereLight(0x2a2f36, 0x070708, 0.25));
+
+      // COLD GRAPHITE machined metal — no emissive, no glow
+      const metal = new THREE.MeshStandardMaterial({
+        color: 0x3a3b40, metalness: 0.82, roughness: 0.44, envMapIntensity: 3.0,
+      });
+
+      const numberMesh = new THREE.Mesh(new THREE.BufferGeometry(), metal);
+      scene.add(numberMesh);
+
+      // hairline crack (child of the number so it rotates with it); revealed on the land
+      const crackGroup = new THREE.Group();
+      crackGroup.scale.x = 0.0001;
+      crackGroup.visible = false;
+      numberMesh.add(crackGroup);
+
+      const fmt = (v) => "$" + Math.max(0, Math.round(v)).toLocaleString("en-US");
+
+      let font = null, lastText = null, crackBuilt = false;
+      function rebuild(text) {
+        if (!font || text === lastText) return;
+        lastText = text;
+        const geo = new TextGeometry(text, {
+          font, size: 0.5, height: 0.2, curveSegments: 5,
+          bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.013, bevelOffset: 0, bevelSegments: 2,
+        });
+        geo.computeBoundingBox();
+        const bb = geo.boundingBox;
+        geo.translate(-(bb.max.x + bb.min.x) / 2, -(bb.max.y + bb.min.y) / 2, -(bb.max.z + bb.min.z) / 2);
+        geo.computeVertexNormals();
+        numberMesh.geometry.dispose();
+        numberMesh.geometry = geo;
+        if (!crackBuilt) buildCrack(geo.boundingBox);
+      }
+
+      function buildCrack(bb) {
+        crackBuilt = true;
+        const frontZ = (bb.max.z - bb.min.z) / 2 + 0.015;
+        const len = 0.42;
+        const g = new THREE.BoxGeometry(len, 0.014, 0.03);
+        g.translate(len / 2, 0, 0); // origin at left end -> scaleX draws across
+        const crack = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x050506, roughness: 1, metalness: 0 }));
+        crackGroup.add(crack);
+        // sit over the "0" (right glyph of the final "$0"), on the front face
+        crackGroup.position.set(0.15 - len / 2, 0.04, frontZ);
+        crackGroup.rotation.z = -0.4;
+      }
+
+      const S = { count: 4500000000, rotY: 0, scale: 1, crack: 0, dustT: 0, _pad: 0 };
+
+      function apply() {
+        rebuild(fmt(S.count));
+        numberMesh.rotation.y = S.rotY;
+        numberMesh.scale.setScalar(S.scale);
+        crackGroup.scale.x = Math.max(0.0001, S.crack);
+        crackGroup.visible = S.crack > 0.003;
+        updateDust(S.dustT);
+        renderer.render(scene, camera);
+      }
+
+      // cold dust
+      const DUST_N = 110;
+      const dustBase = new Float32Array(DUST_N * 3), dustVel = new Float32Array(DUST_N * 3), dustPos = new Float32Array(DUST_N * 3);
+      (function seed() {
+        const r = mulberry32(0x45b1d);
+        for (let i = 0; i < DUST_N; i++) {
+          const x = (r()-0.5)*8.5, y=(r()-0.5)*5.0, z=(r()-0.5)*5.5-0.5;
+          dustBase[i*3]=x; dustBase[i*3+1]=y; dustBase[i*3+2]=z;
+          dustVel[i*3]=(r()-0.5)*0.4; dustVel[i*3+1]=(r()-0.3)*0.5; dustVel[i*3+2]=(r()-0.5)*0.35;
+          dustPos[i*3]=x; dustPos[i*3+1]=y; dustPos[i*3+2]=z;
+        }
+      })();
+      const dustGeo = new THREE.BufferGeometry();
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xa9b0ba, size: 0.032, sizeAttenuation: true, transparent: true, opacity: 0.42, depthWrite: false })));
+      function updateDust(dt) {
+        for (let i = 0; i < DUST_N; i++) {
+          dustPos[i*3]   = dustBase[i*3]   + dustVel[i*3]*dt;
+          dustPos[i*3+1] = dustBase[i*3+1] + dustVel[i*3+1]*dt;
+          dustPos[i*3+2] = dustBase[i*3+2] + dustVel[i*3+2]*dt;
+        }
+        dustGeo.attributes.position.needsUpdate = true;
+      }
+
+      new FontLoader().load("vendor/three/helvetiker_bold.typeface.json", (f) => {
+        font = f;
+        rebuild(fmt(S.count));
+
+        const LAND = 4.2;
+        const tl = gsap.timeline({ paused: true });
+
+        // count down (accelerating) + slow single Y turn easing to a front-facing rest
+        tl.to(S, { count: 0, duration: LAND, ease: "power2.in" }, 0);
+        tl.to(S, { rotY: Math.PI * 2, duration: LAND, ease: "power2.out" }, 0);
+        tl.to(S, { dustT: 1, duration: LAND, ease: "sine.inOut" }, 0);
+
+        // land: hollow-thud scale dip -> dead stop
+        tl.to(S, { scale: 0.965, duration: 0.06, ease: "power4.in" }, LAND);
+        tl.to(S, { scale: 1.0, duration: 0.16, ease: "power2.out" }, LAND + 0.06);
+
+        // crack SNAPS across the zero (fast reveal), then dead stop
+        tl.to(S, { crack: 1, duration: 0.11, ease: "power4.out" }, LAND);
+
+        // pad to 5.0s; everything at rest by ~4.4s -> last 8 frames static
+        tl.to(S, { _pad: 1, duration: 0.5, ease: "none" }, 4.5);
+
+        tl.eventCallback("onUpdate", apply);
+        apply();
+        window.__timelines["main-video"] = tl;
+      });
+    </script>
+  </body>
+</html>
