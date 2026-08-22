@@ -5,3 +5,8 @@
 !/.claude/hooks/
 !/.claude/hooks/**
 /skills-lock.json
+
+# Secrets — never commit real API keys
+.env
+.env.local
+.env.*.local
