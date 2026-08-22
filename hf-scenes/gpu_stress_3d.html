@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>GPU Stress — instanced knots + shadows + particles</title>
+    <!--
+      Deliberately heavy real Three.js scene to stress a GPU:
+        - a large InstancedMesh of high-poly TorusKnots, each spinning (per-frame matrices)
+        - MeshPhysicalMaterial with clearcoat + env reflections (expensive fragment shader)
+        - 4 shadow-casting spotlights (4 extra shadow passes per frame)
+        - a dense Points particle cloud
+        - a reflective ground, continuous camera orbit
+      Scale it with data-composition-variables / --variables: instances, particles, shadow.
+      Render at 4K + 60fps + parallel workers to pin the GPU (see command in RENDER-LOCAL / chat).
+      three.js + font vendored locally. Deterministic (mulberry32); seek-safe (all motion from timeline time).
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three/three.module.js" } }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #05060a; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="60"
+      data-start="0"
+      data-duration="20"
+      data-composition-variables='{"instances":1200,"particles":150000,"shadow":2048,"knotTube":220,"knotRadial":36}'
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="20" data-track-index="1">
+        <canvas id="scene" width="1920" height="1080"></canvas>
+      </section>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      // knobs (override with --variables '{"instances":4000,"particles":500000,"shadow":4096}')
+      const V = (() => {
+        try { return (window.__hyperframes && window.__hyperframes.getVariables && window.__hyperframes.getVariables()) || {}; }
+        catch (e) { return {}; }
+      })();
+      const INSTANCES = V.instances ?? 1200;
+      const PARTICLES = V.particles ?? 150000;
+      const SHADOW = V.shadow ?? 2048;
+      const KNOT_TUBE = V.knotTube ?? 220;
+      const KNOT_RADIAL = V.knotRadial ?? 36;
+
+      function mulberry32(a) {
+        return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      }
+      const rnd = mulberry32(0x6b057355);
+
+      const W = 1920, H = 1080;
+      const canvas = document.getElementById("scene");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x05060a, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x05060a, 0.02);
+      const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 200);
+
+      // env for reflective metal
+      function makeEnv() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 256;
+        const x = c.getContext("2d");
+        const g = x.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, "#93a7c4"); g.addColorStop(0.5, "#33415a"); g.addColorStop(1, "#0a0d14");
+        x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+        const t = new THREE.CanvasTexture(c); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace; return t;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnv()).texture;
+
+      // ---- heavy instanced field of spinning torus knots (expensive physical material) ----
+      const knotGeo = new THREE.TorusKnotGeometry(0.42, 0.14, KNOT_TUBE, KNOT_RADIAL, 2, 3);
+      const knotMat = new THREE.MeshPhysicalMaterial({ color: 0x9fb6d8, metalness: 0.9, roughness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.15, envMapIntensity: 1.4 });
+      const knots = new THREE.InstancedMesh(knotGeo, knotMat, INSTANCES);
+      knots.castShadow = true; knots.receiveShadow = true;
+      knots.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      const bases = new Float32Array(INSTANCES * 4); // x,y,z,spinSeed
+      for (let i = 0; i < INSTANCES; i++) {
+        // spherical shell distribution
+        const r = 4 + rnd() * 12, th = rnd() * Math.PI * 2, ph = Math.acos(2 * rnd() - 1);
+        bases[i * 4] = r * Math.sin(ph) * Math.cos(th);
+        bases[i * 4 + 1] = r * Math.cos(ph) * 0.7;
+        bases[i * 4 + 2] = r * Math.sin(ph) * Math.sin(th);
+        bases[i * 4 + 3] = 0.4 + rnd() * 2.2;
+      }
+      scene.add(knots);
+      const dummy = new THREE.Object3D();
+
+      // ---- dense particle cloud ----
+      const pPos = new Float32Array(PARTICLES * 3);
+      for (let i = 0; i < PARTICLES; i++) {
+        const r = 2 + rnd() * 24;
+        const th = rnd() * Math.PI * 2, ph = Math.acos(2 * rnd() - 1);
+        pPos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+        pPos[i * 3 + 1] = r * Math.cos(ph);
+        pPos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+      }
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
+      const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0x8fd4ff, size: 0.05, sizeAttenuation: true, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+      scene.add(particles);
+
+      // ---- reflective ground ----
+      const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ color: 0x0a0d14, metalness: 1.0, roughness: 0.12, envMapIntensity: 1.0 }));
+      ground.rotation.x = -Math.PI / 2; ground.position.y = -9; ground.receiveShadow = true;
+      scene.add(ground);
+
+      // ---- 4 coloured shadow-casting spotlights (4 shadow passes/frame) ----
+      const LCOLORS = [0xff4d6d, 0x4dff88, 0x4d9dff, 0xffd24d];
+      const lights = [];
+      for (let i = 0; i < 4; i++) {
+        const L = new THREE.SpotLight(LCOLORS[i], 900, 60, 0.7, 0.4, 1.5);
+        L.castShadow = true; L.shadow.mapSize.set(SHADOW, SHADOW); L.shadow.camera.near = 1; L.shadow.camera.far = 60; L.shadow.bias = -0.0005;
+        scene.add(L); scene.add(L.target);
+        lights.push(L);
+      }
+      scene.add(new THREE.AmbientLight(0x223044, 0.4));
+
+      function apply() {
+        const t = tl.time();
+
+        // spin every instance (per-frame matrix upload)
+        for (let i = 0; i < INSTANCES; i++) {
+          const s = bases[i * 4 + 3];
+          dummy.position.set(bases[i * 4], bases[i * 4 + 1], bases[i * 4 + 2]);
+          dummy.rotation.set(t * s * 0.6 + i, t * s * 0.9, t * s * 0.4);
+          const sc = 0.6 + 0.25 * Math.sin(t * 1.5 + i);
+          dummy.scale.setScalar(sc);
+          dummy.updateMatrix();
+          knots.setMatrixAt(i, dummy.matrix);
+        }
+        knots.instanceMatrix.needsUpdate = true;
+
+        // swirl the particle cloud
+        particles.rotation.y = t * 0.08;
+        particles.rotation.x = Math.sin(t * 0.05) * 0.3;
+
+        // orbit the lights + camera
+        for (let i = 0; i < 4; i++) {
+          const a = t * 0.5 + (i * Math.PI) / 2;
+          lights[i].position.set(Math.cos(a) * 22, 14 + Math.sin(t + i) * 6, Math.sin(a) * 22);
+          lights[i].target.position.set(0, 0, 0);
+        }
+        const ca = t * 0.18;
+        camera.position.set(Math.cos(ca) * 26, 6 + Math.sin(t * 0.12) * 5, Math.sin(ca) * 26);
+        camera.lookAt(0, 0, 0);
+
+        renderer.render(scene, camera);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      tl.to({}, { duration: 20, ease: "none" }, 0);
+      tl.eventCallback("onUpdate", apply);
+      apply();
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
