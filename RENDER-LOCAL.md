@@ -7,6 +7,10 @@ your own machine, with your AMD GPU, the hardware WebGL path makes those renders
 several times faster. These are the commands to run **on your machine**, not in
 a web session.
 
+> **Quick start:** clone the repo, then run **`./setup-local.sh`** in the repo root
+> on your machine. It checks your toolchain + GPU, installs both projects, and
+> prints the GPU render commands. The manual steps below are what it automates.
+
 > Two independent GPU jobs: **rasterization** (drawing the WebGL frames) and
 > **video encoding** (compressing them to H.264). HyperFrames accelerates BOTH on
 > AMD automatically (`--browser-gpu` for raster, `--gpu` for encode — its `--gpu`
