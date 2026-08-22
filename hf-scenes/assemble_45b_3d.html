@@ -171,17 +171,20 @@
           gd.mesh.rotation.set(lerp(gd.rx, 0, e), lerp(gd.ry, 0, e), lerp(gd.rz, 0, e));
         }
 
-        // lock pop (slam) at 1.8s, then a gentle damped Y sway that settles to rest
+        // lock pop (slam) at 1.8s
         const LOCK = 1.8;
         let s = 1;
         if (t >= LOCK) {
           const q = t - LOCK;
           s = 1 + 0.03 * Math.max(0, 1 - q / 0.24) * (q < 0.06 ? q / 0.06 : 1);
-          group.rotation.y = 0.12 * Math.sin(q * 1.15) * Math.max(0, 1 - q / 2.6);
-        } else {
-          group.rotation.y = 0;
         }
         group.scale.setScalar(s);
+
+        // slow rotation on the Y axis after the lock: one full turn, easing to a
+        // front-facing rest so the last frames are static and readable
+        const RSTART = 1.85, REND = 4.55;
+        const rp = clamp01((t - RSTART) / (REND - RSTART));
+        group.rotation.y = easeOutCubic(rp) * Math.PI * 2;
 
         renderer.render(scene, camera);
       }
