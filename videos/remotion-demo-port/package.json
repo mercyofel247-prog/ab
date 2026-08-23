@@ -1,0 +1,15 @@
+{
+  "name": "remotion-demo-port",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.7.107 preview",
+    "check": "npx --yes hyperframes@0.7.107 check",
+    "render": "NODE_USE_ENV_PROXY=1 npx --yes hyperframes@0.7.107 cloud render",
+    "render:cloud": "NODE_USE_ENV_PROXY=1 npx --yes hyperframes@0.7.107 cloud render",
+    "render:local": "npx --yes hyperframes@0.7.107 render",
+    "cloud:list": "NODE_USE_ENV_PROXY=1 npx --yes hyperframes@0.7.107 cloud list",
+    "auth:status": "NODE_USE_ENV_PROXY=1 npx --yes hyperframes@0.7.107 auth status",
+    "publish": "NODE_USE_ENV_PROXY=1 npx --yes hyperframes@0.7.107 publish"
+  }
+}

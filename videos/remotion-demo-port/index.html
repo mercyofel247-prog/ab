@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <title>HyperFrames + GSAP + 3D</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      /* GSAP title — fades / scales in (ported from the Remotion GsapTitle) */
+      #title {
+        position: absolute;
+        top: 60px;
+        width: 100%;
+        text-align: center;
+        font-size: 56px;
+        font-weight: 700;
+        color: #ffffff;
+        /* from-state is set by GSAP fromTo() below (seek-safe, no CSS/GSAP
+           transform conflict) */
+      }
+
+      /* 3D cube — CSS transforms replace the Remotion @remotion/three canvas */
+      #scene {
+        position: absolute;
+        top: 160px;
+        left: 440px;
+        width: 400px;
+        height: 400px;
+        display: grid;
+        place-items: center;
+        perspective: 800px;
+      }
+
+      #cube {
+        position: relative;
+        width: 160px;
+        height: 160px;
+        transform-style: preserve-3d;
+        /* base orientation; GSAP drives rotationX / rotationY on top of this */
+        transform: rotateX(0deg) rotateY(0deg);
+      }
+
+      .face {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 160px;
+        height: 160px;
+        background: rgba(79, 195, 247, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.35);
+      }
+      .face.front  { transform: translateZ(80px); }
+      .face.back   { transform: rotateY(180deg) translateZ(80px); }
+      .face.right  { transform: rotateY(90deg) translateZ(80px); background: rgba(79, 195, 247, 0.72); }
+      .face.left   { transform: rotateY(-90deg) translateZ(80px); background: rgba(79, 195, 247, 0.72); }
+      .face.top    { transform: rotateX(90deg) translateZ(80px); background: rgba(79, 195, 247, 1); }
+      .face.bottom { transform: rotateX(-90deg) translateZ(80px); background: rgba(79, 195, 247, 0.6); }
+
+      /* Sweeping box (ported from the Remotion MovingBox) */
+      #box {
+        position: absolute;
+        top: 580px;
+        left: 0;
+        width: 200px;
+        height: 200px;
+        border-radius: 24px;
+        background: #4fc3f7;
+        /* CSS holds the "from" x position (matches interpolate start of -100) */
+        transform: translateX(-100px);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3"
+      data-fps="30"
+      data-width="1280"
+      data-height="720"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div id="title" data-layout-allow-overflow>HyperFrames + GSAP + 3D</div>
+
+        <div id="scene" data-layout-allow-overflow>
+          <div id="cube" data-layout-allow-overflow>
+            <div class="face front" data-layout-allow-overflow></div>
+            <div class="face back" data-layout-allow-overflow></div>
+            <div class="face right" data-layout-allow-overflow></div>
+            <div class="face left" data-layout-allow-overflow></div>
+            <div class="face top" data-layout-allow-overflow></div>
+            <div class="face bottom" data-layout-allow-overflow></div>
+          </div>
+        </div>
+
+        <!-- intentionally sweeps off-frame and sits partly below the 720px edge
+             (faithful to the Remotion MovingBox) -->
+        <div id="box" data-layout-allow-overflow></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Single paused timeline; HyperFrames seeks it frame-by-frame, so all
+      // motion is deterministic (no real-time tickers, no Date.now / random).
+      const tl = gsap.timeline({ paused: true });
+
+      // Title: fade + rise + scale in — the Remotion back.out(2) tween.
+      tl.fromTo(
+        "#title",
+        { opacity: 0, y: 40, scale: 0.7 },
+        { opacity: 1, y: 0, scale: 1, duration: 1, ease: "back.out(2)" },
+        0,
+      );
+
+      // Cube: linear rotation across the whole 3s.
+      // Remotion drove rotation=[frame/30, frame/20, 0] rad; over 90 frames
+      // that is ~172deg on X and ~258deg on Y. Reproduced as a linear tween.
+      tl.fromTo(
+        "#cube",
+        { rotationX: 0, rotationY: 0 },
+        { rotationX: 172, rotationY: 258, duration: 3, ease: "none" },
+        0,
+      );
+
+      // Box: sweeps left→right across the frame (Remotion interpolate
+      // [-100, width+100] = [-100, 1380]), clamped, linear.
+      tl.fromTo(
+        "#box",
+        { x: -100 },
+        { x: 1380, duration: 3, ease: "none" },
+        0,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
