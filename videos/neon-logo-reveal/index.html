@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Neon Logo Reveal</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ink: #05060a;          /* near-black wall */
+        --cyan: #35f6ff;         /* primary neon */
+        --cyan-hi: #f4ffff;      /* hot core */
+        --magenta: #ff2fb0;      /* accent neon */
+        --magenta-hi: #ffd6f0;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ink);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 100% at 50% 38%, #12131c 0%, #0a0b12 42%, #06070c 70%, var(--ink) 100%);
+      }
+
+      /* faint textured wall behind the sign */
+      .wall {
+        position: absolute;
+        inset: 0;
+        background-image:
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 120px),
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 2px, transparent 2px 120px);
+        opacity: 0.5;
+      }
+
+      /* ambient wash that the sign casts onto the wall — driven by JS */
+      #wash {
+        position: absolute;
+        left: 50%;
+        top: 62%;
+        width: 1900px;
+        height: 1050px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 46% at 50% 50%,
+          rgba(53, 246, 255, 0.20) 0%,
+          rgba(53, 246, 255, 0.08) 40%,
+          rgba(53, 246, 255, 0) 72%);
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(75% 65% at 50% 44%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.55) 82%, rgba(0, 0, 0, 0.82) 100%);
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* ---- the neon wordmark ---- */
+      #sign {
+        position: relative;
+        text-align: center;
+      }
+
+      #word {
+        font-weight: 700;
+        font-size: 300px;
+        letter-spacing: 22px;
+        line-height: 1;
+        color: var(--cyan-hi);
+        white-space: nowrap;
+      }
+
+      /* each letter is an independent "tube" so it can ignite on its own */
+      .ltr {
+        display: inline-block;
+        opacity: 0;
+        color: var(--cyan-hi);
+        text-shadow:
+          0 0 5px var(--cyan-hi),
+          0 0 12px var(--cyan),
+          0 0 26px var(--cyan),
+          0 0 52px var(--cyan);
+        will-change: opacity, filter;
+      }
+
+      #tag {
+        margin-top: 46px;
+        font-size: 40px;
+        letter-spacing: 26px;
+        font-weight: 500;
+        text-indent: 26px;
+        color: var(--magenta-hi);
+        opacity: 0;
+        text-shadow:
+          0 0 5px var(--magenta-hi),
+          0 0 12px var(--magenta),
+          0 0 28px var(--magenta),
+          0 0 60px var(--magenta);
+        white-space: nowrap;
+      }
+
+      /* neon underline rule that draws in under the wordmark */
+      #rule {
+        margin: 30px auto 0;
+        height: 5px;
+        width: 0px;
+        border-radius: 5px;
+        background: var(--magenta-hi);
+        box-shadow:
+          0 0 6px var(--magenta-hi),
+          0 0 16px var(--magenta),
+          0 0 34px var(--magenta),
+          0 0 60px var(--magenta);
+        opacity: 0;
+      }
+
+      /* soft mirror of the sign on the floor */
+      #reflection {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, 300px) scaleY(-1);
+        transform-origin: top center;
+        opacity: 0;
+        filter: blur(7px);
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 62%);
+        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 62%);
+        pointer-events: none;
+      }
+
+      #reflection #word {
+        font-size: 300px;
+      }
+      #reflection .ltr {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="5"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <div class="wall"></div>
+        <div id="wash" data-layout-allow-overflow></div>
+        <div class="vignette"></div>
+
+        <div id="scene">
+          <div id="sign">
+            <div id="word"></div>
+            <div id="rule"></div>
+            <div id="tag">STUDIO&nbsp;&middot;&nbsp;EST.&nbsp;2026</div>
+          </div>
+        </div>
+
+        <div id="reflection"><div id="word-r"></div></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ----- the word to reveal (swap this string for any brand) -----
+      const WORD = "AURORA";
+
+      const wordEl = document.querySelector("#word");
+      const wordREl = document.querySelector("#word-r");
+
+      function buildLetters(host) {
+        host.innerHTML = "";
+        const spans = [];
+        for (const ch of WORD) {
+          const s = document.createElement("span");
+          s.className = "ltr";
+          s.textContent = ch;
+          s.setAttribute("data-ch", ch);
+          host.appendChild(s);
+          spans.push(s);
+        }
+        return spans;
+      }
+
+      const letters = buildLetters(wordEl);
+      buildLetters(wordREl); // reflection copy (static, lit)
+
+      const washEl = document.querySelector("#wash");
+      const tagEl = document.querySelector("#tag");
+      const ruleEl = document.querySelector("#rule");
+      const reflEl = document.querySelector("#reflection");
+
+      // deterministic per-letter ignition flicker (values, not random) — the
+      // characteristic stutter of a neon tube catching. Each entry is an
+      // opacity keyframe sequence the tube steps through as it powers on.
+      const FLICKER = [1, 0.15, 0.9, 0.25, 1, 0.5, 1];
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0) hold black for a beat, faint wash breathes up from nothing
+      tl.to(washEl, { opacity: 0.06, duration: 0.5, ease: "sine.inOut" }, 0.0);
+
+      // 1) letters ignite one after another with a buzzing flicker (0.5s → ~2.4s)
+      letters.forEach((el, i) => {
+        const t = 0.5 + i * 0.28;
+        tl.to(
+          el,
+          { keyframes: { opacity: FLICKER }, duration: 0.5, ease: "none" },
+          t,
+        );
+        // each ignition punches the ambient wash a little brighter
+        tl.to(
+          washEl,
+          { opacity: 0.07 + i * 0.03, duration: 0.35, ease: "power2.out" },
+          t + 0.1,
+        );
+      });
+
+      const LIT = 0.5 + letters.length * 0.28; // ~2.18s, all tubes on
+
+      // 2) full sign settles to steady burn + reflection fades up
+      tl.to(washEl, { opacity: 0.3, duration: 0.6, ease: "power2.out" }, LIT);
+      tl.to(reflEl, { opacity: 0.32, duration: 0.7, ease: "power2.out" }, LIT + 0.05);
+
+      // 3) magenta underline rule draws across, then tagline hums on
+      tl.to(ruleEl, { opacity: 1, duration: 0.12, ease: "power1.out" }, LIT + 0.15);
+      tl.to(ruleEl, { width: 760, duration: 0.55, ease: "power3.inOut" }, LIT + 0.15);
+      tl.fromTo(
+        tagEl,
+        { opacity: 0 },
+        { keyframes: { opacity: [0, 0.3, 0.1, 1] }, duration: 0.45, ease: "none" },
+        LIT + 0.5,
+      );
+
+      // 4) idle life: a gentle breathing flicker on the whole sign to the end
+      tl.to(
+        "#sign",
+        { keyframes: { opacity: [1, 0.93, 1, 0.97, 1] }, duration: 1.4, ease: "sine.inOut" },
+        LIT + 0.9,
+      );
+      tl.to(
+        washEl,
+        { keyframes: { opacity: [0.3, 0.25, 0.3, 0.27, 0.3] }, duration: 1.4, ease: "sine.inOut" },
+        LIT + 0.9,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
