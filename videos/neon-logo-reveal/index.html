@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Neon Logo Reveal — NEON</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --blue-core: #dff1ff;   /* near-white hot core */
+        --blue: #2ea8ff;        /* electric blue */
+        --blue-deep: #0a84ff;   /* saturated */
+        --blue-glow: #1e90ff;
+      }
+
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden; background: #000;
+      }
+      body { font-family: "Helvetica Neue", Arial, system-ui, sans-serif; }
+
+      #stage {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background: #000;
+      }
+
+      /* ambient blue haze that swells when the sign powers on */
+      #ambient {
+        position: absolute; inset: 0; opacity: 0;
+        background: radial-gradient(60% 55% at 50% 42%, rgba(30,144,255,0.22) 0%, rgba(10,132,255,0.08) 45%, rgba(0,0,0,0) 72%);
+        pointer-events: none;
+      }
+
+      /* faint brushed reflection strip on the "floor" */
+      .floor {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 300px;
+        background: linear-gradient(180deg, rgba(20,60,110,0) 0%, rgba(20,70,130,0.10) 60%, rgba(30,110,190,0.16) 100%);
+        opacity: 0.0;
+        pointer-events: none;
+      }
+
+      .scene {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 6px;
+      }
+
+      /* shared neon wordmark look */
+      .word {
+        font-size: 300px; font-weight: 800; letter-spacing: 0.04em;
+        line-height: 1; white-space: nowrap; display: flex;
+        color: var(--blue-core);
+      }
+      .word .ltr {
+        display: inline-block;
+        color: #ffffff;
+        /* the neon tube: a crisp white core with the bloom pushed outward so
+           the glyph edge stays high-contrast, then a wide electric-blue halo */
+        text-shadow:
+          0 0 2px #ffffff,
+          0 0 30px var(--blue),
+          0 0 52px var(--blue-deep),
+          0 0 86px var(--blue-glow),
+          0 0 130px var(--blue-glow);
+        will-change: opacity, filter;
+      }
+
+      /* subtle glass tube outline behind, unlit */
+      .tube-off .ltr { color: #1b2f45; text-shadow: none; }
+
+      /* reflection: a mirrored, blurred, faded copy under the word */
+      .reflection {
+        transform: scaleY(-1);
+        margin-top: 10px;
+        filter: blur(3px);
+        opacity: 0;
+        -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 68%);
+        mask-image: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 68%);
+      }
+
+      /* neon underline bar that draws in under the word */
+      .rule-wrap { position: relative; width: 980px; height: 8px; margin-top: 26px; }
+      #rule {
+        position: absolute; left: 50%; top: 0; height: 6px; width: 0; transform: translateX(-50%);
+        border-radius: 6px;
+        background: linear-gradient(90deg, rgba(46,168,255,0) 0%, var(--blue) 20%, var(--blue-core) 50%, var(--blue) 80%, rgba(46,168,255,0) 100%);
+        box-shadow: 0 0 10px var(--blue), 0 0 24px var(--blue-deep), 0 0 44px var(--blue-glow);
+        opacity: 0;
+      }
+
+      /* power-on flash */
+      #flash {
+        position: absolute; inset: 0; opacity: 0; pointer-events: none;
+        background: radial-gradient(46% 42% at 50% 42%, rgba(200,230,255,0.55) 0%, rgba(30,144,255,0.14) 42%, rgba(0,0,0,0) 72%);
+        mix-blend-mode: screen;
+      }
+
+      /* fine vignette to seat the sign in a dark room */
+      .vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(80% 75% at 50% 46%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.8) 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0" data-duration="5" data-fps="24"
+      data-width="1920" data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <div id="ambient"></div>
+        <div class="floor"></div>
+        <div class="vignette"></div>
+
+        <div class="scene">
+          <div id="word" class="word" aria-label="NEON">
+            <span class="ltr">N</span><span class="ltr">E</span><span class="ltr">O</span><span class="ltr">N</span>
+          </div>
+          <div class="rule-wrap"><div id="rule"></div></div>
+          <div id="reflection" class="word reflection" aria-hidden="true">
+            <span class="ltr">N</span><span class="ltr">E</span><span class="ltr">O</span><span class="ltr">N</span>
+          </div>
+        </div>
+
+        <div id="flash"></div>
+      </section>
+
+      <audio id="hum" data-start="0" data-duration="5" data-track-index="2" src="assets/hum.wav" data-volume="0.9"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const letters = gsap.utils.toArray("#word .ltr");
+      const refLetters = gsap.utils.toArray("#reflection .ltr");
+
+      const SURGE_T = 1.9;
+
+      // start fully dark / unlit
+      gsap.set("#word .ltr, #reflection .ltr", { opacity: 0 });
+      gsap.set("#reflection", { opacity: 0 });
+      gsap.set("#ambient", { opacity: 0 });
+      gsap.set(".floor", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ignition times per letter (staggered), each with a flickery power-up
+      const igniteAt = [0.5, 0.72, 0.95, 1.18];
+      letters.forEach((ltr, i) => {
+        const t0 = igniteAt[i];
+        const ref = refLetters[i];
+        // flicker sequence: on-off-on-off-on then settle
+        const seq = [
+          [0.0, 0.9], [0.05, 0.0], [0.10, 1.0], [0.16, 0.15],
+          [0.22, 0.85], [0.30, 0.35], [0.40, 1.0],
+        ];
+        seq.forEach(([dt, o]) => {
+          tl.set(ltr, { opacity: o }, t0 + dt);
+          tl.set(ref, { opacity: o * 0.5 }, t0 + dt);
+        });
+      });
+
+      // reflection panel + floor fade up as letters light
+      tl.to("#reflection", { opacity: 0.5, duration: 0.8, ease: "power2.out" }, 0.6);
+      tl.to(".floor", { opacity: 1, duration: 0.9, ease: "power2.out" }, 0.7);
+      tl.to("#ambient", { opacity: 0.5, duration: 1.0, ease: "power2.out" }, 0.7);
+
+      // POWER-ON SURGE — everything locks bright, a flash, ambient spikes
+      tl.set(letters, { opacity: 1 }, SURGE_T);
+      tl.set(refLetters, { opacity: 0.5 }, SURGE_T);
+      tl.fromTo("#word", { filter: "brightness(1)" }, { filter: "brightness(1.7)", duration: 0.08, ease: "power2.out" }, SURGE_T);
+      tl.to("#word", { filter: "brightness(1)", duration: 0.5, ease: "power2.out" }, SURGE_T + 0.08);
+      tl.to("#ambient", { opacity: 0.95, duration: 0.1, ease: "power2.out" }, SURGE_T);
+      tl.to("#ambient", { opacity: 0.62, duration: 0.7, ease: "power2.out" }, SURGE_T + 0.12);
+      tl.to("#flash", { opacity: 1, duration: 0.06, ease: "none" }, SURGE_T);
+      tl.to("#flash", { opacity: 0, duration: 0.5, ease: "power2.out" }, SURGE_T + 0.08);
+
+      // neon underline draws in on the surge
+      tl.to("#rule", { opacity: 1, duration: 0.1 }, SURGE_T);
+      tl.fromTo("#rule", { width: 0 }, { width: 980, duration: 0.5, ease: "power3.out" }, SURGE_T);
+
+      // steady phase: gentle glow breathing + a couple of tiny flickers
+      tl.to("#word", { filter: "brightness(1.08)", duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 2 }, SURGE_T + 0.6);
+      [2.75, 3.4, 4.15].forEach((t) => {
+        tl.set(letters[3], { opacity: 0.55 }, t);
+        tl.set(letters[3], { opacity: 1 }, t + 0.05);
+        tl.set(refLetters[3], { opacity: 0.28 }, t);
+        tl.set(refLetters[3], { opacity: 0.5 }, t + 0.05);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
