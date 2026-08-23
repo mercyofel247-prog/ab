@@ -5,3 +5,6 @@
 !/.claude/hooks/
 !/.claude/hooks/**
 /skills-lock.json
+
+# Rendered video output — deliverables are handed off, not committed
+/renders/
