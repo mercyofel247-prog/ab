@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Oxblood Countdown — $4,500,000,000 → $0</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #070405;
+        --ox-deep: #3a0a10; /* oxblood, darkest field */
+        --ox-lo: #2a070c;
+        --ox: #6e1420; /* core oxblood */
+        --ox-hi: #b0323e; /* oxblood highlight */
+        --ox-face-top: #c14049;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        /* background: a mixture of oxblood and black */
+        background:
+          radial-gradient(120% 95% at 50% 44%, var(--ox-deep) 0%, var(--ox-lo) 30%, #160407 58%, var(--black) 100%);
+      }
+
+      /* smoky oxblood clouds drifting over black */
+      .haze {
+        position: absolute;
+        inset: -12%;
+        background:
+          radial-gradient(38% 30% at 30% 34%, rgba(140, 26, 38, 0.30) 0%, rgba(140, 26, 38, 0) 70%),
+          radial-gradient(42% 34% at 72% 62%, rgba(96, 16, 26, 0.34) 0%, rgba(96, 16, 26, 0) 72%),
+          radial-gradient(30% 26% at 58% 22%, rgba(176, 50, 62, 0.16) 0%, rgba(176, 50, 62, 0) 70%);
+        mix-blend-mode: screen;
+        opacity: 0.9;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+        background-size: 72px 72px;
+        opacity: 0.4;
+      }
+
+      /* oxblood glow that swells behind the number as it counts down */
+      #glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1500px;
+        height: 900px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(150, 26, 40, 0.55) 0%, rgba(110, 20, 32, 0.22) 40%, rgba(110, 20, 32, 0) 72%);
+        opacity: 0.28;
+        pointer-events: none;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(78% 70% at 50% 48%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.72) 100%);
+        pointer-events: none;
+      }
+
+      /* 3D scene */
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        perspective: 1500px;
+        perspective-origin: 50% 46%;
+      }
+
+      #numwrap {
+        position: relative;
+        transform-style: preserve-3d;
+        will-change: transform;
+        display: grid;
+        place-items: center;
+      }
+
+      #num {
+        font-size: 168px;
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.005em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        /* oxblood metallic face */
+        background: linear-gradient(
+          178deg,
+          var(--ox-face-top) 0%,
+          var(--ox-hi) 22%,
+          var(--ox) 48%,
+          #56101a 66%,
+          var(--ox) 82%,
+          #43101a 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        /* extruded body in progressively darker oxblood -> reads as 3D */
+        text-shadow:
+          1px 1px 0 #5c141c,
+          2px 2px 0 #4f111a,
+          3px 3px 0 #440f16,
+          4px 4px 0 #3a0d13,
+          5px 5px 0 #310b11,
+          6px 6px 0 #29090e,
+          7px 7px 0 #22070c,
+          8px 8px 0 #1c0609,
+          9px 10px 22px rgba(0, 0, 0, 0.6);
+      }
+
+      /* each fly-in digit carries its own metallic oxblood face
+         (background isn't inherited, so the parent clip won't reach the spans) */
+      #num .ch {
+        display: inline-block;
+        will-change: transform, opacity;
+        background: linear-gradient(
+          178deg,
+          var(--ox-face-top) 0%,
+          var(--ox-hi) 22%,
+          var(--ox) 48%,
+          #56101a 66%,
+          var(--ox) 82%,
+          #43101a 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* the hairline crack that snaps across the zero */
+      #crack {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 460px;
+        height: 340px;
+        transform: translate(-50%, -52%) translateZ(6px);
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      #crack path {
+        fill: none;
+        stroke: #f0d9dc;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.85));
+      }
+
+      #crack path.shadow {
+        stroke: #1a0407;
+        stroke-width: 3.2;
+        filter: none;
+      }
+
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(46% 42% at 50% 47%, rgba(255, 214, 200, 0.55) 0%, rgba(220, 120, 110, 0.18) 40%, rgba(255, 214, 200, 0) 72%);
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="5"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+        <div class="haze" data-layout-allow-overflow></div>
+        <div class="grain"></div>
+        <div id="glow"></div>
+
+        <div class="vignette"></div>
+
+        <div id="scene">
+          <div id="numwrap" data-layout-allow-overflow>
+            <div id="num" data-layout-allow-overflow></div>
+            <svg id="crack" viewBox="0 0 460 340" data-layout-allow-overflow>
+              <!-- dark relief under the bright crack -->
+              <path class="shadow" d="M 78 150 L 132 158 L 176 138 L 214 176 L 252 150 L 300 170 L 352 150 L 392 168" />
+              <path class="shadow" d="M 214 176 L 206 232 L 224 276" />
+              <path class="shadow" d="M 252 150 L 268 104 L 258 66" />
+              <!-- bright hairline -->
+              <path class="main" d="M 78 150 L 132 158 L 176 138 L 214 176 L 252 150 L 300 170 L 352 150 L 392 168" />
+              <path class="branch" d="M 214 176 L 206 232 L 224 276" />
+              <path class="branch" d="M 252 150 L 268 104 L 258 66" />
+            </svg>
+          </div>
+        </div>
+
+        <div id="flash"></div>
+      </section>
+
+      <audio
+        id="thud"
+        data-start="0"
+        data-duration="5"
+        data-track-index="2"
+        src="assets/thud.wav"
+        data-volume="0.95"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const numEl = document.querySelector("#num");
+      const glowEl = document.querySelector("#glow");
+
+      const START_VALUE = 4500000000; // $4,500,000,000
+      const ASSEMBLE_END = 1.0; // digits finish assembling
+      const IMPACT_T = 4.25; // hits $0 — crack + thud + dead stop
+
+      // ---- deterministic formatting ----
+      function fmt(v) {
+        return "$" + Math.round(Math.max(0, v)).toLocaleString("en-US");
+      }
+
+      // ---- build the assembled string as per-char spans (for the fly-in) ----
+      const startStr = fmt(START_VALUE); // "$4,500,000,000"
+      numEl.innerHTML = "";
+      const chars = [];
+      for (let i = 0; i < startStr.length; i++) {
+        const span = document.createElement("span");
+        span.className = "ch";
+        span.textContent = startStr[i];
+        numEl.appendChild(span);
+        chars.push(span);
+      }
+
+      // deterministic entry vector per character (golden-angle spread => "different directions")
+      const GOLDEN = 137.508 * (Math.PI / 180);
+      const entries = chars.map((_, i) => {
+        const a = i * GOLDEN;
+        const dist = 720 + (i % 5) * 90;
+        return {
+          x: Math.cos(a) * dist,
+          y: Math.sin(a) * dist * 0.62,
+          z: (i % 2 === 0 ? -1 : 1) * (260 + (i % 3) * 120),
+          rot: Math.cos(a) * 34,
+        };
+      });
+
+      // once the count starts we render plain text (digits change), so the
+      // per-char spans only exist for the assembly beat.
+      let assembled = true;
+      function setValue(v) {
+        if (assembled) {
+          assembled = false; // tear down spans the first time we count
+        }
+        numEl.textContent = fmt(v);
+      }
+
+      const count = { v: START_VALUE };
+
+      const tl = gsap.timeline({ paused: true });
+
+      // initial hidden/scattered state
+      gsap.set("#numwrap", { rotationY: -22, rotationX: 4 });
+      gsap.set("#crack", { opacity: 0 });
+      chars.forEach((ch, i) => {
+        const e = entries[i];
+        gsap.set(ch, { x: e.x, y: e.y, z: e.z, rotationZ: e.rot, opacity: 0 });
+      });
+
+      // (1) digits fly in from different directions to constitute the amount
+      tl.to(
+        chars,
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          rotationZ: 0,
+          opacity: 1,
+          duration: 0.85,
+          ease: "power3.out",
+          stagger: { each: 0.045, from: "random" },
+        },
+        0.1,
+      );
+
+      // (2) slow, continuous rotation on the Y axis through the whole count
+      tl.to(
+        "#numwrap",
+        { rotationY: 20, rotationX: -3, duration: IMPACT_T - ASSEMBLE_END, ease: "none" },
+        ASSEMBLE_END,
+      );
+
+      // (3) the count-down itself, decelerating into zero
+      tl.to(
+        count,
+        {
+          v: 0,
+          duration: IMPACT_T - ASSEMBLE_END,
+          ease: "power2.inOut",
+          onUpdate: () => setValue(count.v),
+          onComplete: () => setValue(0),
+        },
+        ASSEMBLE_END,
+      );
+
+      // oxblood glow swells as the money drains away
+      tl.to("#glow", { opacity: 0.6, duration: IMPACT_T - ASSEMBLE_END, ease: "power2.in" }, ASSEMBLE_END);
+
+      // (4) IMPACT at $0 — dead stop, flash, crack snap, hollow settle
+      // tiny scale punch
+      tl.to("#numwrap", { scale: 1.035, duration: 0.06, ease: "power3.out" }, IMPACT_T);
+      tl.to("#numwrap", { scale: 1, duration: 0.5, ease: "power2.out" }, IMPACT_T + 0.06);
+
+      // a hard little shake, then it stops dead
+      tl.to("#numwrap", { x: -7, duration: 0.03, ease: "none", overwrite: "auto" }, IMPACT_T);
+      tl.to("#numwrap", { x: 6, duration: 0.03, ease: "none", overwrite: "auto" }, IMPACT_T + 0.03);
+      tl.to("#numwrap", { x: 0, duration: 0.13, ease: "power2.out", overwrite: "auto" }, IMPACT_T + 0.07);
+
+      // flash
+      tl.to("#flash", { opacity: 1, duration: 0.05, ease: "none" }, IMPACT_T);
+      tl.to("#flash", { opacity: 0, duration: 0.6, ease: "power2.out" }, IMPACT_T + 0.06);
+
+      // glow spikes on impact then decays into a hollow rest
+      tl.to("#glow", { opacity: 0.85, duration: 0.08, ease: "power2.out" }, IMPACT_T);
+      tl.to("#glow", { opacity: 0.3, duration: 0.7, ease: "power2.out" }, IMPACT_T + 0.1);
+
+      // the hairline crack snaps across the zero
+      const crackPaths = document.querySelectorAll("#crack path");
+      crackPaths.forEach((p) => {
+        const len = p.getTotalLength();
+        p.style.strokeDasharray = String(len);
+        p.style.strokeDashoffset = String(len);
+      });
+      tl.set("#crack", { opacity: 1 }, IMPACT_T);
+      // main fracture snaps instantly, branches a hair behind
+      tl.to(
+        "#crack path.shadow, #crack path.main",
+        { strokeDashoffset: 0, duration: 0.05, ease: "power1.out" },
+        IMPACT_T,
+      );
+      tl.to(
+        "#crack path.branch",
+        { strokeDashoffset: 0, duration: 0.06, ease: "power1.out" },
+        IMPACT_T + 0.04,
+      );
+
+      // hold on the dead, cracked zero to the end (nothing moves)
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
