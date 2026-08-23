@@ -1,0 +1,14 @@
+[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v0];
+[1:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v1];
+[2:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v2];
+[3:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v3];
+[4:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v4];
+[v0][v1]xfade=transition=custom:duration=0.7:offset=3.3:expr='if(lt(hypot(X-806,Y-648)\,1483*(1-P) + 70*sin(6*atan2(Y-648,X-806)+(1-P)*12) + 40*sin(11*atan2(Y-648,X-806)-(1-P)*7)),B,A)'[x1];
+[x1][v2]xfade=transition=slideleft:duration=0.5:offset=8.8[x2];
+[x2][v3]xfade=transition=fadeblack:duration=0.9:offset=11.9[x3];
+[x3][v4]xfade=transition=zoomin:duration=0.7:offset=15.2[x4];
+[x4]colorbalance=rm=0.18:rh=0.12:rs=0.10:enable='between(t,3.3,4.0)',gblur=sigma=5:enable='between(t,3.35,3.95)',gblur=sigma=22:sigmaV=1:enable='between(t,8.85,9.28)',rgbashift=rh=10:bh=-10:enable='between(t,8.85,9.28)',rgbashift=rh=6:bh=-6:enable='between(t,15.25,15.85)',format=yuv420p[vout];
+[0:a][1:a]acrossfade=d=0.7:c1=tri:c2=tri[a1];
+[a1][2:a]acrossfade=d=0.5:c1=tri:c2=tri[a2];
+[a2][3:a]acrossfade=d=0.9:c1=tri:c2=tri[a3];
+[a3][4:a]acrossfade=d=0.7:c1=tri:c2=tri[aout]
