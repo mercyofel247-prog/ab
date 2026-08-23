@@ -13,10 +13,10 @@
       }
 
       :root {
-        --ink: #05060a;          /* near-black wall */
-        --cyan: #35f6ff;         /* primary neon */
-        --cyan-hi: #f4ffff;      /* hot core */
-        --magenta: #ff2fb0;      /* accent neon */
+        --ink: #05060a;
+        --cyan: #35f6ff;
+        --cyan-hi: #f4ffff;
+        --magenta: #ff2fb0;
         --magenta-hi: #ffd6f0;
       }
 
@@ -30,7 +30,7 @@
       }
 
       body {
-        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        font-family: "Inter", system-ui, sans-serif;
       }
 
       #stage {
@@ -39,24 +39,24 @@
         height: 1080px;
         overflow: hidden;
         background:
-          radial-gradient(120% 100% at 50% 38%, #12131c 0%, #0a0b12 42%, #06070c 70%, var(--ink) 100%);
+          radial-gradient(120% 100% at 50% 42%, #12131c 0%, #0a0b12 42%, #06070c 70%, var(--ink) 100%);
       }
 
-      /* faint textured wall behind the sign */
       .wall {
         position: absolute;
         inset: 0;
         background-image:
-          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 120px),
-          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 2px, transparent 2px 120px);
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.016) 0 2px, transparent 2px 130px),
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 2px, transparent 2px 130px);
         opacity: 0.5;
+        z-index: 0;
       }
 
-      /* ambient wash that the sign casts onto the wall — driven by JS */
+      /* ambient colour the sign casts onto the wall — driven per scene */
       #wash {
         position: absolute;
         left: 50%;
-        top: 62%;
+        top: 58%;
         width: 1900px;
         height: 1050px;
         transform: translate(-50%, -50%);
@@ -67,71 +67,148 @@
         opacity: 0;
         pointer-events: none;
         mix-blend-mode: screen;
+        z-index: 1;
       }
 
       .vignette {
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background: radial-gradient(75% 65% at 50% 44%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.55) 82%, rgba(0, 0, 0, 0.82) 100%);
+        z-index: 2;
+        background: radial-gradient(78% 68% at 50% 46%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.5) 82%, rgba(0, 0, 0, 0.8) 100%);
       }
 
-      #scene {
+      /* ---- scenes: each fills the stage, driven entirely by the timeline ---- */
+      .scene {
         position: absolute;
         inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        z-index: 3;
+        filter: blur(var(--mb, 0px));
+        will-change: transform, opacity, filter;
       }
-
-      /* ---- the neon wordmark ---- */
-      #sign {
-        position: relative;
-        text-align: center;
-      }
-
-      #word {
-        font-weight: 700;
-        font-size: 300px;
-        letter-spacing: 22px;
-        line-height: 1;
-        color: var(--cyan-hi);
-        white-space: nowrap;
-      }
-
-      /* each letter is an independent "tube" so it can ignite on its own */
-      .ltr {
-        display: inline-block;
+      #scene2,
+      #scene3,
+      #scene4 {
         opacity: 0;
+      }
+
+      /* ---- neon type helpers ---- */
+      .neon-c {
         color: var(--cyan-hi);
         text-shadow:
           0 0 5px var(--cyan-hi),
           0 0 12px var(--cyan),
           0 0 26px var(--cyan),
           0 0 52px var(--cyan);
-        will-change: opacity, filter;
       }
-
-      #tag {
-        margin-top: 46px;
-        font-size: 40px;
-        letter-spacing: 26px;
-        font-weight: 500;
-        text-indent: 26px;
+      .neon-m {
         color: var(--magenta-hi);
-        opacity: 0;
         text-shadow:
           0 0 5px var(--magenta-hi),
           0 0 12px var(--magenta),
-          0 0 28px var(--magenta),
-          0 0 60px var(--magenta);
-        white-space: nowrap;
+          0 0 26px var(--magenta),
+          0 0 52px var(--magenta);
       }
 
-      /* neon underline rule that draws in under the wordmark */
+      /* ===== Scene 1 — logo ignite ===== */
+      #word {
+        font-weight: 700;
+        font-size: 300px;
+        letter-spacing: 22px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      #word .ltr {
+        display: inline-block;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      /* ===== Scene 2 — kinetic words ===== */
+      #scene2 .kw {
+        font-weight: 800;
+        font-size: 168px;
+        letter-spacing: 10px;
+        line-height: 1.02;
+        opacity: 0;
+        will-change: transform, opacity, filter;
+      }
+
+      /* ===== Scene 3 — framed statement ===== */
+      #frame {
+        position: relative;
+        width: 1180px;
+        height: 470px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #frame .edge {
+        position: absolute;
+        background: var(--cyan-hi);
+        box-shadow:
+          0 0 6px var(--cyan-hi),
+          0 0 16px var(--cyan),
+          0 0 34px var(--cyan);
+      }
+      #frame .top,
+      #frame .bottom {
+        height: 5px;
+        width: 0;
+        left: 0;
+      }
+      #frame .top {
+        top: 0;
+      }
+      #frame .bottom {
+        bottom: 0;
+        right: 0;
+        left: auto;
+      }
+      #frame .left,
+      #frame .right {
+        width: 5px;
+        height: 0;
+        top: 0;
+      }
+      #frame .left {
+        left: 0;
+        bottom: 0;
+        top: auto;
+      }
+      #frame .right {
+        right: 0;
+        top: 0;
+      }
+      #glowword {
+        font-weight: 800;
+        font-size: 190px;
+        letter-spacing: 12px;
+        opacity: 0;
+      }
+      #scene3 .label {
+        margin-top: 34px;
+        font-size: 34px;
+        letter-spacing: 22px;
+        text-indent: 22px;
+        font-weight: 600;
+        opacity: 0;
+      }
+
+      /* ===== Scene 4 — end lockup ===== */
+      #scene4 #word4 {
+        font-weight: 700;
+        font-size: 200px;
+        letter-spacing: 18px;
+        line-height: 1;
+        white-space: nowrap;
+      }
       #rule {
-        margin: 30px auto 0;
+        margin: 26px auto 0;
         height: 5px;
         width: 0px;
         border-radius: 5px;
@@ -143,26 +220,43 @@
           0 0 60px var(--magenta);
         opacity: 0;
       }
-
-      /* soft mirror of the sign on the floor */
-      #reflection {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, 300px) scaleY(-1);
-        transform-origin: top center;
+      #tag {
+        margin-top: 34px;
+        font-size: 38px;
+        letter-spacing: 24px;
+        text-indent: 24px;
+        font-weight: 500;
         opacity: 0;
-        filter: blur(7px);
-        -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 62%);
-        mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 62%);
+        white-space: nowrap;
+      }
+
+      /* bright neon leading edge that travels across during the wipe */
+      #wipeEdge {
+        position: absolute;
+        top: -6%;
+        left: 0;
+        width: 8px;
+        height: 112%;
+        z-index: 5;
+        background: var(--cyan-hi);
+        box-shadow:
+          0 0 10px var(--cyan-hi),
+          0 0 26px var(--cyan),
+          0 0 60px var(--cyan),
+          0 0 120px var(--cyan);
+        opacity: 0;
         pointer-events: none;
       }
 
-      #reflection #word {
-        font-size: 300px;
-      }
-      #reflection .ltr {
-        opacity: 1;
+      /* full-screen glow flash used by the dip-to-glow transition */
+      #flash {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        background: radial-gradient(60% 60% at 50% 50%, rgba(230, 255, 255, 0.95), rgba(53, 246, 255, 0.5) 45%, rgba(53, 246, 255, 0) 78%);
+        opacity: 0;
+        mix-blend-mode: screen;
+        pointer-events: none;
       }
     </style>
   </head>
@@ -171,37 +265,60 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="5"
+      data-duration="8.5"
       data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      <section id="stage" class="clip" data-start="0" data-duration="5" data-track-index="1">
+      <section id="stage" class="clip" data-start="0" data-duration="8.5" data-track-index="1">
         <div class="wall"></div>
         <div id="wash" data-layout-allow-overflow></div>
         <div class="vignette"></div>
 
-        <div id="scene">
-          <div id="sign">
-            <div id="word"></div>
-            <div id="rule"></div>
-            <div id="tag">STUDIO&nbsp;&middot;&nbsp;EST.&nbsp;2026</div>
-          </div>
+        <!-- Scene 1 — logo ignite -->
+        <div id="scene1" class="scene" data-layout-allow-overlap>
+          <div id="word" class="neon-c"></div>
         </div>
 
-        <div id="reflection"><div id="word-r"></div></div>
+        <!-- Scene 2 — kinetic words -->
+        <div id="scene2" class="scene" data-layout-allow-overlap data-layout-allow-occlusion>
+          <div class="kw neon-c">DESIGN</div>
+          <div class="kw neon-m">MOTION</div>
+          <div class="kw neon-c">LIGHT</div>
+        </div>
+
+        <!-- Scene 3 — framed statement -->
+        <div id="scene3" class="scene" data-layout-allow-overlap data-layout-allow-occlusion>
+          <div id="frame">
+            <span class="edge top"></span>
+            <span class="edge right"></span>
+            <span class="edge bottom"></span>
+            <span class="edge left"></span>
+            <div id="glowword" class="neon-m">GLOW</div>
+          </div>
+          <div class="label neon-c">BUILT&nbsp;TO&nbsp;SHINE</div>
+        </div>
+
+        <!-- Scene 4 — end lockup -->
+        <div id="scene4" class="scene" data-layout-allow-overlap data-layout-allow-occlusion>
+          <div id="word4" class="neon-c"></div>
+          <div id="rule"></div>
+          <div id="tag" class="neon-m">STUDIO&nbsp;&middot;&nbsp;EST.&nbsp;2026</div>
+        </div>
+
+        <div id="wipeEdge" data-layout-allow-overflow></div>
+        <div id="flash"></div>
       </section>
     </div>
 
     <script>
       window.__timelines = window.__timelines || {};
 
-      // ----- the word to reveal (swap this string for any brand) -----
+      // ----- swap these for any brand -----
       const WORD = "AURORA";
+      const TAGLINE_WORDS = ["DESIGN", "MOTION", "LIGHT"];
 
-      const wordEl = document.querySelector("#word");
-      const wordREl = document.querySelector("#word-r");
-
+      // build per-letter spans for the two logo lockups
       function buildLetters(host) {
         host.innerHTML = "";
         const spans = [];
@@ -209,74 +326,120 @@
           const s = document.createElement("span");
           s.className = "ltr";
           s.textContent = ch;
-          s.setAttribute("data-ch", ch);
           host.appendChild(s);
           spans.push(s);
         }
         return spans;
       }
+      const letters = buildLetters(document.querySelector("#word"));
+      buildLetters(document.querySelector("#word4")); // end lockup (pre-lit)
 
-      const letters = buildLetters(wordEl);
-      buildLetters(wordREl); // reflection copy (static, lit)
+      const $ = (s) => document.querySelector(s);
+      const $$ = (s) => Array.from(document.querySelectorAll(s));
+      const washEl = $("#wash");
 
-      const washEl = document.querySelector("#wash");
-      const tagEl = document.querySelector("#tag");
-      const ruleEl = document.querySelector("#rule");
-      const reflEl = document.querySelector("#reflection");
-
-      // deterministic per-letter ignition flicker (values, not random) — the
-      // characteristic stutter of a neon tube catching. Each entry is an
-      // opacity keyframe sequence the tube steps through as it powers on.
+      // deterministic tube-ignition flicker (no runtime randomness)
       const FLICKER = [1, 0.15, 0.9, 0.25, 1, 0.5, 1];
 
       const tl = gsap.timeline({ paused: true });
 
-      // 0) hold black for a beat, faint wash breathes up from nothing
-      tl.to(washEl, { opacity: 0.06, duration: 0.5, ease: "sine.inOut" }, 0.0);
-
-      // 1) letters ignite one after another with a buzzing flicker (0.5s → ~2.4s)
+      /* ============================================================
+         SCENE 1 (0.0 – 2.1s) — neon logo ignites letter by letter
+         ============================================================ */
+      tl.to(washEl, { opacity: 0.07, duration: 0.5, ease: "sine.inOut" }, 0.0);
       letters.forEach((el, i) => {
-        const t = 0.5 + i * 0.28;
-        tl.to(
+        const t = 0.35 + i * 0.2;
+        tl.to(el, { keyframes: { opacity: FLICKER }, duration: 0.45, ease: "none" }, t);
+        tl.to(washEl, { opacity: 0.1 + i * 0.03, duration: 0.3, ease: "power2.out" }, t + 0.1);
+      });
+      tl.to(washEl, { opacity: 0.3, duration: 0.4, ease: "power2.out" }, 1.7);
+
+      /* ============================================================
+         TRANSITION 1 (2.05 – 2.6s) — WHIP PAN with motion blur
+         scene 1 whips off left, scene 2 whips in from the right
+         ============================================================ */
+      const T1 = 2.05;
+      // outgoing: accelerate left, stretch + blur into a smear, fade
+      tl.to($("#scene1"), { xPercent: -55, scale: 1.12, duration: 0.42, ease: "power3.in" }, T1);
+      tl.to($("#scene1"), { "--mb": "16px", opacity: 0, duration: 0.42, ease: "power2.in" }, T1);
+      tl.to(washEl, { opacity: 0.12, duration: 0.4, ease: "power2.inOut" }, T1);
+      // incoming: fly in from right, decelerate with a touch of overshoot
+      tl.fromTo(
+        $("#scene2"),
+        { xPercent: 65, scale: 1.1, "--mb": "18px", opacity: 0 },
+        { xPercent: 0, scale: 1, "--mb": "0px", opacity: 1, duration: 0.55, ease: "back.out(1.3)", immediateRender: false },
+        T1 + 0.12,
+      );
+      // words punch in one at a time, scale + blur settle (motion-graphics beat)
+      TAGLINE_WORDS.forEach((_, i) => {
+        const el = $$("#scene2 .kw")[i];
+        tl.fromTo(
           el,
-          { keyframes: { opacity: FLICKER }, duration: 0.5, ease: "none" },
-          t,
-        );
-        // each ignition punches the ambient wash a little brighter
-        tl.to(
-          washEl,
-          { opacity: 0.07 + i * 0.03, duration: 0.35, ease: "power2.out" },
-          t + 0.1,
+          { opacity: 0, scale: 1.45, "--mb": "10px", yPercent: 8 },
+          { opacity: 1, scale: 1, "--mb": "0px", yPercent: 0, duration: 0.34, ease: "back.out(2)", immediateRender: false },
+          T1 + 0.5 + i * 0.26,
         );
       });
+      tl.to(washEl, { opacity: 0.26, duration: 0.5, ease: "power2.out" }, T1 + 0.6);
 
-      const LIT = 0.5 + letters.length * 0.28; // ~2.18s, all tubes on
-
-      // 2) full sign settles to steady burn + reflection fades up
-      tl.to(washEl, { opacity: 0.3, duration: 0.6, ease: "power2.out" }, LIT);
-      tl.to(reflEl, { opacity: 0.32, duration: 0.7, ease: "power2.out" }, LIT + 0.05);
-
-      // 3) magenta underline rule draws across, then tagline hums on
-      tl.to(ruleEl, { opacity: 1, duration: 0.12, ease: "power1.out" }, LIT + 0.15);
-      tl.to(ruleEl, { width: 760, duration: 0.55, ease: "power3.inOut" }, LIT + 0.15);
+      /* ============================================================
+         TRANSITION 2 (3.95 – 4.5s) — NEON EDGE WIPE
+         scene 3 wipes in over scene 2 behind a glowing leading edge
+         ============================================================ */
+      const T2 = 3.95;
+      // outgoing scene 2 eases back + blurs as it's covered
+      tl.to($("#scene2"), { scale: 0.9, "--mb": "12px", opacity: 0, duration: 0.5, ease: "power2.in" }, T2);
+      // reveal scene 3 via an inset wipe from the right, with a bright moving edge
       tl.fromTo(
-        tagEl,
-        { opacity: 0 },
-        { keyframes: { opacity: [0, 0.3, 0.1, 1] }, duration: 0.45, ease: "none" },
-        LIT + 0.5,
+        $("#scene3"),
+        { opacity: 1, clipPath: "inset(0 0 0 100%)" },
+        { opacity: 1, clipPath: "inset(0 0 0 0%)", duration: 0.5, ease: "power3.inOut", immediateRender: false },
+        T2,
       );
+      tl.fromTo(
+        $("#wipeEdge"),
+        { opacity: 1, x: 1920, xPercent: -50, skewX: -9 },
+        { x: 0, duration: 0.5, ease: "power3.inOut", immediateRender: false },
+        T2,
+      );
+      tl.to($("#wipeEdge"), { opacity: 0, duration: 0.12 }, T2 + 0.46);
+      // draw the neon frame (top → right → bottom → left), then word + label
+      tl.to($("#frame .top"), { width: "100%", duration: 0.22, ease: "power2.out" }, T2 + 0.35);
+      tl.to($("#frame .right"), { height: "100%", duration: 0.2, ease: "power2.out" }, T2 + 0.55);
+      tl.to($("#frame .bottom"), { width: "100%", duration: 0.22, ease: "power2.out" }, T2 + 0.73);
+      tl.to($("#frame .left"), { height: "100%", duration: 0.2, ease: "power2.out" }, T2 + 0.93);
+      tl.fromTo(
+        $("#glowword"),
+        { opacity: 0, scale: 1.3, "--mb": "8px" },
+        { opacity: 1, scale: 1, "--mb": "0px", duration: 0.4, ease: "back.out(1.8)", immediateRender: false },
+        T2 + 0.5,
+      );
+      tl.fromTo($("#scene3 .label"), { opacity: 0, yPercent: 20 }, { opacity: 1, yPercent: 0, duration: 0.4, ease: "power2.out", immediateRender: false }, T2 + 0.9);
 
-      // 4) idle life: a gentle breathing flicker on the whole sign to the end
-      tl.to(
-        "#sign",
-        { keyframes: { opacity: [1, 0.93, 1, 0.97, 1] }, duration: 1.4, ease: "sine.inOut" },
-        LIT + 0.9,
+      /* ============================================================
+         TRANSITION 3 (5.85 – 6.5s) — DIP TO GLOW crossfade
+         scene 3 scales up + blooms to white, scene 4 emerges from it
+         ============================================================ */
+      const T3 = 5.85;
+      tl.to($("#scene3"), { scale: 1.18, "--mb": "18px", opacity: 0, duration: 0.5, ease: "power2.in" }, T3);
+      tl.to($("#flash"), { keyframes: { opacity: [0, 0.9, 0] }, duration: 0.62, ease: "sine.inOut" }, T3);
+      // scene 4 blooms out of the flash, scaling down into place
+      tl.fromTo(
+        $("#scene4"),
+        { opacity: 0, scale: 1.22, "--mb": "14px" },
+        { opacity: 1, scale: 1, "--mb": "0px", duration: 0.58, ease: "power3.out", immediateRender: false },
+        T3 + 0.36,
       );
-      tl.to(
-        washEl,
-        { keyframes: { opacity: [0.3, 0.25, 0.3, 0.27, 0.3] }, duration: 1.4, ease: "sine.inOut" },
-        LIT + 0.9,
-      );
+      tl.to(washEl, { opacity: 0.32, duration: 0.6, ease: "power2.out" }, T3 + 0.3);
+
+      /* ============================================================
+         SCENE 4 (6.5 – 8.5s) — end lockup settles + idle breathe
+         ============================================================ */
+      tl.to($("#rule"), { opacity: 1, duration: 0.1 }, 6.75);
+      tl.to($("#rule"), { width: 640, duration: 0.5, ease: "power3.inOut" }, 6.75);
+      tl.fromTo($("#tag"), { opacity: 0 }, { keyframes: { opacity: [0, 0.3, 0.1, 1] }, duration: 0.45, ease: "none", immediateRender: false }, 7.05);
+      tl.to("#scene4", { keyframes: { opacity: [1, 0.94, 1, 0.97, 1] }, duration: 1.3, ease: "sine.inOut" }, 7.2);
+      tl.to(washEl, { keyframes: { opacity: [0.32, 0.27, 0.32, 0.29, 0.32] }, duration: 1.3, ease: "sine.inOut" }, 7.2);
 
       window.__timelines["main"] = tl;
     </script>
