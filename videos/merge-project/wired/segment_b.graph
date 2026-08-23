@@ -1,0 +1,6 @@
+[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v0];
+[1:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:color=black,setsar=1,fps=24,format=yuv420p[v1];
+[v0][v1]xfade=transition=zoomin:duration=0.7:offset=3.3[x1];
+[x1]gblur=sigma=22:sigmaV=1:enable='between(t,3.3,3.73)',rgbashift=rh=10:bh=-10:enable='between(t,3.3,3.73)',rgbashift=rh=6:bh=-6:enable='between(t,3.3,3.9)',format=yuv420p[vout];
+[0:a]afade=t=in:st=0:d=0.12[a0];
+[a0][1:a]acrossfade=d=0.7:c1=tri:c2=tri[aout]
