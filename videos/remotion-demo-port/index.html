@@ -33,6 +33,50 @@
         background: #000;
       }
 
+      /* Reflective floor: a faint horizon wash + a soft mirrored glow of the
+         cube's accent light, grounding the scene without fighting the box. */
+      #floor {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 300px;
+        background: linear-gradient(
+          to bottom,
+          rgba(79, 195, 247, 0) 0%,
+          rgba(60, 130, 170, 0.05) 42%,
+          rgba(96, 176, 224, 0.13) 100%
+        );
+        pointer-events: none;
+      }
+
+      #floor-reflection {
+        position: absolute;
+        left: 490px;
+        top: 498px;
+        width: 300px;
+        height: 92px;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(79, 195, 247, 0.4) 0%,
+          rgba(79, 195, 247, 0) 70%
+        );
+        filter: blur(11px);
+        pointer-events: none;
+      }
+
+      /* Cinematic vignette overlay (matches the data-beat look). */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          78% 68% at 50% 42%,
+          rgba(0, 0, 0, 0) 46%,
+          rgba(0, 0, 0, 0.55) 100%
+        );
+        pointer-events: none;
+      }
+
       /* GSAP title — fades / scales in (ported from the Remotion GsapTitle) */
       #title {
         position: absolute;
@@ -147,6 +191,9 @@
           </filter>
         </svg>
 
+        <div id="floor"></div>
+        <div id="floor-reflection"></div>
+
         <div id="title" data-layout-allow-overflow>HyperFrames + GSAP + 3D</div>
 
         <div id="scene" data-layout-allow-overflow>
@@ -164,6 +211,28 @@
         <!-- intentionally sweeps off-frame and sits partly below the 720px edge
              (faithful to the Remotion MovingBox) -->
         <div id="box" data-layout-allow-overflow></div>
+
+        <div id="vignette"></div>
+
+        <!-- Audio sting (matches the data-beat project's use of a sting):
+             a short whoosh on the title/motion entrance, and a bass impact as
+             the title settles (~1s). -->
+        <audio
+          id="sfx-whoosh"
+          data-start="0"
+          data-duration="0.58"
+          data-track-index="2"
+          src="assets/whoosh.mp3"
+          data-volume="0.6"
+        ></audio>
+        <audio
+          id="sfx-impact"
+          data-start="0.85"
+          data-duration="2.15"
+          data-track-index="3"
+          src="assets/impact.mp3"
+          data-volume="0.55"
+        ></audio>
       </section>
     </div>
 

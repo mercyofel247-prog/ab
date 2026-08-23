@@ -33,6 +33,19 @@ protect.
 | `CameraMotionBlur` (shutterAngle 180, 10 samples) on the box | `#box` + `#box-motion-blur` SVG `feGaussianBlur` | **Approximated** (was dropped in the first pass). A seeked renderer can't integrate over shutter time, so a constant directional X-axis blur (`stdDeviation="16 0"`) fakes the constant-velocity smear — faithful because the box moves at constant speed the whole clip. Follows the `motion-blur-streak` rule's constant-velocity guidance. |
 | Title text "Remotion + GSAP + Three.js" | "HyperFrames + GSAP + 3D" | Updated to reflect the new stack. |
 
+## Added polish (beyond the source)
+
+These have no Remotion counterpart — added to match the finish of the
+`data-beat-8-8t` project:
+
+- **Reflective floor** — a faint horizon wash (`#floor`) plus a soft mirrored
+  accent glow under the cube (`#floor-reflection`), grounding it above a glossy
+  surface.
+- **Vignette** — `#vignette` radial edge-darken for a cinematic frame.
+- **Audio sting** — a short whoosh on the title/motion entrance (`assets/whoosh.mp3`,
+  t=0) and a bass impact as the title settles (`assets/impact.mp3`, t≈0.85s), both
+  from the media-use bundled SFX library, wired as `<audio>` tracks.
+
 ## Specs preserved
 
 - 1280×720, 30 fps, 90 frames (3.0 s).
