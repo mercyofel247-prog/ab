@@ -58,6 +58,22 @@
         perspective: 800px;
       }
 
+      /* soft glow behind the cube — a plain 2D leaf, NOT in the preserve-3d
+         chain, so its blur filter can't flatten the cube's translateZ faces */
+      .cube-glow {
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(79, 195, 247, 0.5) 0%,
+          rgba(79, 195, 247, 0.18) 45%,
+          rgba(79, 195, 247, 0) 72%
+        );
+        filter: blur(14px);
+      }
+
       #cube {
         position: relative;
         width: 160px;
@@ -67,24 +83,37 @@
         transform: rotateX(0deg) rotateY(0deg);
       }
 
+      /* Lit faces: a top-left highlight → bottom-right shade gradient fakes a
+         fixed key light, replacing the flat fill of the first pass. Per-face
+         base tone keeps the edges legible as the cube turns. */
       .face {
         position: absolute;
         top: 0;
         left: 0;
         width: 160px;
         height: 160px;
-        background: rgba(79, 195, 247, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.35);
+        background: linear-gradient(
+          135deg,
+          rgba(150, 224, 255, 0.98) 0%,
+          rgba(79, 195, 247, 0.94) 46%,
+          rgba(34, 110, 158, 0.94) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        box-shadow:
+          inset 0 0 42px rgba(0, 0, 0, 0.32),
+          inset 34px 34px 60px rgba(255, 255, 255, 0.12);
       }
       .face.front  { transform: translateZ(80px); }
-      .face.back   { transform: rotateY(180deg) translateZ(80px); }
-      .face.right  { transform: rotateY(90deg) translateZ(80px); background: rgba(79, 195, 247, 0.72); }
-      .face.left   { transform: rotateY(-90deg) translateZ(80px); background: rgba(79, 195, 247, 0.72); }
-      .face.top    { transform: rotateX(90deg) translateZ(80px); background: rgba(79, 195, 247, 1); }
-      .face.bottom { transform: rotateX(-90deg) translateZ(80px); background: rgba(79, 195, 247, 0.6); }
+      .face.back   { transform: rotateY(180deg) translateZ(80px); filter: brightness(0.82); }
+      .face.right  { transform: rotateY(90deg) translateZ(80px); filter: brightness(0.9); }
+      .face.left   { transform: rotateY(-90deg) translateZ(80px); filter: brightness(0.78); }
+      .face.top    { transform: rotateX(90deg) translateZ(80px); filter: brightness(1.12); }
+      .face.bottom { transform: rotateX(-90deg) translateZ(80px); filter: brightness(0.62); }
 
-      /* Sweeping box (ported from the Remotion MovingBox) */
+      /* Sweeping box (ported from the Remotion MovingBox). The Remotion source
+         wrapped it in CameraMotionBlur; a seeked renderer can't integrate over
+         shutter time, so a constant directional X-axis blur (feGaussianBlur,
+         applied via #box-motion-blur) fakes the constant-velocity smear. */
       #box {
         position: absolute;
         top: 580px;
@@ -93,6 +122,7 @@
         height: 200px;
         border-radius: 24px;
         background: #4fc3f7;
+        filter: url(#box-motion-blur);
         /* CSS holds the "from" x position (matches interpolate start of -100) */
         transform: translateX(-100px);
       }
@@ -109,9 +139,18 @@
       data-height="720"
     >
       <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <!-- constant directional (X-axis) blur faking CameraMotionBlur on the
+             constant-velocity box; generous region so the smear isn't clipped -->
+        <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+          <filter id="box-motion-blur" x="-60%" y="-20%" width="220%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="16 0" />
+          </filter>
+        </svg>
+
         <div id="title" data-layout-allow-overflow>HyperFrames + GSAP + 3D</div>
 
         <div id="scene" data-layout-allow-overflow>
+          <div class="cube-glow" data-layout-allow-overflow></div>
           <div id="cube" data-layout-allow-overflow>
             <div class="face front" data-layout-allow-overflow></div>
             <div class="face back" data-layout-allow-overflow></div>

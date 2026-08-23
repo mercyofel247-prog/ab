@@ -29,8 +29,8 @@ protect.
 | ---------------- | ---------------------- | -------- |
 | `GsapTitle` (fade/rise/scale, `back.out(2)`) | `#title` GSAP tween, same ease | Faithful |
 | `MovingBox` via `interpolate([-100, width+100])` | `#box` GSAP `x: -100 → 1380`, linear, clamped by tween bounds | Faithful |
-| `RotatingCube` via `@remotion/three` (WebGL) | `#cube` CSS 3D transform cube, GSAP `rotationX/Y` | **Approximated** — a CSS cube, not a lit Three.js mesh. No ambient/point lighting model; faces use fixed accent shades for depth. Rotation reproduces `frame/30` (X ≈ 172°) and `frame/20` (Y ≈ 258°) over 90 frames as a linear tween. |
-| `CameraMotionBlur` (shutterAngle 180, 10 samples) on the box | — | **Dropped.** Per-sample motion blur isn't reproduced; the box moves without blur. Add via the HyperFrames motion-blur technique later if wanted. |
+| `RotatingCube` via `@remotion/three` (WebGL) | `#cube` CSS 3D transform cube, GSAP `rotationX/Y` | **Approximated.** A CSS-3D cube, not a lit Three.js mesh. Faces use a top-left→bottom-right gradient plus per-face `brightness()` to fake a fixed key light, and a blurred radial `.cube-glow` (kept off the `preserve-3d` chain so its filter can't flatten the 3D) gives it presence. Rotation reproduces `frame/30` (X ≈ 172°) and `frame/20` (Y ≈ 258°) over 90 frames as a linear tween. |
+| `CameraMotionBlur` (shutterAngle 180, 10 samples) on the box | `#box` + `#box-motion-blur` SVG `feGaussianBlur` | **Approximated** (was dropped in the first pass). A seeked renderer can't integrate over shutter time, so a constant directional X-axis blur (`stdDeviation="16 0"`) fakes the constant-velocity smear — faithful because the box moves at constant speed the whole clip. Follows the `motion-blur-streak` rule's constant-velocity guidance. |
 | Title text "Remotion + GSAP + Three.js" | "HyperFrames + GSAP + 3D" | Updated to reflect the new stack. |
 
 ## Specs preserved
