@@ -11,6 +11,7 @@
     "@remotion/motion-blur": "4.0.509",
     "@remotion/tailwind-v4": "4.0.509",
     "@remotion/three": "4.0.509",
+    "@remotion/transitions": "^4.0.509",
     "gsap": "3.15.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
