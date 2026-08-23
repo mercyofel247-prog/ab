@@ -17,6 +17,12 @@ user explicitly asks for a local render in that same request.
 - Cloud rendering is wallet-billed via `HEYGEN_API_KEY` (`hyperframes auth
   status` to confirm). If auth or wallet is unavailable, say so and stop —
   do not silently fall back to a local render.
+- **Confirm before every cloud render.** A cloud render spends the wallet, so
+  always ask the user for explicit go-ahead immediately before submitting one,
+  every time — never batch-approve or assume standing consent. A PreToolUse
+  hook (`.claude/hooks/confirm-cloud-render.sh`) also forces a confirmation
+  prompt on any `cloud render` / `npm run cloud[:wait]` command as a backstop;
+  `--dry-run` and the read-only `cloud list` / `cloud get` are exempt.
 - New video projects should be scaffolded like `videos/oxblood-countdown/`:
   `hyperframes` pinned as a local devDependency and `npm run cloud*` scripts
   wired, so rendering stays fast (no `npx --yes` cold-start).
