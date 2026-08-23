@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Oxblood Countdown — $4,500,000,000 → $0</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ox-hi: #ff6675;   /* luminous oxblood highlight */
+        --ox-mid: #ec3549;  /* core oxblood */
+        --ox-lo: #d1263b;   /* deep oxblood shadow */
+        --bg-core: #240609; /* dark oxblood, behind the digits */
+        --bg-mid: #180407;
+        --bg-edge: #070102; /* near-black */
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #050102;
+        font-family: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+
+      /* full-bleed background child (never on the root/clip itself) */
+      .bg {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(120% 100% at 50% 44%,
+            var(--bg-core) 0%,
+            var(--bg-mid) 38%,
+            var(--bg-edge) 76%,
+            #030001 100%);
+      }
+      /* a second, softer oxblood bloom for depth */
+      .bg-bloom {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(60% 40% at 50% 16%, rgba(150, 12, 28, 0.20) 0%, rgba(150, 12, 28, 0) 62%),
+          radial-gradient(84% 56% at 50% 100%, rgba(120, 8, 20, 0.16) 0%, rgba(120, 8, 20, 0) 56%);
+        mix-blend-mode: screen;
+      }
+      /* dark pad directly behind the number so oxblood digits keep contrast */
+      .numpad {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 1820px;
+        height: 720px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(ellipse at center,
+          rgba(4, 1, 1, 0.95) 0%,
+          rgba(4, 1, 1, 0.82) 40%,
+          rgba(4, 1, 1, 0.4) 62%,
+          rgba(4, 1, 1, 0) 78%);
+        filter: blur(26px);
+        pointer-events: none;
+      }
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          radial-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+        background-size: 3px 3px;
+        opacity: 0.5;
+      }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(115% 100% at 50% 48%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.72) 100%);
+        pointer-events: none;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        perspective: 2000px;
+        perspective-origin: 50% 48%;
+      }
+
+      /* the rotating 3D group holds both the assembly glyphs and the live counter */
+      .number3d {
+        position: relative;
+        transform-style: preserve-3d;
+        display: grid;
+        place-items: center;
+        width: 1720px;
+        height: 360px;
+      }
+
+      /* both layers occupy the same centered box so the handoff is seamless */
+      .num-layer {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        transform-style: preserve-3d;
+      }
+
+      .glyph,
+      #counter {
+        font-weight: 800;
+        font-size: 158px;
+        line-height: 1;
+        letter-spacing: 0.005em;
+        /* metallic oxblood fill */
+        color: #ec4257; /* fallback tuned to the gradient's on-screen luminance */
+        background: linear-gradient(180deg, var(--ox-hi) 0%, var(--ox-mid) 58%, var(--ox-lo) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        /* faux extrusion + rim glow */
+        text-shadow:
+          0 1px 0 rgba(255, 150, 165, 0.30),
+          0 2px 1px rgba(94, 9, 18, 0.7),
+          0 4px 2px rgba(60, 5, 10, 0.8),
+          0 8px 22px rgba(120, 8, 20, 0.55),
+          0 0 34px rgba(180, 16, 34, 0.45);
+        filter: drop-shadow(0 14px 30px rgba(90, 6, 14, 0.55));
+      }
+
+      .glyph {
+        display: inline-block;
+        transform-style: preserve-3d;
+        will-change: transform, opacity;
+      }
+      /* commas sit a touch lower and lighter, like real numerals */
+      .glyph.comma {
+        transform-origin: 50% 60%;
+      }
+
+      #counter {
+        display: inline-block;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      /* crack overlay, centred over the final "$0" */
+      .crack {
+        position: absolute;
+        top: 50%;
+        left: calc(50% + 36px);
+        width: 196px;
+        height: 196px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        overflow: visible;
+      }
+      .crack path {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .crack .fracture {
+        stroke: #17040a;
+        stroke-width: 3;
+        filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.95));
+      }
+      .crack .glint {
+        stroke: rgba(255, 214, 219, 0.8);
+        stroke-width: 1.4;
+      }
+
+      /* white impact flash on the zero-hit */
+      .impact {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(24% 22% at 50% 48%, rgba(255, 228, 230, 0.85) 0%, rgba(255, 200, 205, 0) 62%);
+        opacity: 0;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="10"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="10" data-track-index="1">
+        <div class="bg"></div>
+        <div class="bg-bloom"></div>
+        <div class="grain"></div>
+
+        <div class="scene">
+          <div class="numpad" data-layout-allow-overlap></div>
+          <div class="number3d" id="number3d">
+            <!-- Layer A: individual glyphs that fly in from all directions -->
+            <div class="num-layer" id="assembly" data-layout-allow-overlap data-layout-allow-occlusion>
+              <span class="glyph" data-i="0">$</span>
+              <span class="glyph" data-i="1">4</span>
+              <span class="glyph comma" data-i="2">,</span>
+              <span class="glyph" data-i="3">5</span>
+              <span class="glyph" data-i="4">0</span>
+              <span class="glyph" data-i="5">0</span>
+              <span class="glyph comma" data-i="6">,</span>
+              <span class="glyph" data-i="7">0</span>
+              <span class="glyph" data-i="8">0</span>
+              <span class="glyph" data-i="9">0</span>
+              <span class="glyph comma" data-i="10">,</span>
+              <span class="glyph" data-i="11">0</span>
+              <span class="glyph" data-i="12">0</span>
+              <span class="glyph" data-i="13">0</span>
+            </div>
+
+            <!-- Layer B: the live counting number (hidden until the handoff) -->
+            <div class="num-layer" id="counterLayer" data-layout-allow-overlap data-layout-allow-occlusion>
+              <span id="counter">$4,500,000,000</span>
+            </div>
+
+            <!-- crack, drawn on the zero-hit -->
+            <svg class="crack" id="crack" viewBox="0 0 460 380" aria-hidden="true" data-layout-allow-overlap data-layout-allow-occlusion>
+              <path class="fracture" id="crackMain"
+                d="M232,26 L214,86 L242,132 L210,196 L238,250 L216,312 L236,360" />
+              <path class="glint" id="crackGlint"
+                d="M232,26 L214,86 L242,132 L210,196 L238,250 L216,312 L236,360" />
+              <path class="fracture" id="crackBranchA" d="M242,132 L296,120 L330,150" />
+              <path class="fracture" id="crackBranchB" d="M210,196 L156,182 L120,206" />
+              <path class="fracture" id="crackBranchC" d="M238,250 L292,268 L322,252" />
+            </svg>
+          </div>
+        </div>
+
+        <div class="impact" id="impact" data-layout-allow-occlusion></div>
+        <div class="vignette" data-layout-allow-occlusion></div>
+      </section>
+
+      <audio
+        id="snd"
+        data-start="0"
+        data-duration="9.9"
+        data-track-index="2"
+        src="assets/sound.wav"
+        data-volume="1.0"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const glyphs = Array.from(document.querySelectorAll("#assembly .glyph"));
+      const counterEl = document.querySelector("#counter");
+
+      // ---- seek-safe countdown formatting ----
+      const START_VALUE = 4500000000;
+      function renderCount(v) {
+        const n = Math.max(0, Math.round(v));
+        counterEl.textContent = "$" + n.toLocaleString("en-US");
+      }
+      renderCount(START_VALUE);
+
+      // ---- deterministic per-glyph entry vectors (each from a different direction) ----
+      // six direction archetypes; index-driven so the render is reproducible
+      const DIRS = [
+        { x: -1500, y: -120, z: 200, rotY: 80, rotX: -20 }, // far left
+        { x: 1500, y: 120, z: 200, rotY: -80, rotX: 20 },  // far right
+        { x: -160, y: -1000, z: 120, rotY: 20, rotX: 75 }, // top
+        { x: 160, y: 1000, z: 120, rotY: -20, rotX: -75 }, // bottom
+        { x: 0, y: 40, z: 1700, rotY: 0, rotX: 0 },        // rushing from the front
+        { x: 60, y: -60, z: -1300, rotY: 140, rotX: 20 },  // from deep behind
+      ];
+
+      const tl = gsap.timeline({ paused: true });
+
+      // static 3D attitude of the whole group (set via GSAP, not CSS, to avoid transform conflicts)
+      gsap.set("#number3d", { transformPerspective: 2000, rotationX: -6, rotationY: 0, z: 0 });
+      gsap.set("#counterLayer", { autoAlpha: 0 });
+      gsap.set(["#crackMain", "#crackGlint", "#crackBranchA", "#crackBranchB", "#crackBranchC"], {
+        strokeDasharray: 1200,
+        strokeDashoffset: 1200,
+      });
+      gsap.set("#crack", { autoAlpha: 0 });
+
+      // ---- Phase 1: glyphs fly in from every direction and assemble (0 – ~2.05s) ----
+      glyphs.forEach((el, i) => {
+        const d = DIRS[i % DIRS.length];
+        const t = 0.1 + i * 0.1;
+        tl.fromTo(
+          el,
+          { x: d.x, y: d.y, z: d.z, rotationY: d.rotY, rotationX: d.rotX, opacity: 0 },
+          {
+            x: 0, y: 0, z: 0, rotationY: 0, rotationX: 0, opacity: 1,
+            duration: 0.66, ease: "back.out(1.35)",
+          },
+          t,
+        );
+      });
+
+      // ---- Handoff: crossfade the assembled glyphs to the live counter (~2.05 – 2.25s) ----
+      // identical text at the crossover, so it reads as one continuous number.
+      tl.to("#counterLayer", { autoAlpha: 1, duration: 0.14, ease: "power1.out" }, 2.05);
+      tl.to("#assembly", { autoAlpha: 0, duration: 0.14, ease: "power1.out" }, 2.08);
+
+      // ---- Phase 2: slow Y-axis rotation while the value counts down (2.2 – 8.4s) ----
+      const count = { v: START_VALUE };
+      tl.to(
+        count,
+        {
+          v: 0,
+          duration: 6.2,
+          ease: "power2.inOut",
+          onUpdate: () => renderCount(count.v),
+          onComplete: () => renderCount(0),
+        },
+        2.2,
+      );
+
+      // sustained turn to one side, then square up flat for the impact
+      tl.to("#number3d", { rotationY: 27, duration: 5.8, ease: "sine.inOut" }, 2.2);
+      tl.to("#number3d", { rotationY: 0, duration: 0.4, ease: "power3.out" }, 8.0);
+
+      // gentle breathing scale during the countdown
+      tl.fromTo("#number3d", { scale: 1.0 }, { scale: 1.035, duration: 3.05, ease: "sine.inOut" }, 2.2);
+      tl.to("#number3d", { scale: 1.0, duration: 3.05, ease: "sine.inOut" }, 5.35);
+
+      // ---- Phase 3: hit $0 → crack snaps across the zero → dead stop (8.4 – 10s) ----
+      // tiny impact jolt, then absolute stillness
+      tl.to("#impact", { opacity: 1, duration: 0.04, ease: "power2.out" }, 8.5);
+      tl.to("#impact", { opacity: 0, duration: 0.3, ease: "power2.in" }, 8.55);
+
+      tl.to("#number3d", { x: 5, y: -3, duration: 0.05, ease: "power4.out" }, 8.5);
+      tl.to("#number3d", { x: 0, y: 0, duration: 0.22, ease: "elastic.out(1, 0.5)" }, 8.55);
+
+      // the crack "snaps" across (fast dash draw)
+      tl.set("#crack", { autoAlpha: 1 }, 8.5);
+      tl.to(["#crackMain", "#crackGlint"], { strokeDashoffset: 0, duration: 0.1, ease: "power2.in" }, 8.5);
+      tl.to(
+        ["#crackBranchA", "#crackBranchB", "#crackBranchC"],
+        { strokeDashoffset: 0, duration: 0.12, ease: "power2.out" },
+        8.58,
+      );
+
+      // subtle darken/settle after the thud — everything holds still to 10s
+      tl.to(".vignette", { opacity: 1.15, duration: 0.6, ease: "power2.out" }, 8.6);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
