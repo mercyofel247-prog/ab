@@ -20,3 +20,12 @@ HYPERFRAMES_BIN="$(npm root -g)/hyperframes/bin/hyperframes.mjs"
 if [ -f "$HYPERFRAMES_BIN" ]; then
   chmod +x "$HYPERFRAMES_BIN"
 fi
+
+# Pre-fetch the Chrome the hyperframes renderer needs. Unlike Remotion (which is
+# wired to the sandbox's pre-installed browser in remotion.config.ts), hyperframes
+# resolves its own pinned chrome-headless-shell and downloads it (~114 MB) on the
+# first render otherwise. Doing it here moves that cost into setup, keeps the first
+# render instant, and preserves hyperframes' pinned-Chromium deterministic output.
+# Non-fatal: on a network hiccup the renderer still falls back to an on-demand
+# download, so a failed pre-fetch shouldn't abort the whole session.
+hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
