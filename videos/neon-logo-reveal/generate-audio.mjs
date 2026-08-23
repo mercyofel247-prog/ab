@@ -156,19 +156,9 @@ whoosh(4.15, 0.6, 0.2, 0.34);
   }
 }
 
-// Transition 3 — dip to glow (5.85s): riser -> bright shimmer bloom + soft boom
-whoosh(6.05, 0.7, 0.22, 0.45);
-shimmer(6.12, 1.4, 0.16);
-{
-  const start = Math.floor(6.12 * SR);
-  const len = Math.floor(0.8 * SR);
-  for (let k = 0; k < len; k++) {
-    const tk = k / SR;
-    const env = Math.exp(-tk / 0.3) * (1 - Math.exp(-tk / 0.004));
-    const pf = 55 + 30 * Math.exp(-tk / 0.05);
-    add(start + k, Math.sin(2 * Math.PI * pf * tk) * env * 0.42);
-  }
-}
+// Transition 3 — light leak + blur dissolve (5.85s): soft airy swell, no impact
+whoosh(6.15, 0.95, 0.13, 0.18); // gentle, dark, drawn-out leak swell
+shimmer(6.25, 1.2, 0.05); // just a breath of air, no bright bloom
 
 // underline rule draw (6.75s): quick rising zip
 {
