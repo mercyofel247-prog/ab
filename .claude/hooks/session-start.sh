@@ -6,6 +6,17 @@ if [ -f "$CLAUDE_PROJECT_DIR/remotion-app/package.json" ]; then
   (cd "$CLAUDE_PROJECT_DIR/remotion-app" && npm install)
 fi
 
+# HyperFrames video-project deps (videos/*/node_modules is gitignored). Projects that
+# pin the CLI locally ship a package-lock.json; restore them here so their `npm run`
+# scripts use the fast local binary instead of re-downloading via npx at render time.
+for pkg in "$CLAUDE_PROJECT_DIR"/videos/*/package.json; do
+  [ -f "$pkg" ] || continue
+  dir="$(dirname "$pkg")"
+  if [ -f "$dir/package-lock.json" ]; then
+    (cd "$dir" && npm install)
+  fi
+done
+
 # ffmpeg/ffprobe (required by hyperframes for encoding/probing; not bundled)
 if ! command -v ffmpeg >/dev/null 2>&1; then
   apt-get update -qq

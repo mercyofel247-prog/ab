@@ -3,10 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx --yes hyperframes@0.7.107 preview",
-    "check": "npx --yes hyperframes@0.7.107 check",
-    "render": "npx --yes hyperframes@0.7.107 render",
-    "cloud": "npx --yes hyperframes@0.7.107 cloud render",
-    "publish": "npx --yes hyperframes@0.7.107 publish"
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "render": "hyperframes render",
+    "cloud": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/oxblood-countdown.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get",
+    "audio": "node generate-audio.mjs",
+    "publish": "hyperframes publish"
+  },
+  "devDependencies": {
+    "hyperframes": "0.7.107"
   }
 }
