@@ -1,0 +1,11 @@
+{
+  "name": "067-spotlight-blackout",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "render": "hyperframes render --gpu --browser-gpu"
+  },
+  "devDependencies": { "hyperframes": "0.8.11" }
+}

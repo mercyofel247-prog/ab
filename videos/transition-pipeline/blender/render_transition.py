@@ -54,6 +54,9 @@ def parse_args():
     p.add_argument("--shards-x", type=int, default=10)
     p.add_argument("--shards-y", type=int, default=6)
     p.add_argument("--samples", type=int, default=96, help="Cycles samples; denoiser makes this fine")
+    p.add_argument("--mode", choices=["fracture", "disintegrate"], default="fracture",
+                   help="fracture (#24): big shards fly apart. disintegrate (#43): many tiny "
+                        "pieces crumble in place and shrink to dust, revealing clip B.")
     p.add_argument("--out", required=True, help="output frame path prefix, e.g. renders/024_/frame_")
     return p.parse_args(argv)
 
@@ -132,7 +135,7 @@ def build_shard_plane(video_path, shards_x, shards_y, z, width=16.0):
     return plane, tex
 
 
-def shatter_to_shards(plane, n_frames, hold_frac=0.18):
+def shatter_to_shards(plane, n_frames, hold_frac=0.18, mode="fracture"):
     """Splits the subdivided plane into shard objects and KEYFRAME-animates
     each one exploding outward with spin, gravity droop, and shrink — a
     deliberate, readable shatter rather than a physics sim.
@@ -169,8 +172,20 @@ def shatter_to_shards(plane, n_frames, hold_frac=0.18):
         dx, dz = ox, oz
         mag = math.hypot(dx, dz) or 0.001
         dx, dz = dx / mag, dz / mag
-        spread = 6.5 + random.uniform(0, 4)          # how far it flies sideways
-        toward_cam = 9.0 + random.uniform(0, 6)      # −Y, past the lens
+        if mode == "disintegrate":
+            # crumble in place: small drift, slight upward float, shrink to
+            # near-zero (dust). Reads as the plate dissolving into particles.
+            spread = 1.2 + random.uniform(0, 1.2)
+            toward_cam = 1.5 + random.uniform(0, 2.5)
+            up_drift = 1.5 + random.uniform(0, 2.0)
+            final_scale = 0.04
+            droop = -up_drift            # negative droop = drift UP like ash
+        else:
+            # fracture: big shards fly apart toward/past the lens under gravity
+            spread = 6.5 + random.uniform(0, 4)
+            toward_cam = 9.0 + random.uniform(0, 6)
+            final_scale = 0.5
+            droop = -3.0
         spin = [random.uniform(-8, 8) for _ in range(3)]
 
         start_loc = obj.location.copy()
@@ -185,12 +200,12 @@ def shatter_to_shards(plane, n_frames, hold_frac=0.18):
         obj.location = (
             start_loc.x + dx * spread + random.uniform(-1.5, 1.5),
             start_loc.y - toward_cam,
-            start_loc.z + dz * spread - 3.0,  # gravity droop
+            start_loc.z + dz * spread + droop,
         )
         obj.rotation_euler = (
             start_rot.x + spin[0], start_rot.y + spin[1], start_rot.z + spin[2],
         )
-        obj.scale = (0.5, 0.5, 0.5)
+        obj.scale = (final_scale, final_scale, final_scale)
         obj.keyframe_insert(data_path="location", frame=n_frames)
         obj.keyframe_insert(data_path="rotation_euler", frame=n_frames)
         obj.keyframe_insert(data_path="scale", frame=n_frames)
@@ -268,8 +283,9 @@ def main():
 
     make_video_plane("clip_b_behind", args.clip_b, z=0.0)
     front, _ = build_shard_plane(args.clip_a, args.shards_x, args.shards_y, z=0.1)
-    shatter_to_shards(front, n_frames)
-    add_impact_flash(n_frames)
+    shatter_to_shards(front, n_frames, mode=args.mode)
+    if args.mode == "fracture":
+        add_impact_flash(n_frames)  # disintegrate gets its gold shimmer in post instead
 
     try:
         bpy.ops.render.render(animation=True)

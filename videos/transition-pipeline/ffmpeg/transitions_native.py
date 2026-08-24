@@ -86,9 +86,68 @@ def glitch(a, b, dur, w, h, fps, out, enc):
     subprocess.run(cmd, check=True)
 
 
+def film_burn(a, b, dur, w, h, fps, out, enc):
+    n = norm(w, h, fps)
+    half = dur / 2
+    # #5 Film Burn & Halation Flash: a quick dissolve between A and B with a
+    # synthesized warm photochemical light-leak blooming over the join — a
+    # centered orange radial that swells and fades, plus grain and a bloom
+    # exposure lift. No external stock element needed; the leak is generated
+    # with a gradients source + radial vignette so it reads as 35mm halation.
+    leak = (
+        f"gradients=s={w}x{h}:d={dur}:rate={fps}:c0=0xff6a1a:c1=0xffd24a:"
+        f"x0={w//2}:y0={h//2}:x1={w}:y1=0,"
+        f"vignette=angle=PI/3:mode=backward,format=gbrp"
+    )
+    fc = (
+        f"[0:v]{n}[a];[1:v]{n}[b];"
+        f"[a][b]xfade=transition=fade:duration={dur}:offset=0[base];"
+        f"[2:v]{n},format=gbrp[lk];"
+        f"[base][lk]blend=all_mode=screen:all_opacity=0.85,"
+        f"noise=alls=10:allf=t,eq=contrast=1.08:saturation=1.2[out]"
+    )
+    cmd = ["ffmpeg", "-y",
+           "-sseof", f"-{dur}", "-i", a,
+           "-t", str(dur), "-i", b,
+           "-f", "lavfi", "-i", leak,
+           "-filter_complex", fc, "-map", "[out]", *enc, "-r", str(fps), out]
+    subprocess.run(cmd, check=True)
+
+
+def vault_doors(a, b, dur, w, h, fps, out, enc):
+    n = norm(w, h, fps)
+    # #105 Vault / Elevator Door Bi-Parting Wipe: two dark steel panels slide
+    # in from left and right, slam shut at center over the last of clip A,
+    # then part again to reveal clip B. Base is a hard cut A->B at the
+    # midpoint (concat of two half-length segments); the panels are a
+    # brushed-metal gradient (half-width), one mirrored for the right side.
+    half = dur / 2
+    hw = w // 2
+    panel = (f"gradients=s={hw}x{h}:d={dur}:rate={fps}:"
+             f"c0=0x45454f:c1=0x101014:x0=0:y0=0:x1={hw}:y1={h}")
+    # left panel closes 0..half (x: -hw -> 0) then opens half..dur (0 -> -hw)
+    xL = (f"'if(lt(t,{half}), -{hw}+{hw}*(t/{half}), -{hw}*((t-{half})/{half}))'")
+    # right panel closes (x: w -> hw) then opens (hw -> w)
+    xR = (f"'if(lt(t,{half}), {w}-{hw}*(t/{half}), {hw}+{hw}*((t-{half})/{half}))'")
+    fc = (
+        f"[0:v]{n}[a];[1:v]{n}[b];"
+        f"[a][b]concat=n=2:v=1:a=0[base];"
+        f"[2:v]scale={hw}:{h},setsar=1,format=rgba,split=2[pL0][pR0];"
+        f"[pR0]hflip[pR];"
+        f"[base][pL0]overlay=x={xL}:y=0[o1];"
+        f"[o1][pR]overlay=x={xR}:y=0[out]"
+    )
+    cmd = ["ffmpeg", "-y",
+           "-sseof", f"-{half}", "-i", a,
+           "-t", str(half), "-i", b,
+           "-f", "lavfi", "-i", panel,
+           "-filter_complex", fc, "-map", "[out]", *enc, "-r", str(fps), out]
+    subprocess.run(cmd, check=True)
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("kind", choices=["whip_pan", "glitch"])
+    p.add_argument("kind", choices=["whip_pan", "glitch", "film_burn", "vault_doors"])
     p.add_argument("--clip-a", required=True)
     p.add_argument("--clip-b", required=True)
     p.add_argument("--duration", type=float, default=0.35)
@@ -100,7 +159,8 @@ def main():
 
     w, h = (int(x) for x in args.resolution.lower().split("x"))
     enc = encoder_args(args.software)
-    fn = {"whip_pan": whip_pan, "glitch": glitch}[args.kind]
+    fn = {"whip_pan": whip_pan, "glitch": glitch,
+          "film_burn": film_burn, "vault_doors": vault_doors}[args.kind]
     fn(args.clip_a, args.clip_b, args.duration, w, h, args.fps, args.out, enc)
     print(f"Wrote {args.kind} bridge -> {args.out}")
 

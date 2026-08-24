@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Transition #067 — Spotlight Blackout Cut</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+      video { display: none; }
+      canvas { position: absolute; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="0.9"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+      data-composition-variables='{"clipA": "assets/clipA.mp4", "clipB": "assets/clipB.mp4"}'
+    >
+      <video id="clipA" data-start="0" data-duration="0.9" data-track-index="1" src="assets/clipA.mp4" muted playsinline></video>
+      <video id="clipB" data-start="0" data-duration="0.9" data-track-index="2" src="assets/clipB.mp4" muted playsinline></video>
+      <section id="stage" class="clip" data-start="0" data-duration="0.9" data-track-index="3">
+        <canvas id="c" width="1920" height="1080"></canvas>
+      </section>
+    </div>
+
+    <script>
+      // Transition #067 "Spotlight Blackout Cut" (manifest.json:
+      // engine=hyperframes, render_mode=baked). Clip A (the boardroom) has the
+      // darkness close in around it to total black, a beat of black, then a
+      // hard cut to clip B (the figure) as a spotlight irises open on them and
+      // widens to fill — a literal match to a stage/spotlight incoming shot.
+      window.__timelines = window.__timelines || {};
+      const root = document.getElementById("root");
+      const clipA = document.getElementById("clipA");
+      const clipB = document.getElementById("clipB");
+      if (window.__hyperframes) {
+        const v = window.__hyperframes.getVariables();
+        if (v.clipA) clipA.src = v.clipA;
+        if (v.clipB) clipB.src = v.clipB;
+      }
+      const cv = document.getElementById("c");
+      const ctx = cv.getContext("2d");
+      const W = cv.width, H = cv.height;
+      const cx = W / 2, cy = H * 0.52;   // spotlight centre (on the figure)
+      const maxR = Math.hypot(W, H) / 2 * 1.05;
+
+      const BLACKOUT = 0.42;   // A fully dark by here
+      const CUT = 0.5;         // hard cut A->B, spotlight starts opening
+
+      function cover(video) {
+        if (video.readyState < 2) return;
+        const vw = video.videoWidth, vh = video.videoHeight;
+        const s = Math.max(W / vw, H / vh);
+        const dw = vw * s, dh = vh * s;
+        ctx.drawImage(video, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      }
+
+      // draw a scene, then punch it down to a soft-edged circular pool of the
+      // given radius (everything outside the pool goes black)
+      function withSpotlight(video, radius) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
+        if (radius <= 1) return;
+        ctx.save();
+        const g = ctx.createRadialGradient(cx, cy, Math.max(radius * 0.6, 1), cx, cy, radius);
+        g.addColorStop(0, "rgba(255,255,255,1)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        // build the mask in an offscreen pass via globalCompositeOperation
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.clip();
+        cover(video);
+        // soft edge: overlay a fading black ring
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+
+      function render(t) {
+        if (t < CUT) {
+          // A: darkness closes in — radius shrinks maxR -> 0 by BLACKOUT
+          const p = Math.min(t / BLACKOUT, 1);
+          withSpotlight(clipA, maxR * (1 - p));
+        } else {
+          // B: spotlight opens from a tight pool to full
+          const p = Math.min((t - CUT) / (Number(root.dataset.duration) - CUT), 1);
+          const r = 140 + (maxR - 140) * p;
+          withSpotlight(clipB, r);
+        }
+      }
+
+      const proxy = { t: 0 };
+      const tl = gsap.timeline({ paused: true });
+      tl.to(proxy, { t: Number(root.dataset.duration), duration: Number(root.dataset.duration),
+                     ease: "none", onUpdate: () => render(proxy.t) });
+      render(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
