@@ -91,6 +91,7 @@ def build_filter_graph(cutlist):
     (filter_complex_str, input_files, final_video_label)."""
     seq = cutlist["sequence"]
     width, height = (int(x) for x in cutlist.get("resolution", "1920x1080").lower().split("x"))
+    fps = cutlist.get("fps", 30)
     inputs = []
     filters = []
     label_counter = [0]
@@ -105,8 +106,13 @@ def build_filter_graph(cutlist):
 
     # every source — clip, baked-transition clip, or overlay asset — gets
     # normalized to one common resolution/SAR/framerate before it hits
-    # concat/xfade/blend, which all require matching geometry across inputs.
-    scale_expr = f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+    # concat/xfade/blend, which all require matching geometry AND framerate
+    # across inputs (mixing 24fps footage with a 30fps rendered bridge in a
+    # concat otherwise produces timing/stutter artifacts).
+    scale_expr = (
+        f"fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+    )
 
     clip_labels = []
     for item in seq:

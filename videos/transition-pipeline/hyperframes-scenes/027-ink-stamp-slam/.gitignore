@@ -1,0 +1,4 @@
+node_modules/
+package-lock.json
+renders/*.mp4
+assets/*.mp4

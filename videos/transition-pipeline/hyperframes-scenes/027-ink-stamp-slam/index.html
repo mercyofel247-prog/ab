@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Transition #027 — Ink Stamp & Redacted File Slam</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+      #shake { position: absolute; inset: 0; }
+      video { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
+      #clipB { opacity: 0; }
+      #stage { position: absolute; inset: 0; pointer-events: none; }
+      /* flexbox centering so GSAP can own the stamp's transform (scale +
+         rotation) without clobbering translate-based centering — the lint
+         rule gsap_css_transform_conflict flags exactly that collision. */
+      #stamp-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #stamp {
+        opacity: 0;
+        border: 16px solid #ff2233;
+        color: #ff2233;
+        font-family: "Arial Black", Arial, sans-serif;
+        font-weight: 900;
+        font-size: 190px;
+        letter-spacing: 8px;
+        padding: 20px 60px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        /* dark backing keeps the stamp readable over bright/red areas of the
+           footage (device glow) so it clears the 3:1 contrast check, while
+           the semi-transparent red still reads as inked onto the plate. */
+        background: rgba(0, 0, 0, 0.32);
+        text-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+        box-shadow: inset 0 0 0 6px rgba(255, 34, 51, 0.4), 0 0 30px rgba(0, 0, 0, 0.5);
+      }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="0.9"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+      data-composition-variables='{"clipA": "assets/clipA.mp4", "clipB": "assets/clipB.mp4", "stampText": "CLASSIFIED"}'
+    >
+      <video id="clipA" data-start="0" data-duration="0.9" data-track-index="1" src="assets/clipA.mp4" muted playsinline></video>
+      <video id="clipB" data-start="0" data-duration="0.9" data-track-index="2" src="assets/clipB.mp4" muted playsinline></video>
+      <section id="stage" class="clip" data-start="0" data-duration="0.9" data-track-index="3">
+        <div id="shake">
+          <div id="stamp-center"><div id="stamp">CLASSIFIED</div></div>
+          <div id="flash"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Transition #027 "Ink Stamp & Redacted File Slam" (manifest.json:
+      // engine=hyperframes, render_mode=baked). ClipA holds, a heavy stamp
+      // slams down with a hard cut to clipB + screen shake on the impact
+      // beat — the signature magnatesmedia "FRAUD/BANKRUPT" slam.
+      window.__timelines = window.__timelines || {};
+
+      const root = document.getElementById("root");
+      const clipA = document.getElementById("clipA");
+      const clipB = document.getElementById("clipB");
+      if (window.__hyperframes) {
+        const v = window.__hyperframes.getVariables();
+        if (v.clipA) clipA.src = v.clipA;
+        if (v.clipB) clipB.src = v.clipB;
+        if (v.stampText) document.getElementById("stamp").textContent = v.stampText;
+      }
+
+      const IMPACT = 0.45;
+      const tl = gsap.timeline({ paused: true });
+
+      // clipA holds until impact, then hard-cut to clipB
+      tl.set("#clipB", { opacity: 0 }, 0);
+      tl.set("#clipB", { opacity: 1 }, IMPACT);
+
+      // stamp slams down: big -> settle, appearing right at impact
+      tl.set("#stamp", { opacity: 0, scale: 6, rotation: -14 }, 0);
+      tl.to("#stamp", { opacity: 1, scale: 1, duration: 0.09, ease: "power4.in" }, IMPACT - 0.09);
+      // tiny overshoot recoil
+      tl.to("#stamp", { scale: 1.06, duration: 0.05, ease: "power2.out" }, IMPACT);
+      tl.to("#stamp", { scale: 1.0, duration: 0.14, ease: "power2.out" }, IMPACT + 0.05);
+
+      // white impact flash
+      tl.set("#flash", { opacity: 0 }, 0);
+      tl.to("#flash", { opacity: 0.55, duration: 0.03, ease: "none" }, IMPACT);
+      tl.to("#flash", { opacity: 0, duration: 0.22, ease: "power2.out" }, IMPACT + 0.03);
+
+      // hard screen shake on impact
+      const shakes = [[-26, 14], [22, -18], [-16, 10], [10, -8], [-5, 4], [0, 0]];
+      shakes.forEach((s, i) => {
+        tl.to("#shake", { x: s[0], y: s[1], duration: 0.03, ease: "none" }, IMPACT + i * 0.03);
+      });
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
