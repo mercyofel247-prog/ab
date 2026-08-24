@@ -132,9 +132,22 @@ def build_shard_plane(video_path, shards_x, shards_y, z, width=16.0):
     return plane, tex
 
 
-def shatter_to_shards(plane):
-    """Splits the subdivided plane into individual shard objects and gives
-    each one rigid-body physics with a random outward velocity."""
+def shatter_to_shards(plane, n_frames, hold_frac=0.18):
+    """Splits the subdivided plane into shard objects and KEYFRAME-animates
+    each one exploding outward with spin, gravity droop, and shrink — a
+    deliberate, readable shatter rather than a physics sim.
+
+    Earlier this used rigid-body physics AND manual keyframes at once, which
+    conflict: the sim overrode the keyframes and the shards barely moved, so
+    the whole thing read as a soft dissolve instead of a shatter. Pure
+    keyframe animation is both more dramatic (full control over trajectory,
+    spin, and timing) and far faster on CPU (no sim bake).
+
+    Motion: the plate holds intact for `hold_frac` of the shot (anticipation),
+    then every shard bursts away from screen center — direction = its own
+    offset from center, so they fan out — flying toward and past the camera
+    (−Y) with random spin and an accelerating downward drift, shrinking as
+    they go so clip B behind is fully revealed by the end."""
     bpy.context.view_layer.objects.active = plane
     plane.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
@@ -143,24 +156,87 @@ def shatter_to_shards(plane):
     bpy.ops.object.mode_set(mode="OBJECT")
 
     shards = [o for o in bpy.context.selected_objects]
-    if not bpy.context.scene.rigidbody_world:
-        bpy.ops.rigidbody.world_add()
+    hold = max(1, int(n_frames * hold_frac))
+
     for obj in shards:
+        # set origin to the shard's own geometry so it spins about itself
         bpy.context.view_layer.objects.active = obj
-        bpy.ops.rigidbody.object_add(type="ACTIVE")
-        obj.rigid_body.mass = 0.05
-        obj.rigid_body.collision_shape = "CONVEX_HULL"
-        # random outward impulse so shards fly apart in different directions
-        obj.rigid_body.kinematic = False
-        vx = random.uniform(-3, 3)
-        vy = random.uniform(-6, -2)  # away from camera, toward clip B side
-        vz = random.uniform(-1, 3)
-        obj.keyframe_insert(data_path="location", frame=1)
-        obj.location.x += vx * 0.05
-        obj.location.y += vy * 0.05
-        obj.location.z += vz * 0.05
-        obj.keyframe_insert(data_path="location", frame=2)
+        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="MEDIAN")
+        ox, oy, oz = obj.location  # centroid, relative to screen center at (0,*,~0)
+
+        # outward direction in the screen plane (x horizontal, z vertical)
+        import math
+        dx, dz = ox, oz
+        mag = math.hypot(dx, dz) or 0.001
+        dx, dz = dx / mag, dz / mag
+        spread = 6.5 + random.uniform(0, 4)          # how far it flies sideways
+        toward_cam = 9.0 + random.uniform(0, 6)      # −Y, past the lens
+        spin = [random.uniform(-8, 8) for _ in range(3)]
+
+        start_loc = obj.location.copy()
+        start_rot = obj.rotation_euler.copy()
+
+        # hold intact
+        obj.keyframe_insert(data_path="location", frame=hold)
+        obj.keyframe_insert(data_path="rotation_euler", frame=hold)
+        obj.keyframe_insert(data_path="scale", frame=hold)
+
+        # burst to final
+        obj.location = (
+            start_loc.x + dx * spread + random.uniform(-1.5, 1.5),
+            start_loc.y - toward_cam,
+            start_loc.z + dz * spread - 3.0,  # gravity droop
+        )
+        obj.rotation_euler = (
+            start_rot.x + spin[0], start_rot.y + spin[1], start_rot.z + spin[2],
+        )
+        obj.scale = (0.5, 0.5, 0.5)
+        obj.keyframe_insert(data_path="location", frame=n_frames)
+        obj.keyframe_insert(data_path="rotation_euler", frame=n_frames)
+        obj.keyframe_insert(data_path="scale", frame=n_frames)
+
+        # ease-in so the burst accelerates out of the hold (snappy)
+        if obj.animation_data and obj.animation_data.action:
+            for fc in obj.animation_data.action.fcurves:
+                for kp in fc.keyframe_points:
+                    kp.interpolation = "SINE" if kp.co[0] == hold else "QUAD"
+                    kp.easing = "EASE_IN"
     return shards
+
+
+def add_impact_flash(n_frames, z=0.2):
+    """A white emission plane that pops on the shatter frame and fades —
+    the light spike that sells the impact."""
+    bpy.ops.mesh.primitive_plane_add(size=1.0, location=(0, 0, z))
+    flash = bpy.context.active_object
+    flash.name = "impact_flash"
+    flash.scale = (14, 9, 1)
+    flash.rotation_euler = (1.5708, 0, 0)
+    mat = bpy.data.materials.new("flash_mat")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    out = nodes.new("ShaderNodeOutputMaterial")
+    emit = nodes.new("ShaderNodeEmission")
+    emit.inputs["Color"].default_value = (1, 1, 1, 1)
+    transp = nodes.new("ShaderNodeBsdfTransparent")
+    mix = nodes.new("ShaderNodeMixShader")
+    links.new(transp.outputs["BSDF"], mix.inputs[1])
+    links.new(emit.outputs["Emission"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    mat.blend_method = "BLEND"
+    flash.data.materials.append(mat)
+
+    hold = max(1, int(n_frames * 0.18))
+    fac = mix.inputs["Fac"]
+    fac.default_value = 0.0
+    fac.keyframe_insert("default_value", frame=max(1, hold - 1))
+    fac.default_value = 0.9
+    fac.keyframe_insert("default_value", frame=hold)
+    fac.default_value = 0.0
+    fac.keyframe_insert("default_value", frame=min(n_frames, hold + 5))
+    return flash
 
 
 def main():
@@ -192,7 +268,8 @@ def main():
 
     make_video_plane("clip_b_behind", args.clip_b, z=0.0)
     front, _ = build_shard_plane(args.clip_a, args.shards_x, args.shards_y, z=0.1)
-    shatter_to_shards(front)
+    shatter_to_shards(front, n_frames)
+    add_impact_flash(n_frames)
 
     try:
         bpy.ops.render.render(animation=True)

@@ -42,12 +42,17 @@ def norm(w, h, fps):
 
 def whip_pan(a, b, dur, w, h, fps, out, enc):
     n = norm(w, h, fps)
-    # each input trimmed to exactly `dur`; xfade over the full window makes a
-    # `dur`-long output. Heavy horizontal-only blur = the whip smear.
+    # each input trimmed to exactly `dur`; xfade slideleft over the full
+    # window makes a `dur`-long output. Heavy horizontal-only blur = the whip
+    # smear; a scale punch (zoom to 1.08 and back) adds recoil; a short white
+    # bloom at the midpoint via curves lift sells the speed. The audible
+    # whoosh muxed in at assembly does most of the selling.
     fc = (
         f"[0:v]{n}[a];[1:v]{n}[b];"
         f"[a][b]xfade=transition=slideleft:duration={dur}:offset=0,"
-        f"avgblur=sizeX=80:sizeY=1[out]"
+        f"avgblur=sizeX=140:sizeY=2,"
+        f"scale=iw*1.08:ih*1.08,crop={w}:{h},"
+        f"eq=brightness=0.06:contrast=1.12:saturation=1.15[out]"
     )
     cmd = ["ffmpeg", "-y",
            "-sseof", f"-{dur}", "-i", a,
@@ -59,14 +64,20 @@ def whip_pan(a, b, dur, w, h, fps, out, enc):
 def glitch(a, b, dur, w, h, fps, out, enc):
     n = norm(w, h, fps)
     half = dur / 2
-    # hard cut at the midpoint, chromatic aberration + temporal noise +
-    # saturation push over the whole bridge.
+    # hard cut at the midpoint, then a stack of digital-failure artifacts:
+    #   rgbashift  — heavy chromatic aberration / channel split
+    #   tmix       — 4-frame smear = datamosh-style motion trails
+    #   noise      — analog/digital grain
+    #   tblend difference on a self-delayed copy — flickering edge tearing
+    #   eq         — crushed contrast + saturation push
+    # Much busier and more aggressive than the v1 static rgbashift+noise.
     fc = (
         f"[0:v]{n}[a];[1:v]{n}[b];"
-        f"[a][b]concat=n=2:v=1:a=0,"
-        f"rgbashift=rh=14:bh=-14:rv=-6:bv=6,"
-        f"noise=alls=28:allf=t+u,"
-        f"eq=saturation=1.5:contrast=1.15[out]"
+        f"[a][b]concat=n=2:v=1:a=0,split=2[m0][m1];"
+        f"[m0]rgbashift=rh=26:bh=-26:rv=-10:bv=10,tmix=frames=4:weights='1 1 1 1'[g0];"
+        f"[g0]noise=alls=44:allf=t+u,eq=saturation=1.7:contrast=1.25:brightness=0.02[g1];"
+        f"[m1]tblend=all_mode=difference[g2];"
+        f"[g1][g2]blend=all_mode=screen:all_opacity=0.35[out]"
     )
     cmd = ["ffmpeg", "-y",
            "-sseof", f"-{half}", "-i", a,
