@@ -23,6 +23,15 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   apt-get install -y -qq ffmpeg
 fi
 
+# Blender (headless 3D/render tool; not bundled in the sandbox). Script it with
+# `blender --background --python <script.py>` — the apt build ships its own bundled
+# Python, so a standalone `import bpy` from system python3 is not expected to work.
+# Non-fatal: a failed install shouldn't abort the whole session.
+if ! command -v blender >/dev/null 2>&1; then
+  apt-get update -qq
+  apt-get install -y -qq blender || echo "warning: blender install failed; 3D/blender renders won't be available this session"
+fi
+
 # HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts)
 npm install -g hyperframes@0.7.107
 
