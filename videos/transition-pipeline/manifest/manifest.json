@@ -1,0 +1,1410 @@
+{
+  "transitions": [
+    {
+      "id": 1,
+      "name": "2.5D Multiplane Z-Depth Fly-Through",
+      "description": "The 3D camera pushes past layered foreground cutouts into a new scene.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F layered-plane dolly, no physics needed",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 2,
+      "name": "Natural Mask / Edge Wipe",
+      "description": "A moving subject (car, person, train) crosses the frame, revealing the next shot behind its edge.",
+      "engine": "ffmpeg",
+      "technique": "matte from source footage",
+      "render_mode": "native",
+      "note": "luma/alpha matte from the moving subject in the source clip itself",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 3,
+      "name": "Torn Paper & Scrapbook Reveal",
+      "description": "A textured paper rip peels across the screen with drop shadows to expose archival evidence.",
+      "engine": "hyperframes",
+      "technique": "2D texture reveal",
+      "render_mode": "baked",
+      "note": "CSS/canvas paper-tear with drop shadow",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 4,
+      "name": "3D Document Headline Zoom & Crash Cut",
+      "description": "A highlighter marks text on a 3D document before the camera crash-zooms into a photo box.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F crash-zoom into a flat doc plane",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 5,
+      "name": "Film Burn & Halation Flash",
+      "description": "A warm photochemical 35mm light leak and exposure spike bridges two scenes.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock light-leak/film-burn element, screen/add blend",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 6,
+      "name": "Dynamic Whip-Pan Snap",
+      "description": "An aggressive horizontal or vertical camera whip with 360° motion blur.",
+      "engine": "remotion",
+      "technique": "camera move + motion blur",
+      "render_mode": "baked",
+      "note": "uses @remotion/motion-blur, already a project dependency",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 7,
+      "name": "Glitch & Digital Distortion",
+      "description": "RGB channel split, chromatic aberration, and static lines momentarily break apart the image.",
+      "engine": "hyperframes",
+      "technique": "shader distortion",
+      "render_mode": "baked",
+      "note": "WebGL RGB-split/glitch shader, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 8,
+      "name": "Graphic Match Cut",
+      "description": "Cuts on aligned geometric shapes sharing continuous rotational or scale motion (e.g., coin to wheel).",
+      "engine": "ffmpeg",
+      "technique": "editorial cut",
+      "render_mode": "native",
+      "note": "precise trim on aligned geometry, no synthetic asset",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 9,
+      "name": "Comic / Graphic-Novel Panel Slide",
+      "description": "Noir-bordered modular frames slide and assemble into split-screen layouts.",
+      "engine": "hyperframes",
+      "technique": "2D panel layout",
+      "render_mode": "baked",
+      "note": "CSS split-screen panel assembly",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 10,
+      "name": "Organic Ink Bleed Matte",
+      "description": "High-contrast fluid ink drops disperse across paper, blooming into historical images.",
+      "engine": "blender",
+      "technique": "fluid sim",
+      "render_mode": "baked",
+      "note": "Mantaflow fluid for physically believable ink dispersion",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 11,
+      "name": "Volumetric Smoke & Fog Wipe",
+      "description": "A dense wall of atmospheric smoke or fire embers rolls across the lens to reset the scene.",
+      "engine": "blender",
+      "technique": "volumetric sim",
+      "render_mode": "baked",
+      "note": "Mantaflow smoke/fire domain",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 12,
+      "name": "Cartographic Map & Territory Plunge",
+      "description": "Camera flies over a 3D vintage map along glowing paths and dives into ground-level footage.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F flyover of a textured map plane + plunge",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 13,
+      "name": "UI / Browser Dive",
+      "description": "Camera crash-zooms directly into a search bar or button pixel grid, expanding to the next scene.",
+      "engine": "hyperframes",
+      "technique": "UI motion graphic",
+      "render_mode": "baked",
+      "note": "pure HTML/CSS zoom into UI pixel grid",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 14,
+      "name": "Ink Stamp & Redacted File Slam",
+      "description": "A heavy impact stamp (\"BANKRUPT\", \"FRAUD\") slams down with screen shake on the cut beat.",
+      "engine": "hyperframes",
+      "technique": "2D impact graphic",
+      "render_mode": "baked",
+      "note": "CSS/canvas stamp slam + screen shake",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 15,
+      "name": "Tabletop Surface Plunge",
+      "description": "Camera tilts 90° into a dark desk or floorboards, passing through shadow into a new environment.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F 90° plunge through a simple plane",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 16,
+      "name": "Film Gate Slip & Frame Roll",
+      "description": "Vintage film slips out of the projector gate, rolling vertically with visible sprockets.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock film-gate/sprocket element, blend mode",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 17,
+      "name": "Depth-of-Field Rack Focus Blur",
+      "description": "Foreground dissolves into heavy bokeh while an out-of-focus background element sharpens.",
+      "engine": "ffmpeg",
+      "technique": "lens blur",
+      "render_mode": "native",
+      "note": "ramped gblur/boxblur filter over time, no engine needed",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 18,
+      "name": "Negative / Solarization Flash",
+      "description": "A 3-frame photographic color inversion that snaps abruptly into a darker narrative act.",
+      "engine": "ffmpeg",
+      "technique": "color filter",
+      "render_mode": "native",
+      "note": "negate/lutrgb filter, 3-frame flash",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 19,
+      "name": "3D Archival Ledger Page-Turn",
+      "description": "A 3D leather-bound book page curls and turns across the camera view to start a chapter.",
+      "engine": "blender",
+      "technique": "cloth sim",
+      "render_mode": "baked",
+      "note": "cloth or bendy-mesh sim for believable page curl + shadow",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 20,
+      "name": "3D Portrait / Tarot Card Flip",
+      "description": "A floating profile card spins 180° around its vertical axis to reveal a business rival.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "rigid 180° card flip, R3F, no physics",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 21,
+      "name": "Macro Halftone Dot Pull-Out",
+      "description": "Camera rapidly zooms out backward from microscopic CMYK print dots to reveal a full image.",
+      "engine": "hyperframes",
+      "technique": "shader zoom",
+      "render_mode": "baked",
+      "note": "WebGL halftone-dot shader, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 22,
+      "name": "Particle Disintegration & Gold Dust",
+      "description": "A logo or banknote dissolves into thousands of glowing golden ash particles.",
+      "engine": "blender",
+      "technique": "particle sim",
+      "render_mode": "baked",
+      "note": "physics-driven particle dispersal for believable dust",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 23,
+      "name": "Iris Silhouette & Keyhole Tunnel",
+      "description": "Camera plunges through a focal opening (eye pupil, keyhole) that expands into a full shot.",
+      "engine": "hyperframes",
+      "technique": "2D mask",
+      "render_mode": "baked",
+      "note": "SVG/CSS clip-path iris mask",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 24,
+      "name": "Glass Fracture & Screen Shatter",
+      "description": "The frame cracks and shatters into 3D glass shards that tumble away under gravity.",
+      "engine": "blender",
+      "technique": "rigid body fracture",
+      "render_mode": "baked",
+      "note": "Cell-Fracture-style shatter + rigid body world",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 25,
+      "name": "Morphing Vector Shape",
+      "description": "Flat vector paths organically reshape vertices to morph one corporate logo into another.",
+      "engine": "hyperframes",
+      "technique": "vector morph",
+      "render_mode": "baked",
+      "note": "SVG path/vertex interpolation",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 26,
+      "name": "Chapter Slate / Timeline Sweep",
+      "description": "A horizontal progress timeline bar sweeps across the screen into a Roman numeral title slate.",
+      "engine": "hyperframes",
+      "technique": "UI motion graphic",
+      "render_mode": "baked",
+      "note": "timeline bar sweep + title slate",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 27,
+      "name": "Typographic Stencil Expand Wipe",
+      "description": "Video plays inside a bold word before the camera dives through a letter counter to fill the screen.",
+      "engine": "hyperframes",
+      "technique": "text mask reveal",
+      "render_mode": "baked",
+      "note": "CSS mask-composite / SVG text mask",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 28,
+      "name": "Corkboard Red String Pan",
+      "description": "Camera follows a taut red yarn string along pinned evidence cards on a detective corkboard.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F pan across a corkboard scene with string curve",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 29,
+      "name": "Stock Chart Crash Plunge",
+      "description": "Camera follows a red candlestick chart crashing vertically downward into the aftermath scene.",
+      "engine": "hyperframes",
+      "technique": "chart/UI graphic",
+      "render_mode": "baked",
+      "note": "vector chart animation with camera-follow",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 30,
+      "name": "Isometric Diorama Room Rotation",
+      "description": "A miniature 3D room rotates on an angle as walls fold down to reveal a new interior.",
+      "engine": "blender",
+      "technique": "rigged 3D scene",
+      "render_mode": "baked",
+      "note": "miniature room with folding walls, real geometry + rig",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 31,
+      "name": "Archival Microfilm Scrubber",
+      "description": "High-speed horizontal reel of inverted microfilm negatives whips across the lens.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock microfilm-reel element, horizontal whip blend",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 32,
+      "name": "Currency Rain Waterfall",
+      "description": "Hundreds of falling 3D banknotes tumble across the lens, creating a solid curtain of money.",
+      "engine": "blender",
+      "technique": "rigid body + particles",
+      "render_mode": "baked",
+      "note": "banknote fall with collision physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 33,
+      "name": "Subliminal Montage Strobe",
+      "description": "A rapid succession of 1-frame archival photos and flashes synchronized to musical beats.",
+      "engine": "ffmpeg",
+      "technique": "edit timing",
+      "render_mode": "native",
+      "note": "rapid-fire still-frame sequencing, concat/frame-hold",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 34,
+      "name": "Spotlight Blackout Cut",
+      "description": "Ambient lights dim down until a single spotlight on a subject snaps off into total blackness.",
+      "engine": "hyperframes",
+      "technique": "2D lighting mask",
+      "render_mode": "baked",
+      "note": "radial gradient vignette animation",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 35,
+      "name": "CRT Phosphor Collapse Snap",
+      "description": "Screen collapses vertically into a bright horizontal line, shrinks to a dot, and snaps open.",
+      "engine": "hyperframes",
+      "technique": "shader effect",
+      "render_mode": "baked",
+      "note": "WebGL scanline-collapse shader, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 36,
+      "name": "Anamorphic Blue Streak Light Sweep",
+      "description": "A horizontal anamorphic lens flare sweeps across the screen, wiping the plate behind it.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock anamorphic flare element, screen blend",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 37,
+      "name": "Security Camera Fisheye Distortion",
+      "description": "Image bows outward into a wide-angle surveillance lens with timestamps and scanlines.",
+      "engine": "ffmpeg",
+      "technique": "lens distortion",
+      "render_mode": "native",
+      "note": "ffmpeg lenscorrection/v360 filter",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 38,
+      "name": "3D Trading Card Deck Peel",
+      "description": "Top profile card slides out of a 3D stacked deck and whips off-screen past the camera.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "rigid card peel off a stack, R3F",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 39,
+      "name": "Venetian Blind Shadow Wipe",
+      "description": "High-contrast window blind shadows sweep across the frame, using darkness slats to bridge scenes.",
+      "engine": "ffmpeg",
+      "technique": "mask wipe",
+      "render_mode": "native",
+      "note": "custom slat mask via geq/blend filter graph",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 40,
+      "name": "Sub-Bass Shockwave Ripple",
+      "description": "A circular displacement shockwave ripples outward from the center on a heavy sub-bass hit.",
+      "engine": "hyperframes",
+      "technique": "shader ripple",
+      "render_mode": "baked",
+      "note": "WebGL radial displacement shader, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 41,
+      "name": "Character Action Kinetic Strike Cut",
+      "description": "A 2.5D character swings a tool or fist; the exact frame of impact triggers the cut.",
+      "engine": "blender",
+      "technique": "character animation",
+      "render_mode": "baked",
+      "note": "rigged 2.5D character, grease pencil or 3D rig",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 42,
+      "name": "3D Coin Toss Lens Occlusion",
+      "description": "A spinning gold coin flips upward, completely covering the camera lens before dropping into Scene B.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "spinning coin with physics drop",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 43,
+      "name": "Sky Tilt & Horizon Dissolve",
+      "description": "Camera tilts up into empty sky for an atmospheric fade, tilting down onto a new city skyline.",
+      "engine": "ffmpeg",
+      "technique": "dissolve",
+      "render_mode": "native",
+      "note": "xfade dissolve timed to a source-footage tilt",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 44,
+      "name": "UI Cursor Click & Expansion Bloom",
+      "description": "A mouse cursor clicks a button or folder, which scales exponentially outward to fill the canvas.",
+      "engine": "hyperframes",
+      "technique": "UI motion graphic",
+      "render_mode": "baked",
+      "note": "cursor click + radial expansion bloom",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 45,
+      "name": "Chronometer Clock-Hand Spin",
+      "description": "Vintage clock hands spin at high rotational speed with radial blur to jump through years.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "simple hand rotation, R3F, no physics needed",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 46,
+      "name": "Branded Color-Block Bar Wipe",
+      "description": "Staggered solid brand-colored vector rectangles slide across the screen to assemble new layouts.",
+      "engine": "hyperframes",
+      "technique": "vector wipe",
+      "render_mode": "baked",
+      "note": "staggered color-block bar wipe",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 47,
+      "name": "Blueprint Laser Scanline Wipe",
+      "description": "A glowing cyan scan line sweeps down the frame, converting photography into an architectural CAD blueprint.",
+      "engine": "hyperframes",
+      "technique": "shader scanline",
+      "render_mode": "baked",
+      "note": "WebGL scanline sweep + blueprint color shader",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 48,
+      "name": "Accordion Paper Brochure Unfold",
+      "description": "A folded pamphlet drops in and unfolds its multi-panel quadrants outward in 3D space.",
+      "engine": "blender",
+      "technique": "cloth / hinge sim",
+      "render_mode": "baked",
+      "note": "multi-panel fold with correct hinge physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 49,
+      "name": "Fluid Submersion Plunge (Liquid Dip)",
+      "description": "Camera dives into dark liquid (oil/cola) until fully opaque, emerging in a new facility.",
+      "engine": "blender",
+      "technique": "fluid sim",
+      "render_mode": "baked",
+      "note": "Mantaflow liquid submersion / opacity dip",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 50,
+      "name": "Prismatic Glass Kaleidoscope Split",
+      "description": "Frame refracts into geometric rotating glass facets before resolving into the target shot.",
+      "engine": "hyperframes",
+      "technique": "shader kaleidoscope",
+      "render_mode": "baked",
+      "note": "WebGL fragment-shader facet split, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 51,
+      "name": "3D Wax Seal Crack & Charter Unfurl",
+      "description": "A red wax seal cracks in half and pops off as a parchment roll unfurls.",
+      "engine": "blender",
+      "technique": "rigid fracture + cloth",
+      "render_mode": "baked",
+      "note": "wax crack fracture + parchment unroll",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 52,
+      "name": "Horizontal Filmstrip Carousel",
+      "description": "A continuous 35mm film strip with sprocket perforations slides horizontally across the viewport.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock 35mm filmstrip element, scroll blend",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 53,
+      "name": "Vault / Elevator Door Bi-Parting Wipe",
+      "description": "Heavy steel doors slam shut to center from both sides and reopen on a new scene.",
+      "engine": "blender",
+      "technique": "rigged 3D mechanism",
+      "render_mode": "baked",
+      "note": "heavy steel doors, PBR metal material + weight",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 54,
+      "name": "Ticker Tape Ribbon Streamer",
+      "description": "A twisting 3D paper ticker tape ribbon with financial numbers sweeps directly across the lens.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "R3F twisted ribbon curve with mapped text",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 55,
+      "name": "Atmospheric Heat Mirage Ripple",
+      "description": "Extreme vertical convection heat waves warp the frame before dissolving to an arid landscape.",
+      "engine": "hyperframes",
+      "technique": "shader distortion",
+      "render_mode": "baked",
+      "note": "WebGL heat-shimmer ripple shader",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 56,
+      "name": "Video Compression Artifact Dissolve",
+      "description": "Footage drops to 240p macroblocks and low frame rates before snapping to clean 4K.",
+      "engine": "hyperframes",
+      "technique": "shader artifact",
+      "render_mode": "baked",
+      "note": "WebGL macroblock/compression-artifact shader",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 57,
+      "name": "Reticle Laser Grid QR Scan",
+      "description": "A neon targeting reticle scans a screen, expanding an isometric HUD grid across the canvas.",
+      "engine": "hyperframes",
+      "technique": "UI/HUD motion graphic",
+      "render_mode": "baked",
+      "note": "targeting reticle + isometric HUD grid",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 58,
+      "name": "Wheatpaste Poster Roller Wipe",
+      "description": "A wet paste roller sweeps down a brick wall, applying a fresh paper ad over the old one.",
+      "engine": "blender",
+      "technique": "rigged mechanism + cloth",
+      "render_mode": "baked",
+      "note": "roller object + paper lay-down on brick wall",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 59,
+      "name": "Magnifying Glass Loupe Reveal",
+      "description": "A circular magnifying loupe examines fine print, expanding its lens bubble to fill the screen.",
+      "engine": "hyperframes",
+      "technique": "2D lens mask",
+      "render_mode": "baked",
+      "note": "CSS/canvas radial magnify mask",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 60,
+      "name": "Heavy Iron Prison Gate Drop",
+      "description": "Steel jail cell bars slam down vertically with heavy inertia and screen bounce.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "heavy gate drop with inertia/bounce",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 61,
+      "name": "Projector Film Burn-Through",
+      "description": "The film jams and bubbles with orange charred edges, burning open from the center outward.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock film-burn element, screen/add blend",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 62,
+      "name": "Mechanical Split-Flap (Solari) Flip",
+      "description": "Airport/train station departure board tiles flip rapidly through letters to form new words.",
+      "engine": "hyperframes",
+      "technique": "split-flap UI",
+      "render_mode": "baked",
+      "note": "classic CSS/JS split-flap (Solari) board",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 63,
+      "name": "Flashlight Beam / Searchlight Sweep",
+      "description": "In total darkness, a moving volumetric light cone sweeps across to illuminate cutouts.",
+      "engine": "hyperframes",
+      "technique": "2D light sweep",
+      "render_mode": "baked",
+      "note": "volumetric-look light cone via canvas radial gradient",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 64,
+      "name": "Trivision Billboard Slat Rotation",
+      "description": "Screen slices into vertical triangular prisms that rotate simultaneously along Y-axes.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "rotating triangular prism slats, R3F",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 65,
+      "name": "Teleprinter Letter-by-Letter Wipe",
+      "description": "A typewriter carriage advances across the screen, using the typed letters as a wipe boundary.",
+      "engine": "hyperframes",
+      "technique": "text animation",
+      "render_mode": "baked",
+      "note": "typewriter letter-by-letter CSS/JS reveal",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 66,
+      "name": "Film Leader Radial Sweep",
+      "description": "A circular 3-2-1 film countdown leader sweeps an arm 360° clockwise to reveal footage.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock countdown-leader element, radial mask",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 67,
+      "name": "Thermal Vision FLIR Heatmap Swap",
+      "description": "Image switches into false-color thermal infrared before dissolving into telemetry.",
+      "engine": "ffmpeg",
+      "technique": "color LUT",
+      "render_mode": "native",
+      "note": "pseudocolor/lut3d filter for false-color thermal swap",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 68,
+      "name": "Magnesium Flashbulb Bleach-Out",
+      "description": "Multiple vintage camera flashbulbs pop rapidly, overexposing the frame to solid white.",
+      "engine": "ffmpeg",
+      "technique": "strobe flash",
+      "render_mode": "native",
+      "note": "rapid eq/curves overexposure strobe",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 69,
+      "name": "Darkroom Chemical Developer Wash",
+      "description": "Under red safelight, an archival photograph slowly emerges from a blank chemical wash.",
+      "engine": "hyperframes",
+      "technique": "shader reveal",
+      "render_mode": "baked",
+      "note": "canvas progressive-reveal 'developing' shader",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 70,
+      "name": "Rotary Printing Press Cylinder Wipe",
+      "description": "Industrial rollers feed freshly printed newsprint directly past the lens.",
+      "engine": "blender",
+      "technique": "rigged 3D mechanism",
+      "render_mode": "baked",
+      "note": "industrial roller rig + newsprint material",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 71,
+      "name": "Cash Register Till Drawer Snap",
+      "description": "A vintage brass cash register drawer kicks forward toward the camera with a chime.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "mechanical drawer kick with physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 72,
+      "name": "Chalkboard Slate Eraser Wipe",
+      "description": "A felt eraser sweeps across a blackboard, turning written formulas into a chalk dust cloud.",
+      "engine": "hyperframes",
+      "technique": "2D texture wipe",
+      "render_mode": "baked",
+      "note": "chalkboard eraser sweep, canvas dust trail",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 73,
+      "name": "Gold Bullion Wall Occlusion",
+      "description": "Solid gold bars drop and stack rapidly into a solid brick wall that blocks the screen.",
+      "engine": "blender",
+      "technique": "rigid body + PBR",
+      "render_mode": "baked",
+      "note": "stacking gold bars, physics + PBR gold material",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 74,
+      "name": "X-Ray Skeletal Scan Wipe",
+      "description": "A luminescent cyan scan line sweeps down, revealing an internal skeletal radiograph view.",
+      "engine": "hyperframes",
+      "technique": "shader scanline",
+      "render_mode": "baked",
+      "note": "WebGL scanline reveal + skeletal color swap",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 75,
+      "name": "Magnetic Video Tape Tracking Crease",
+      "description": "Analog VHS tracking distortion and line tearing scroll vertically across the canvas.",
+      "engine": "ffmpeg",
+      "technique": "signal distortion",
+      "render_mode": "native",
+      "note": "VHS tracking distortion via geq/noise filters",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 76,
+      "name": "3D Globe Orbital Spin & Cloud Plunge",
+      "description": "Camera orbits a 3D Earth model and plunges through cloud layers to ground level.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "three.js textured sphere + cloud-layer plunge",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 77,
+      "name": "3D Chessboard Checkmate Slam",
+      "description": "A 3D chess piece slams down, knocking the opposing piece off the board to trigger a cut.",
+      "engine": "blender",
+      "technique": "rigid body collision",
+      "render_mode": "baked",
+      "note": "piece-on-piece collision physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 78,
+      "name": "Neon Tube High-Voltage Surge",
+      "description": "A neon sign buzzes and flickers erratically before surging with blinding overexposure.",
+      "engine": "hyperframes",
+      "technique": "2D glow shader",
+      "render_mode": "baked",
+      "note": "CSS/canvas neon flicker + glow filter",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 79,
+      "name": "Parchment Ember Burn & Ash Dissolve",
+      "description": "Glowing fire embers eat away an antique map, leaving drifting ash to reveal modern borders.",
+      "engine": "blender",
+      "technique": "particle sim",
+      "render_mode": "baked",
+      "note": "burn-through + ash particle dispersal",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 80,
+      "name": "Terminal Matrix Cascade",
+      "description": "Columns of green monospace code and hex dumps scroll vertically down the screen.",
+      "engine": "hyperframes",
+      "technique": "code-rain shader",
+      "render_mode": "baked",
+      "note": "canvas/WebGL matrix-style cascade",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 81,
+      "name": "Guillotine Blade Diagonal Razor Slash",
+      "description": "A reflective steel blade slices diagonally across the frame; the two halves slide apart.",
+      "engine": "hyperframes",
+      "technique": "2D split wipe",
+      "render_mode": "baked",
+      "note": "CSS clip-path diagonal split + reflective highlight sweep",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 82,
+      "name": "Topographic Contour Wireframe Build",
+      "description": "Flat contour lines draw on and elevate into a 3D heightmap wireframe terrain.",
+      "engine": "remotion",
+      "technique": "3D wireframe build",
+      "render_mode": "baked",
+      "note": "three.js procedural wireframe terrain",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 83,
+      "name": "Safe Combination Dial Spin & Lock",
+      "description": "A brass vault dial spins back and forth, locking into place as the heavy door swings open.",
+      "engine": "blender",
+      "technique": "rigged mechanism",
+      "render_mode": "baked",
+      "note": "dial spin + heavy door swing physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 84,
+      "name": "Volumetric Ink Dropper in Water",
+      "description": "Swirling plumes of dense black/crimson ink bloom in water to occlude the frame.",
+      "engine": "blender",
+      "technique": "fluid sim",
+      "render_mode": "baked",
+      "note": "Mantaflow swirling ink plume in water",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 85,
+      "name": "Slit-Scan Anamorphic Time Warp",
+      "description": "Pixels smear and stretch horizontally across a temporal displacement map before snapping clean.",
+      "engine": "hyperframes",
+      "technique": "shader displacement",
+      "render_mode": "baked",
+      "note": "WebGL pixel-smear displacement map",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 86,
+      "name": "Brass Compass Needle Lock",
+      "description": "A 3D navigational compass needle oscillates rapidly before locking onto target coordinates.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "simple needle oscillation + lock, R3F",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 87,
+      "name": "Silhouette Shadow Total Eclipse",
+      "description": "A character's cast shadow stretches forward toward the camera until black fills the frame.",
+      "engine": "hyperframes",
+      "technique": "2D silhouette",
+      "render_mode": "baked",
+      "note": "CSS/canvas shadow-stretch to black",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 88,
+      "name": "Cyanotype Architectural Flash",
+      "description": "An ultraviolet flash exposes the photo, converting it into a Prussian-blue blueprint print.",
+      "engine": "ffmpeg",
+      "technique": "color LUT + flash",
+      "render_mode": "native",
+      "note": "lut3d/eq flash, native filter",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 89,
+      "name": "Infinite Mirror Corridor Dive",
+      "description": "Camera dollies continuously through a recursive corridor of nested frames.",
+      "engine": "remotion",
+      "technique": "3D infinite corridor",
+      "render_mode": "baked",
+      "note": "three.js recursive nested-frame corridor trick",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 90,
+      "name": "Film Emulsion Scratch Gate Jam",
+      "description": "Heavy vertical film scratches and frame jitter intensify until the film slips the gate.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock film-damage element, blend mode",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 91,
+      "name": "Postage Stamp Perforation Tear",
+      "description": "Two stamps separate along die-cut teeth while a wavy postmark mark sweeps the frame.",
+      "engine": "hyperframes",
+      "technique": "2D perforation mask",
+      "render_mode": "baked",
+      "note": "SVG/canvas die-cut tear animation",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 92,
+      "name": "High-Speed Currency Counter Wipe",
+      "description": "Rubber spindle rollers spit banknotes toward the lens at high RPM to cover the frame.",
+      "engine": "blender",
+      "technique": "rigid body + particles",
+      "render_mode": "baked",
+      "note": "banknotes ejected at high RPM with physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 93,
+      "name": "35mm Celluloid Splice Block Cut",
+      "description": "Two film strips meet on a diagonal splice line and are taped together on the cut frame.",
+      "engine": "ffmpeg",
+      "technique": "practical overlay",
+      "render_mode": "overlay",
+      "note": "stock filmstrip element, diagonal splice",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 94,
+      "name": "Corporate Hierarchy Node Cascade",
+      "description": "Vector organization branches draw downward, popping circular portrait nodes that expand.",
+      "engine": "hyperframes",
+      "technique": "vector data-viz",
+      "render_mode": "baked",
+      "note": "SVG org-chart draw-on animation",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 95,
+      "name": "Newspaper Front-Page Stack Toss",
+      "description": "Multiple newspaper editions drop onto a wooden table in rapid succession with contact thuds.",
+      "engine": "blender",
+      "technique": "rigid body collision",
+      "render_mode": "baked",
+      "note": "stack-drop with contact/collision physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 96,
+      "name": "Dial-Up Browser Interlace Render",
+      "description": "An image renders from top to bottom in choppy, progressive horizontal blocks.",
+      "engine": "hyperframes",
+      "technique": "shader interlace",
+      "render_mode": "baked",
+      "note": "canvas progressive-interlace reveal",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 97,
+      "name": "Barbed Wire Boundary Wipe",
+      "description": "A strand of 3D barbed wire whips across the screen, pulling a security fence across footage.",
+      "engine": "remotion",
+      "technique": "3D curve geometry",
+      "render_mode": "baked",
+      "note": "three.js procedural wire/tube curve whip, no physics",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 98,
+      "name": "Patent Stamp Gold Foil Emboss Bloom",
+      "description": "A gold notary seal stamps down, sweeping an intense specular light glint across the ridges.",
+      "engine": "hyperframes",
+      "technique": "2D specular sweep",
+      "render_mode": "baked",
+      "note": "CSS/canvas gold-foil emboss glint sweep",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 99,
+      "name": "Vinyl Needle Scratch & Skew Cut",
+      "description": "A spinning vinyl record's tonearm scratches off the grooves, skewing the frame sideways.",
+      "engine": "hyperframes",
+      "technique": "2D skew/scratch",
+      "render_mode": "baked",
+      "note": "canvas skew + noise, precise control over needle-scratch timing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 100,
+      "name": "Floating 3D Composite End-Card Settle",
+      "description": "The master footage pulls back and tilts in 3D space, settling into an interactive video card.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "footage plane settling into 3D end-card, R3F",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 101,
+      "name": "Latent Diffusion Denoise / AI Generation Wipe",
+      "description": "Algorithmic static noise progressively denoises in discrete steps to reveal a resolved AI image.",
+      "engine": "hyperframes",
+      "technique": "shader denoise",
+      "render_mode": "baked",
+      "note": "WebGL procedural noise-to-image denoise simulation",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 102,
+      "name": "Crown Bottle Cap Pry-Off & Carbonation Burst",
+      "description": "A metal soda cap pops off with a pressurized gas mist, flipping toward the lens to wipe the scene.",
+      "engine": "blender",
+      "technique": "rigid body + particles",
+      "render_mode": "baked",
+      "note": "cap physics + gas/mist particle burst",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 103,
+      "name": "Flat-Pack Cardboard Box Tape Slice & Flap Open",
+      "description": "A utility blade slices packing tape, and four cardboard flaps fold outward in 3D perspective to reveal a new shot.",
+      "engine": "remotion",
+      "technique": "3D hinge rotation",
+      "render_mode": "baked",
+      "note": "simple hinged-flap rotation, R3F, no full physics",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 104,
+      "name": "Allen Key (Hex Wrench) 3D Rotational Lock",
+      "description": "A steel hex key turns 360° to torque a bolt, and the camera crash-zooms directly into the screw socket.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "prop rotation + crash zoom, R3F",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 105,
+      "name": "Lunar New Year Red Packet (Hongbao) Envelope Unseal",
+      "description": "An ornate red envelope unseals and spills glowing 3D gold coins that shower the camera.",
+      "engine": "blender",
+      "technique": "rigid body + particles",
+      "render_mode": "baked",
+      "note": "envelope opening + coin shower physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 106,
+      "name": "Gilded Age Hunter-Case Pocket Watch Lid Snap",
+      "description": "An engraved gold pocket watch lid springs open toward the lens, using its reflective surface to cut.",
+      "engine": "blender",
+      "technique": "rigged prop + PBR",
+      "render_mode": "baked",
+      "note": "detailed mechanical prop, photoreal gold material",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 107,
+      "name": "Tequila Shot Glass Slam & Liquid Splash",
+      "description": "A shot glass slams onto a table, sending upward liquid droplets across the foreground to soften the cut.",
+      "engine": "blender",
+      "technique": "fluid sim",
+      "render_mode": "baked",
+      "note": "Mantaflow droplet splash",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 108,
+      "name": "Standard Oil Wooden Barrel Roll & Bung Plug Pop",
+      "description": "A wooden barrel rolls across the screen and pops its bung plug, spraying black oil over the lens.",
+      "engine": "blender",
+      "technique": "rigid body + fluid",
+      "render_mode": "baked",
+      "note": "barrel roll physics + fluid oil spray",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 109,
+      "name": "Push Notification Banner Drop & Mobile Tap Bloom",
+      "description": "A UI notification banner slides down from the top, and a tap triggers an expanding radial reveal.",
+      "engine": "hyperframes",
+      "technique": "UI mockup",
+      "render_mode": "baked",
+      "note": "pure HTML/CSS notification banner + tap bloom",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 110,
+      "name": "Steam Locomotive Cowcatcher Impact Wipe",
+      "description": "A 19th-century train engine charges the camera, smashing through the frame with a blast of steam.",
+      "engine": "blender",
+      "technique": "rigged 3D + volumetric",
+      "render_mode": "baked",
+      "note": "train charge + volumetric steam + impact",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 111,
+      "name": "RFID Security Turnstile Spin & Keycard Tap",
+      "description": "An access card flashes a green LED, and a stainless steel turnstile arm rotates across the frame.",
+      "engine": "remotion",
+      "technique": "3D hinge rotation",
+      "render_mode": "baked",
+      "note": "turnstile arm rotation, R3F, no full physics",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 112,
+      "name": "Aircraft Window Shade Pull-Down & Glare",
+      "description": "An airplane window shade pulls down to darken the frame, opening back up over a new runway.",
+      "engine": "hyperframes",
+      "technique": "2D UI overlay",
+      "render_mode": "baked",
+      "note": "CSS window-shade pull-down + glare",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 113,
+      "name": "AI Audio Waveform Particle Orb Expansion",
+      "description": "A pulsating circular AI voice orb expands into an energetic shockwave ring that clears the canvas.",
+      "engine": "hyperframes",
+      "technique": "audio-reactive shader",
+      "render_mode": "baked",
+      "note": "WebGL particle orb, page-side-compositing",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 114,
+      "name": "Antique Steamer Trunk Brass Latch Pop",
+      "description": "Twin brass latches pop open on a leather trunk, and the heavy lid swings upward to reveal contents.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "latch pop + heavy lid swing physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 115,
+      "name": "Great Firewall Brick Masonry Build Wipe",
+      "description": "Staggered masonry bricks rapidly stack downward to seal the frame behind an impenetrable wall.",
+      "engine": "hyperframes",
+      "technique": "2D build wipe",
+      "render_mode": "baked",
+      "note": "CSS/canvas staggered brick-stack wipe",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 116,
+      "name": "Analog Rewind & Reverse Time-Scan Scrub Cut",
+      "description": "Footage rapidly plays in reverse with double tracking lines and timecode to reset the timeline.",
+      "engine": "ffmpeg",
+      "technique": "reverse playback",
+      "render_mode": "native",
+      "note": "reverse filter + tracking-line overlay",
+      "gpu": "av1_amf / h264_amf hardware encode, falls back to libx264 if AMF unavailable"
+    },
+    {
+      "id": 117,
+      "name": "Wooden Shipping Crate Crowbar Pry-Open",
+      "description": "A steel crowbar prying off a wooden crate lid pops nails and opens the dark interior to the camera.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "crate pry-open with nail-pop physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 118,
+      "name": "Rolled Carpet / Persian Rug Unroll Reveal",
+      "description": "A rolled woven carpet unrolls forward along the floor plane to transition to an exhibition hall.",
+      "engine": "blender",
+      "technique": "cloth sim",
+      "render_mode": "baked",
+      "note": "cloth sim for correct rug unroll drape",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 119,
+      "name": "Blind Taste Test Paper Cup Swap & Slide",
+      "description": "Two white paper cups slide across a counter, and the camera crash-zooms into the dark rim of the winner.",
+      "engine": "remotion",
+      "technique": "3D camera / parallax",
+      "render_mode": "baked",
+      "note": "prop slide + crash zoom, R3F, no physics",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 120,
+      "name": "Fire Extinguisher Volumetric CO2 Blast Wipe",
+      "description": "A pressurized cloud of white chemical CO2 foam blasts the screen into a whiteout transition.",
+      "engine": "blender",
+      "technique": "volumetric sim",
+      "render_mode": "baked",
+      "note": "Mantaflow gas/foam volumetric blast",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 121,
+      "name": "Black Box Neural Network Weight Tensor Core",
+      "description": "A translucent 3D cube illuminates interconnected synaptic nodes, expanding outward past the lens.",
+      "engine": "remotion",
+      "technique": "3D transparency",
+      "render_mode": "baked",
+      "note": "translucent 3D cube + node network, three.js",
+      "gpu": "renderMedia({ chromiumOptions: { hardwareAcceleration: \"if-possible\" } })"
+    },
+    {
+      "id": 122,
+      "name": "Metallic Handcuffs Snap & Chain Link Cut",
+      "description": "Steel handcuff jaws snap shut around a wrist on the cut beat, triggering an impact screen shake.",
+      "engine": "blender",
+      "technique": "rigid body + chain",
+      "render_mode": "baked",
+      "note": "mechanical snap + chain-link physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 123,
+      "name": "Casino Roulette Wheel / Fortune Wheel Spin",
+      "description": "An overhead mahogany roulette wheel spins at high RPM before the ball drops into the target slot.",
+      "engine": "blender",
+      "technique": "rigid body constraint",
+      "render_mode": "baked",
+      "note": "wheel spin + ball physics, realistic deceleration",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 124,
+      "name": "Explosive Metric Counter / Dislike Shatter Cut",
+      "description": "A digital number counter rapidly climbs to a record before the UI box shatters outward.",
+      "engine": "hyperframes",
+      "technique": "2D shatter shader",
+      "render_mode": "baked",
+      "note": "canvas/WebGL stylized UI shard burst",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 125,
+      "name": "Microscope Glass Slide / Fluid Specimen Drop",
+      "description": "An eyedropper drops fluid onto a glass slide, spreading outward as the camera zooms into cellular graphics.",
+      "engine": "blender",
+      "technique": "fluid sim",
+      "render_mode": "baked",
+      "note": "droplet spreading on glass, Mantaflow",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 126,
+      "name": "Matchbox Friction Striker & Sulfur Ignition Flare",
+      "description": "A wooden matchstick strikes a friction strip, bursting into a bright sulfur flame that wipes the frame.",
+      "engine": "blender",
+      "technique": "fire/smoke sim",
+      "render_mode": "baked",
+      "note": "believable ignition flare timing",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 127,
+      "name": "\"Me at the Zoo\" Elephant Trunk Swing Occlusion",
+      "description": "A low-res elephant swings its textured trunk across the camera lens to wipe away the scene.",
+      "engine": "blender",
+      "technique": "character animation",
+      "render_mode": "baked",
+      "note": "rigged 3D creature, animated trunk swing",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 128,
+      "name": "Flash Player Plugin Whirl & Vector Codec Spin",
+      "description": "A red Adobe Flash logo rotates into a vortex, sucking video badges inward before expanding full-screen.",
+      "engine": "hyperframes",
+      "technique": "2D vector spin",
+      "render_mode": "baked",
+      "note": "CSS/canvas vortex logo spin",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 129,
+      "name": "Snake Oil Pitchman Elixir Bottle Cork Pop",
+      "description": "A cork pops off an antique medicine bottle with vapor, and the camera plunges into the amber glass.",
+      "engine": "blender",
+      "technique": "rigid body + volumetric",
+      "render_mode": "baked",
+      "note": "cork pop + vapor + glass refraction plunge",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 130,
+      "name": "Morphine Syringe Plunge & Liquid Wash",
+      "description": "A glass medical syringe depresses its plunger, spraying fluid across the lens into a soft medicinal blur.",
+      "engine": "blender",
+      "technique": "rigid body + fluid",
+      "render_mode": "baked",
+      "note": "plunger physics + fluid spray wash",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 131,
+      "name": "Botanical Herbarium Glass Press & Specimen Dry",
+      "description": "Two heavy glass plates press together, crushing and drying green leaves into historical manuscript pages.",
+      "engine": "blender",
+      "technique": "cloth / soft body",
+      "render_mode": "baked",
+      "note": "glass press + leaf crush/dry simulation",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 132,
+      "name": "Santa Claus Holiday Red Velvet Vignette Wipe",
+      "description": "A circular opening bordered by red holiday velvet and falling snow expands outward to reveal vintage art.",
+      "engine": "hyperframes",
+      "technique": "particle shader",
+      "render_mode": "baked",
+      "note": "canvas/WebGL falling-snow particle vignette",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 133,
+      "name": "Artificial Surf Wave Swell & Water Curtain Wipe",
+      "description": "A curling blue artificial wave sweeps sideways across the frame as a traveling liquid wipe.",
+      "engine": "blender",
+      "technique": "fluid / ocean sim",
+      "render_mode": "baked",
+      "note": "ocean modifier / Mantaflow wave swell",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 134,
+      "name": "Liquid Nitrogen Freeze & Frost Crystal Creep",
+      "description": "Ice crystals creep across the frame from the edges, freezing the composition before it shatters.",
+      "engine": "hyperframes",
+      "technique": "shader growth",
+      "render_mode": "baked",
+      "note": "WebGL frost-crystal procedural growth shader",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 135,
+      "name": "Desert Haboob Sandstorm Wall Occlusion",
+      "description": "A towering wall of red Saharan dust and wind sweeps across the screen to bury the outgoing shot.",
+      "engine": "blender",
+      "technique": "volumetric sim",
+      "render_mode": "baked",
+      "note": "Mantaflow dust-wall domain",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 136,
+      "name": "Virtual Ocean Drift Bottle Bob & Uncork",
+      "description": "A glass bottle bobs on digital waves, pulls out of the water, and uncorks a paper scroll note.",
+      "engine": "blender",
+      "technique": "fluid / ocean sim",
+      "render_mode": "baked",
+      "note": "ocean sim bottle bob + fluid interaction",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 137,
+      "name": "Tencent QQ Penguin Red Scarf Screen Sweep",
+      "description": "A 2D mascot's bright red scarf whips across the foreground in a kinetic arc to clear the canvas.",
+      "engine": "hyperframes",
+      "technique": "2D sprite animation",
+      "render_mode": "baked",
+      "note": "flat mascot sprite + scarf sweep, canvas",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 138,
+      "name": "Civil War Hall Carbine Muzzle Flash & Gunsmoke",
+      "description": "A rifle barrel fires directly into the camera lens, masking the cut with a muzzle flash and black smoke.",
+      "engine": "blender",
+      "technique": "volumetric + practical alt",
+      "render_mode": "baked",
+      "note": "muzzle flash + volumetric gunsmoke (ffmpeg stock-overlay is the budget alt)",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    },
+    {
+      "id": 139,
+      "name": "Transcontinental Telegraph Morse Code Pulse Stream",
+      "description": "Glowing electrical pulses streak along telegraph wires, accelerating into horizontal light streaks.",
+      "engine": "hyperframes",
+      "technique": "SVG path animation",
+      "render_mode": "baked",
+      "note": "glowing pulse-line path animation with glow filter",
+      "gpu": "hyperframes render --gpu --browser-gpu (page-side-compositing is on by default)"
+    },
+    {
+      "id": 140,
+      "name": "Collapsible Shoe Heel Mechanical Fold & Snap",
+      "description": "A high-heel shoe's mechanical hinge snaps flat against the sole with a kinetic screen shake.",
+      "engine": "blender",
+      "technique": "rigid body",
+      "render_mode": "baked",
+      "note": "mechanical hinge fold + snap physics",
+      "gpu": "HIP + HIP-RT device (RDNA4 / RX 9060 XT)"
+    }
+  ],
+  "engine_counts": {
+    "remotion": 22,
+    "ffmpeg": 22,
+    "hyperframes": 49,
+    "blender": 47
+  }
+}

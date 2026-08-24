@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Transition #062 — Mechanical Split-Flap (Solari) Flip</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+      }
+      /* source videos are frame data only, never shown directly — the
+         canvas is what HyperFrames actually captures. */
+      video {
+        display: none;
+      }
+      canvas {
+        position: absolute;
+        inset: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="1"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+      data-composition-variables='{"clipA": "assets/clipA.mp4", "clipB": "assets/clipB.mp4"}'
+    >
+      <video
+        id="clipA"
+        data-start="0"
+        data-duration="1"
+        data-track-index="1"
+        src="assets/clipA.mp4"
+        muted
+        playsinline
+      ></video>
+      <video
+        id="clipB"
+        data-start="0"
+        data-duration="1"
+        data-track-index="2"
+        src="assets/clipB.mp4"
+        muted
+        playsinline
+      ></video>
+      <section id="stage" class="clip" data-start="0" data-duration="1" data-track-index="3">
+        <canvas id="board" width="1920" height="1080"></canvas>
+      </section>
+    </div>
+
+    <script>
+      // Transition #062 "Mechanical Split-Flap (Solari) Flip" (manifest.json:
+      // engine=hyperframes, render_mode=baked — this composition bridges both
+      // source clips itself, ffmpeg just concats it at assembly).
+      //
+      // Simplification note: an authentic Solari board hinges the flap at the
+      // vertical center of each character, with the OLD top-half staying put
+      // while a separate flap rotates down to reveal the NEW bottom-half a
+      // beat early. This worked example uses one flap per tile rotating a
+      // full 180deg (clip A on the front face, clip B on the back), which is
+      // the right complexity for a proof-of-concept and still reads as a
+      // staggered mechanical-tile cascade — swap in the two-flap hinge later
+      // if the literal Solari mechanism matters for the final shot.
+      //
+      // GPU: this composition is plain canvas 2D, not WebGL, so
+      // --page-side-compositing (HyperFrames' shader-transition fast path)
+      // doesn't apply here — the GPU win for this one specifically comes
+      // from --browser-gpu (hardware-accelerated Chrome canvas compositing)
+      // and --gpu (hardware video encode) on the render command.
+
+      window.__timelines = window.__timelines || {};
+
+      const root = document.getElementById("root");
+      const clipA = document.getElementById("clipA");
+      const clipB = document.getElementById("clipB");
+      // src attributes above are the real defaults the linter/renderer need
+      // present in markup; --variables at render time can still override
+      // per-run without editing the file.
+      if (window.__hyperframes) {
+        const v = window.__hyperframes.getVariables();
+        if (v.clipA) clipA.src = v.clipA;
+        if (v.clipB) clipB.src = v.clipB;
+      }
+
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+
+      const COLS = 12;
+      const ROWS = 7;
+      const CELL_W = canvas.width / COLS;
+      const CELL_H = canvas.height / ROWS;
+      const FLAP_DURATION = 0.35; // fraction of total progress each tile's own flip takes
+      const STAGGER_SPAN = 1 - FLAP_DURATION; // remaining progress spread across tile start times
+
+      // diagonal cascade: top-left tiles flip first, bottom-right last
+      const tiles = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const diag = r + c;
+          const maxDiag = ROWS - 1 + (COLS - 1);
+          tiles.push({ r, c, delay: (diag / maxDiag) * STAGGER_SPAN });
+        }
+      }
+
+      function drawTileSlice(video, r, c, squashY) {
+        const dx = c * CELL_W;
+        const dy = r * CELL_H;
+        ctx.save();
+        ctx.translate(dx + CELL_W / 2, dy + CELL_H / 2);
+        ctx.scale(1, Math.max(squashY, 0.001));
+        ctx.translate(-(dx + CELL_W / 2), -(dy + CELL_H / 2));
+        if (video.readyState >= 2) {
+          ctx.drawImage(
+            video,
+            (c / COLS) * video.videoWidth,
+            (r / ROWS) * video.videoHeight,
+            video.videoWidth / COLS,
+            video.videoHeight / ROWS,
+            dx,
+            dy,
+            CELL_W,
+            CELL_H,
+          );
+        }
+        ctx.restore();
+        // cheap lighting cue so the squash reads as a hinge, not a stretch
+        const shade = 1 - Math.abs(squashY - 0.5) * 0.5;
+        ctx.fillStyle = `rgba(0,0,0,${(1 - shade) * 0.5})`;
+        ctx.fillRect(dx, dy, CELL_W, CELL_H);
+      }
+
+      function render(progress) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const t of tiles) {
+          const local = Math.min(Math.max((progress - t.delay) / FLAP_DURATION, 0), 1);
+          if (local < 0.5) {
+            drawTileSlice(clipA, t.r, t.c, 1 - local * 2);
+          } else {
+            drawTileSlice(clipB, t.r, t.c, (local - 0.5) * 2);
+          }
+        }
+      }
+
+      const proxy = { p: 0 };
+      const tl = gsap.timeline({ paused: true });
+      tl.to(proxy, {
+        p: 1,
+        duration: Number(root.dataset.duration),
+        ease: "none",
+        onUpdate: () => render(proxy.p),
+      });
+      render(0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
