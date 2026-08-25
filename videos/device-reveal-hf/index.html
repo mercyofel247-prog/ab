@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        background: #000;
+      }
+      /* bare hard-cut clips: fill the frame directly */
+      video.bare {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      /* wrapped clips: div is the thing GSAP fades/scales, video fills it */
+      .inner {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        transform-origin: 50% 50%;
+      }
+      .inner video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      #c4-visual,
+      #c6-visual,
+      #c7-visual {
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="28.5"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- ===== VIDEO TIMELINE =====
+        1) blood drop -> device holder            : MATCH CUT (hard cut)
+        2) device holder <-> boardroom (x2)        : CROSS-CUT / PARALLEL EDIT (hard cuts)
+        3) boardroom -> spotlight figure           : FADE TO BLACK (color dip, GSAP)
+        4) spotlight figure -> device push-in      : SMASH CUT (hard cut)
+        5) device push-in -> device dying          : CROSS DISSOLVE (GSAP)
+        6) device dying -> city reveal             : OPTICAL ZOOM / zoom-through (GSAP)
+      -->
+
+      <!-- c1: blood drop macro (scene_1) -->
+      <video
+        id="v-c1"
+        class="bare"
+        src="assets/c1.mp4"
+        data-start="0"
+        data-duration="4.0"
+        data-media-start="0"
+        data-track-index="0"
+        muted
+        playsinline
+      ></video>
+
+      <!-- c2a: figure holding glowing device, part 1 -->
+      <video
+        id="v-c2a"
+        class="bare"
+        src="assets/c2.mp4"
+        data-start="4.0"
+        data-duration="4.5"
+        data-media-start="0"
+        data-track-index="0"
+        muted
+        playsinline
+      ></video>
+
+      <!-- c3-flash: quick boardroom flash (parallel-edit beat 1) -->
+      <video
+        id="v-c3flash"
+        class="bare"
+        src="assets/c3.mp4"
+        data-start="8.5"
+        data-duration="0.5"
+        data-media-start="0"
+        data-track-index="0"
+        muted
+        playsinline
+      ></video>
+
+      <!-- c2b: back to the device holder, part 2 (parallel-edit beat 2) -->
+      <video
+        id="v-c2b"
+        class="bare"
+        src="assets/c2.mp4"
+        data-start="9.0"
+        data-duration="1.5"
+        data-media-start="4.5"
+        data-track-index="0"
+        muted
+        playsinline
+      ></video>
+
+      <!-- c3-rest: settle into the boardroom for good -->
+      <div id="c3rest-visual" class="inner">
+        <video
+          id="v-c3rest"
+          src="assets/c3.mp4"
+          data-start="10.5"
+          data-duration="3.5"
+          data-media-start="0.5"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- c4: spotlight figure (fades in from black over c3-rest's tail) -->
+      <div id="c4-visual" class="inner">
+        <video
+          id="v-c4"
+          src="assets/c4.mp4"
+          data-start="13.5"
+          data-duration="4.0"
+          data-media-start="0"
+          data-track-index="1"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- c5: device slow push-in (smash cut from c4, no wrapper animation on entry) -->
+      <div id="c5-visual" class="inner">
+        <video
+          id="v-c5"
+          src="assets/c5.mp4"
+          data-start="17.5"
+          data-duration="4.0"
+          data-media-start="0"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- c6: device light dying (cross-dissolves in from c5, zooms out into c7) -->
+      <div id="c6-visual" class="inner">
+        <video
+          id="v-c6"
+          src="assets/c6.mp4"
+          data-start="21.0"
+          data-duration="4.0"
+          data-media-start="0"
+          data-track-index="1"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- c7: city skyline + red cross reveal (zoom-through from c6) -->
+      <div id="c7-visual" class="inner">
+        <video
+          id="v-c7"
+          src="assets/c7.mp4"
+          data-start="24.5"
+          data-duration="4.0"
+          data-media-start="0"
+          data-track-index="0"
+          muted
+          playsinline
+        ></video>
+      </div>
+
+      <!-- ===== AUDIO: synthesized score + per-cut SFX, all through a master bus ===== -->
+      <hf-audio-group
+        id="master-bus"
+        data-label="Master"
+        data-fx-chain="{&quot;version&quot;:1,&quot;nodes&quot;:[{&quot;type&quot;:&quot;compressor&quot;,&quot;id&quot;:&quot;g1&quot;,&quot;label&quot;:&quot;Glue&quot;,&quot;params&quot;:{&quot;threshold&quot;:-20,&quot;ratio&quot;:2.5,&quot;attack&quot;:8,&quot;release&quot;:120}},{&quot;type&quot;:&quot;limiter&quot;,&quot;id&quot;:&quot;g2&quot;,&quot;label&quot;:&quot;Ceiling&quot;,&quot;params&quot;:{&quot;limit&quot;:-1,&quot;attack&quot;:5,&quot;release&quot;:50}}]}"
+      ></hf-audio-group>
+
+      <audio
+        id="a-music"
+        data-audio-group="master-bus"
+        src="assets/music_bed.wav"
+        data-start="0"
+        data-duration="28.5"
+        data-track-index="10"
+        data-volume="1"
+        data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0},{&quot;t&quot;:1.0,&quot;v&quot;:1},{&quot;t&quot;:3.95,&quot;v&quot;:1},{&quot;t&quot;:4.0,&quot;v&quot;:0.65},{&quot;t&quot;:4.18,&quot;v&quot;:1},{&quot;t&quot;:8.46,&quot;v&quot;:1},{&quot;t&quot;:8.5,&quot;v&quot;:0.45},{&quot;t&quot;:8.62,&quot;v&quot;:1},{&quot;t&quot;:8.96,&quot;v&quot;:1},{&quot;t&quot;:9.0,&quot;v&quot;:0.45},{&quot;t&quot;:9.12,&quot;v&quot;:1},{&quot;t&quot;:10.46,&quot;v&quot;:1},{&quot;t&quot;:10.5,&quot;v&quot;:0.7},{&quot;t&quot;:10.65,&quot;v&quot;:1},{&quot;t&quot;:17.42,&quot;v&quot;:1},{&quot;t&quot;:17.5,&quot;v&quot;:0.25},{&quot;t&quot;:17.85,&quot;v&quot;:1},{&quot;t&quot;:20.95,&quot;v&quot;:1},{&quot;t&quot;:21.0,&quot;v&quot;:0.75},{&quot;t&quot;:21.25,&quot;v&quot;:1},{&quot;t&quot;:24.65,&quot;v&quot;:1},{&quot;t&quot;:24.7,&quot;v&quot;:0.85},{&quot;t&quot;:24.9,&quot;v&quot;:1},{&quot;t&quot;:27.7,&quot;v&quot;:1},{&quot;t&quot;:28.5,&quot;v&quot;:0}]}]}"
+      ></audio>
+
+      <audio
+        id="a-matchcut"
+        data-audio-group="master-bus"
+        src="assets/sfx_matchcut.wav"
+        data-start="4.0"
+        data-track-index="11"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-flash1"
+        data-audio-group="master-bus"
+        src="assets/sfx_flash1.wav"
+        data-start="8.5"
+        data-track-index="12"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-flash2"
+        data-audio-group="master-bus"
+        src="assets/sfx_flash2.wav"
+        data-start="9.0"
+        data-track-index="18"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-settle"
+        data-audio-group="master-bus"
+        src="assets/sfx_settle.wav"
+        data-start="10.5"
+        data-track-index="13"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-riser"
+        data-audio-group="master-bus"
+        src="assets/sfx_riser_fade.wav"
+        data-start="13.0"
+        data-track-index="14"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-smash"
+        data-audio-group="master-bus"
+        src="assets/sfx_smash.wav"
+        data-start="17.35"
+        data-track-index="15"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-dissolve"
+        data-audio-group="master-bus"
+        src="assets/sfx_dissolve_whoosh.wav"
+        data-start="20.7"
+        data-track-index="16"
+        data-volume="1"
+      ></audio>
+
+      <audio
+        id="a-zoom"
+        data-audio-group="master-bus"
+        src="assets/sfx_zoom_whoosh.wav"
+        data-start="24.1"
+        data-track-index="17"
+        data-volume="1"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // --- 3) Fade to black: boardroom -> spotlight figure (color dip) ---
+      tl.to("#c3rest-visual", { opacity: 0, duration: 0.2, ease: "power2.in" }, 13.5);
+      tl.fromTo(
+        "#c4-visual",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.2, ease: "power2.out" },
+        13.75,
+      );
+
+      // --- 5) Cross dissolve: device push-in -> device dying ---
+      tl.to("#c5-visual", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 21.0);
+      tl.fromTo(
+        "#c6-visual",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.5, ease: "power2.inOut" },
+        21.0,
+      );
+
+      // --- 6) Optical zoom (zoom-through): device dying -> city reveal ---
+      tl.to(
+        "#c6-visual",
+        { scale: 2.5, opacity: 0, filter: "blur(8px)", duration: 0.4, ease: "power3.in" },
+        24.5,
+      );
+      tl.fromTo(
+        "#c7-visual",
+        { scale: 0.5, opacity: 0, filter: "blur(8px)" },
+        { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.4, ease: "power3.out" },
+        24.65,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
