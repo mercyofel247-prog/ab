@@ -1,0 +1,16 @@
+{
+  "name": "gemini-mcp",
+  "version": "1.0.0",
+  "description": "MCP server exposing Gemini API image generation (Nano Banana / Nano Banana Pro / Nano Banana 2) and video generation (Omni Flash / Veo 3.1) as tools",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

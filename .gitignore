@@ -5,3 +5,8 @@
 !/.claude/hooks/
 !/.claude/hooks/**
 /skills-lock.json
+
+# Gemini MCP server — secrets and local build/output artifacts
+/gemini-mcp/.env
+/gemini-mcp/node_modules/
+/gemini-mcp/output/

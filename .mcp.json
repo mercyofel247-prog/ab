@@ -1,9 +1,9 @@
 {
   "mcpServers": {
-    "google-flow": {
+    "gemini": {
       "command": "node",
-      "args": ["src/index.js"],
-      "cwd": "${HOME}/google-flow-mcp"
+      "args": ["--env-file=.env", "src/index.js"],
+      "cwd": "${CLAUDE_PROJECT_DIR}/gemini-mcp"
     }
   }
 }
