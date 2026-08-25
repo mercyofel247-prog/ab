@@ -4,6 +4,8 @@
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/hooks/**
+!/.claude/skills/
+!/.claude/skills/**
 /skills-lock.json
 
 # Gemini MCP server — secrets and local build/output artifacts
