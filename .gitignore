@@ -12,3 +12,6 @@
 /gemini-mcp/.env
 /gemini-mcp/node_modules/
 /gemini-mcp/output/
+
+# video-analysis skill output (extracted frames/audio/report) — regenerated per run
+**/*_analysis/
