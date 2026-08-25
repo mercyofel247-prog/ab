@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "google-flow": {
+      "command": "node",
+      "args": ["src/index.js"],
+      "cwd": "${HOME}/google-flow-mcp"
+    }
+  }
+}
