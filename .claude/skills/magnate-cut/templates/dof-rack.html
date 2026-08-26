@@ -1,0 +1,34 @@
+<!--
+  magnate-cut · TRANSITION · DOF RACK  (master-prompt 14.6.2)
+  Shifts attention WITHIN one composite instead of cutting: two planes, the
+  focus racks from the near plane to the far plane by animating per-plane
+  CSS filter: blur() in OPPOSING directions (near sharp->soft while far
+  soft->sharp). Contemplative attention move; ~16-24 frames.
+
+  USE: drop near.png (transparent foreground subject) + far.jpg (background)
+  beside this file (solid stand-ins otherwise). Reference from transition_out
+  { "type":"dof_rack", "src":"transitions/rackNN.mp4" } (or leave src null for
+  the native fade approximation).
+    npx hyperframes render -c dof-rack.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/rackNN.mp4
+-->
+<div id="root"
+     data-composition-id="main-video"
+     data-width="1920" data-height="1080" data-fps="24"
+     data-start="0" data-duration="0.75"
+     style="width:1920px;height:1080px;overflow:hidden;background:#000;position:relative;">
+  <div id="far" style="position:absolute;inset:0;background:#1a1416 center/cover no-repeat;filter:blur(12px);will-change:filter,transform;"></div>
+  <div id="near" style="position:absolute;inset:0;background:transparent center/cover no-repeat;filter:blur(0px);will-change:filter,transform;"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  (function(){ var im=new Image(); im.onload=function(){ var el=document.getElementById('far'); if(el) el.style.background="url('far.jpg') center/cover no-repeat"; }; im.src='far.jpg'; })();
+  (function(){ var im=new Image(); im.onload=function(){ var el=document.getElementById('near'); if(el) el.style.background="url('near.png') center/cover no-repeat"; }; im.src='near.png'; })();
+
+  const tl = gsap.timeline({ paused:true, defaults:{ ease:"sine.inOut" } });
+  // opposing blur ramps = the rack; tiny scale breath sells the focus pull
+  tl.to("#near", { duration: 0.75, filter: "blur(14px)", ease: "sine.inOut" }, 0)
+    .to("#far",  { duration: 0.75, filter: "blur(0px)",  ease: "sine.inOut" }, 0)
+    .to("#near", { duration: 0.75, scale: 1.02, ease: "sine.inOut" }, 0)
+    .to("#far",  { duration: 0.75, scale: 1.0,  ease: "sine.inOut" }, 0);
+  window.__timelines = window.__timelines || {}; window.__timelines["main-video"] = tl;
+</script>

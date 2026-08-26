@@ -1,0 +1,40 @@
+<!--
+  magnate-cut · TRANSITION · SLOW FLY-THROUGH  (master-prompt 14.6.2)
+  The contemplative sibling of the crash-zoom: SAME 2.5D parallax stack, but
+  ~40 frames, "sine.inOut" easing, and NO motion-blur ramp — the camera
+  glides through shot A's planes and settles on shot B. For calm scene
+  changes / act breaks, not hard reveals.
+
+  USE: shotA_fg.png / shotA_mid.png / shotA_far.png + shotB.jpg beside this
+  file (solid stand-ins otherwise). Reference from transition_out
+  { "type":"fly_through", "src":"transitions/flyNN.mp4" }.
+    npx hyperframes render -c slow-fly-through.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/flyNN.mp4
+-->
+<div id="root"
+     data-composition-id="main-video"
+     data-width="1920" data-height="1080" data-fps="24"
+     data-start="0" data-duration="1.67"
+     style="width:1920px;height:1080px;overflow:hidden;background:#000;position:relative;">
+  <div style="position:absolute;inset:0;perspective:1400px;perspective-origin:50% 50%;">
+    <div id="cam" style="position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;">
+      <div id="shotB" style="position:absolute;inset:0;transform:translateZ(-2600px) scale(3.2);background:#12181f center/cover no-repeat;"></div>
+      <div id="far" style="position:absolute;inset:0;transform:translateZ(-1400px) scale(2.1);background:#242a30 center/cover no-repeat;"></div>
+      <div id="mid" style="position:absolute;inset:0;transform:translateZ(-600px) scale(1.5);background:transparent center/cover no-repeat;"></div>
+      <div id="fg"  style="position:absolute;inset:0;transform:translateZ(-200px) scale(1.15);background:transparent center/cover no-repeat;"></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  (function(id,u){var im=new Image();im.onload=function(){var el=document.getElementById(id);if(el)el.style.background="url('"+u+"') center/cover no-repeat";};im.src=u;})('shotB','shotB.jpg');
+  ['fg','mid','far'].forEach(function(p){var u='shotA_'+p+'.png';var im=new Image();im.onload=function(){var el=document.getElementById(p);if(el)el.style.background="url('"+u+"') center/cover no-repeat";};im.src=u;});
+
+  const tl = gsap.timeline({ paused:true, defaults:{ ease:"sine.inOut" } });
+  // one smooth glide on Z; planes drift past, shot B eases to fill — no blur ramp
+  tl.to("#cam",   { duration: 1.67, z: 2600, ease: "sine.inOut" }, 0)
+    .to("#fg",    { duration: 0.9,  scale: 4.5, opacity: 0, ease: "sine.in" }, 0.1)
+    .to("#mid",   { duration: 1.2,  scale: 2.6, opacity: 0, ease: "sine.in" }, 0.3)
+    .to("#far",   { duration: 1.4,  scale: 3.0, opacity: 0, ease: "sine.in" }, 0.5)
+    .to("#shotB", { duration: 1.67, scale: 1.0, ease: "sine.inOut" }, 0);
+  window.__timelines = window.__timelines || {}; window.__timelines["main-video"] = tl;
+</script>

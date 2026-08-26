@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "magnate-cut timeline",
+  "description": "Machine-readable clip table for the magnate-cut assembly engine. This is the M-HYBRID master-prompt clip table (Part 13) expressed as data the assembler can execute: an ordered visual timeline of provided clips + generated animations, joined by S-tier transitions, over a designed audio stack (music beds ducked under a provided VO + SFX + scored silence), mastered to spec.",
+  "type": "object",
+  "required": ["meta", "vo", "segments"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["fps", "width", "height"],
+      "properties": {
+        "title": {"type": "string"},
+        "topic": {"type": "string"},
+        "palette_track": {"enum": ["oxblood", "gold"], "description": "Part 0.5 accent lock — oxblood #7A160E (scandal/fall) or gold #C9A24B (wealth/rise). Never mix."},
+        "fps": {"type": "number", "default": 24, "description": "Global 1080p lock: 24fps."},
+        "width": {"type": "integer", "default": 1920},
+        "height": {"type": "integer", "default": 1080},
+        "master_lufs": {"type": "number", "default": -14.0, "description": "Integrated loudness target. -14 for YouTube/streaming."},
+        "master_true_peak_dbtp": {"type": "number", "default": -1.0, "description": "True-peak ceiling. Never above -1.0 (the #1 lesson from the 8-video audit: 7/8 were clipping over 0 dBTP)."}
+      }
+    },
+    "grade": {
+      "type": "object",
+      "description": "Shared look-block (master-prompt Part 15.4 continuity layer) applied to EVERY visual segment so independently-generated clips read as one film. This is the fix for the 'assembled clips' problem.",
+      "properties": {
+        "lut": {"type": ["string", "null"], "description": "Optional .cube LUT path (relative to project dir)."},
+        "eq": {"type": "object", "properties": {
+          "contrast": {"type": "number", "default": 1.0},
+          "brightness": {"type": "number", "default": 0.0},
+          "saturation": {"type": "number", "default": 1.0},
+          "gamma": {"type": "number", "default": 1.0}
+        }},
+        "grain": {"type": "number", "default": 0.0, "description": "Film grain strength 0-20 (continuous across cuts hides seams)."}
+      }
+    },
+    "vo": {
+      "type": "object",
+      "required": ["file"],
+      "description": "The provided voice-over narration — the SPINE the whole edit syncs to. Voice always wins (master-prompt R0): no music swell or SFX hit lands ON a stressed word.",
+      "properties": {
+        "file": {"type": "string"},
+        "offset_s": {"type": "number", "default": 0.0, "description": "Delay the VO start relative to t=0 (for a cold-open beat before narration)."},
+        "gain_db": {"type": "number", "default": 0.0}
+      }
+    },
+    "music": {
+      "type": "array",
+      "description": "Chapter-scope music beds (Part 10.1 / Part 18 List B). Rotate tonal families — never repeat a family in consecutive chapters. Ducked under VO. Drop to a scored vacuum on [SILENT] beats (leave a gap here).",
+      "items": {
+        "type": "object",
+        "required": ["file", "start_s", "end_s"],
+        "properties": {
+          "chapter": {"type": "string"},
+          "file": {"type": "string"},
+          "start_s": {"type": "number"},
+          "end_s": {"type": "number"},
+          "gain_db": {"type": "number", "default": -18},
+          "duck_db": {"type": "number", "default": -15, "description": "How far the bed ducks under VO (Part 10.1)."},
+          "family": {"enum": ["serene", "tense", "epic", "uplifting"], "description": "Tonal family for the rotation gate."},
+          "fade_in_s": {"type": "number", "default": 0.5},
+          "fade_out_s": {"type": "number", "default": 0.8}
+        }
+      }
+    },
+    "sfx": {
+      "type": "array",
+      "description": "Timeline-absolute SFX events (Part 10.2 / Part 18 List A). Mirror the camera move / transition. Land in the GAPS around the voice, never on a stressed word. Prefer low booms/subs over bright whooshes.",
+      "items": {
+        "type": "object",
+        "required": ["file", "at_s"],
+        "properties": {
+          "file": {"type": "string"},
+          "at_s": {"type": "number", "description": "Absolute timeline time of the sound's impact."},
+          "gain_db": {"type": "number", "default": -8},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "description": "Ordered visual timeline. Each segment is one provided clip OR one generated animation. The transition_out on a segment describes how it hands off to the NEXT segment.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "src"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"enum": ["clip", "animation", "transition"],
+            "description": "clip = provided Omni/live-action footage; animation = generated here (HyperFrames/Remotion/Blender); transition = a pre-rendered bridge clip inserted between two shots (rare — usually use transition_out instead)."},
+          "src": {"type": "string", "description": "Path to the MP4 (relative to project dir)."},
+          "in_s": {"type": "number", "default": 0.0, "description": "Trim start within the source."},
+          "out_s": {"type": ["number", "null"], "default": null, "description": "Trim end within the source; null = to end."},
+          "grade": {"type": "boolean", "default": true, "description": "Apply the shared grade look-block to this segment."},
+          "overlay": {"type": ["string", "null"], "default": null, "description": "Optional transparent Mode-A overlay (kinetic type / arrow / alert-wash) composited over this clip. Use a MOV with a real alpha channel — qtrle or ProRes 4444 (most reliable); VP9/WebM alpha is flaky across ffmpeg builds. Master-prompt Part 16. The assembler preserves the alpha through scaling."},
+          "chapter": {"type": "string", "description": "Which narrative chapter this belongs to (for reporting/QC)."},
+          "transition_out": {
+            "type": ["object", "null"],
+            "description": "How this segment hands to the next. Omit / null on the last segment.",
+            "properties": {
+              "type": {"enum": [
+                "hard_cut", "dissolve", "fadeblack", "fadewhite",
+                "wipeleft", "wiperight", "wipeup", "wipedown",
+                "smoothleft", "smoothright", "whip_pan", "dof_rack",
+                "crash_zoom", "fly_through"
+              ], "description": "hard_cut/dissolve/fade*/wipe*/smooth* are rendered natively by ffmpeg. whip_pan/dof_rack approximate natively. crash_zoom/fly_through are the MagnatesMedia signature — supply a pre-rendered HyperFrames bridge via `src` (built from templates/), spliced between the two shots."},
+              "dur_s": {"type": "number", "default": 0.5, "description": "Transition duration. hard_cut≈0.04 (one frame). crash_zoom≈0.58 per 14.6.3."},
+              "src": {"type": ["string", "null"], "default": null, "description": "For crash_zoom/fly_through: path to the pre-rendered HyperFrames bridge MP4 to splice in."}
+            }
+          }
+        }
+      }
+    }
+  }
+}

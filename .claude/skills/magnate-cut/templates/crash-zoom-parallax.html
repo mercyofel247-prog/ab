@@ -1,0 +1,106 @@
+<!--
+  magnate-cut · SIGNATURE TRANSITION · CRASH-ZOOM THROUGH 2.5D PARALLAX
+  The MagnatesMedia bridge (master-prompt 14.6.3). Bridges shot A -> shot B
+  by dollying the camera on the Z axis THROUGH shot A's parallax planes and
+  landing on shot B. This is a HyperFrames Path-3 composition — code, because
+  Gemini Omni animates one still and cannot bridge two shots.
+
+  HOW TO USE
+  ----------
+  1. Drop three cut-outs of SHOT A into this folder (the fg/mid/far planes —
+     reuse the masks from shot A's parallax build) as:
+        shotA_fg.png  shotA_mid.png  shotA_far.png   (transparent PNGs)
+     and shot B's full frame as:  shotB.jpg
+     If any are missing the template renders solid-colour stand-ins so you can
+     still see the move.
+  2. This file follows the VERBATIM HyperFrames exec spec (14.7): transforms
+     only (scale/translateZ/opacity) + CSS filter blur, GSAP paused timeline
+     registered on window.__timelines, deterministic, 1920x1080 @ 24fps.
+  3. Render it as its OWN short clip and reference it from the timeline's
+     transition_out: { "type":"crash_zoom", "src":"transitions/crashNN.mp4" }.
+        npx hyperframes render -c crash-zoom-parallax.html -f 24 -q draft \
+            -w auto --gpu --browser-gpu --strict -o renders/crashNN.mp4
+
+  TIMELINE (14.6.3, 14 frames / 0.58s):
+    0–380ms   camera Z 0 -> -1500, ease cubic-bezier(0.55,0,1,0.45) (the crash)
+              fg plane blows past camera and exits frame edge
+    260–420ms motion blur 0 -> 18px on the Z axis
+    380–580ms camera Z -1500 -> -2600, settle onto shot B,
+              ease cubic-bezier(0.16,1,0.3,1) (decelerate + land)
+    480–580ms motion blur 18px -> 0  (must resolve to 0 before final frame)
+-->
+<div id="root"
+     data-composition-id="main-video"
+     data-width="1920" data-height="1080" data-fps="24"
+     data-start="0" data-duration="0.58"
+     style="width:1920px;height:1080px;overflow:hidden;background:#000;position:relative;">
+
+  <!-- 3D camera stage -->
+  <div id="stage" style="position:absolute;inset:0;perspective:1200px;perspective-origin:50% 50%;">
+    <div id="cam" style="position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;">
+
+      <!-- shot B lands farthest back at Z = -2600 -->
+      <div id="shotB" style="position:absolute;inset:0;transform:translateZ(-2600px) scale(3.2);
+           background:#241014 center/cover no-repeat;"></div>
+
+      <!-- shot A parallax planes: far -1400, mid -600, fg -200 -->
+      <div class="plA" id="far" style="position:absolute;inset:0;transform:translateZ(-1400px) scale(2.1);
+           background:#3a1c1c center/cover no-repeat;"></div>
+      <div class="plA" id="mid" style="position:absolute;inset:0;transform:translateZ(-600px) scale(1.5);
+           background:transparent center/cover no-repeat;"></div>
+      <div class="plA" id="fg" style="position:absolute;inset:0;transform:translateZ(-200px) scale(1.15);
+           background:transparent center/cover no-repeat;"></div>
+    </div>
+  </div>
+
+  <!-- title-safe guide is inner 90%; nothing critical outside it -->
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  // Load shot images if present; otherwise keep the solid stand-ins.
+  (function setImg(id, url){
+    var img = new Image();
+    img.onload = function(){ var el=document.getElementById(id); if(el) el.style.backgroundImage="url('"+url+"')"; };
+    img.src = url;
+  })('shotB','shotB.jpg');
+  ['fg','mid','far'].forEach(function(p){
+    var img=new Image(); var url='shotA_'+p+'.png';
+    img.onload=function(){ var el=document.getElementById(p); if(el){ el.style.backgroundImage="url('"+url+"')"; el.style.background="url('"+url+"') center/cover no-repeat"; } };
+    img.src=url;
+  });
+
+  // Deterministic timeline — no Math.random / Date.now / network in the motion.
+  const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+  const cam = "#cam";
+  const planes = "#fg, #mid, #far";
+
+  // 0–380ms : the crash (accelerating Z dolly). translateZ only.
+  tl.to(cam, {
+        duration: 0.380,
+        z: 1500,                                   // camera moves forward -> world Z +1500
+        ease: "cubic-bezier(0.55,0,1,0.45)"
+      }, 0)
+    // fg plane blows past and exits the frame edge as the camera reaches it
+    .to("#fg", { duration: 0.34, scale: 6, opacity: 0, ease: "power2.in" }, 0.04)
+    .to("#mid", { duration: 0.38, scale: 3.2, ease: "power1.in" }, 0.02)
+
+  // 260–420ms : motion blur ramps 0 -> 18px (CSS filter, allowed; not a transform-layout prop)
+    .to(planes, { duration: 0.160, filter: "blur(18px)", ease: "none" }, 0.260)
+
+  // 380–580ms : settle onto shot B (decelerate + land)
+    .to(cam, {
+        duration: 0.200,
+        z: 2600,
+        ease: "cubic-bezier(0.16,1,0.3,1)"
+      }, 0.380)
+    .to("#shotB", { duration: 0.200, scale: 1.0, ease: "cubic-bezier(0.16,1,0.3,1)" }, 0.380)
+
+  // 480–580ms : blur resolves fully to 0 BEFORE the final frame (14.6.3 LOCK)
+    .to(planes, { duration: 0.100, filter: "blur(0px)", ease: "none" }, 0.480)
+    .to("#shotB", { duration: 0.100, filter: "blur(0px)", ease: "none" }, 0.480);
+
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main-video"] = tl;
+</script>

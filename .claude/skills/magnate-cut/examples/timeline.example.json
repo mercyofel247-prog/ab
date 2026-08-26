@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "title": "The Man Who Built Standard Oil",
+    "topic": "Rockefeller / Standard Oil rise-and-fall",
+    "palette_track": "oxblood",
+    "fps": 24,
+    "width": 1920,
+    "height": 1080,
+    "master_lufs": -14.0,
+    "master_true_peak_dbtp": -1.0
+  },
+  "grade": {
+    "lut": null,
+    "eq": { "contrast": 1.05, "brightness": -0.01, "saturation": 0.94, "gamma": 1.02 },
+    "grain": 3
+  },
+  "vo": { "file": "vo/narration.wav", "offset_s": 0.4, "gain_db": 0 },
+
+  "music": [
+    { "chapter": "hook",    "file": "audio/music/low_drone.wav",        "start_s": 0.0,  "end_s": 22.0, "gain_db": -18, "duck_db": -15, "family": "tense",     "fade_in_s": 0.8, "fade_out_s": 1.0 },
+    { "chapter": "rise",    "file": "audio/music/piano_motif.wav",      "start_s": 23.5, "end_s": 44.0, "gain_db": -17, "duck_db": -15, "family": "uplifting", "fade_in_s": 0.8, "fade_out_s": 0.8 },
+    { "chapter": "fall",    "file": "audio/music/strings_tension.wav",  "start_s": 45.5, "end_s": 62.0, "gain_db": -18, "duck_db": -15, "family": "epic",      "fade_in_s": 0.8, "fade_out_s": 1.6 }
+  ],
+
+  "sfx": [
+    { "file": "audio/sfx/riser.wav",   "at_s": 8.2,  "gain_db": -9, "note": "riser into the crash-zoom (J-cut: lands just before the cut at 8.6)" },
+    { "file": "audio/sfx/subdrop.wav", "at_s": 8.7,  "gain_db": -5, "note": "sub-drop lands the reveal on shot B" },
+    { "file": "audio/sfx/stamp.wav",   "at_s": 30.1, "gain_db": -6, "note": "STAMP on the hero number reveal" }
+  ],
+
+  "segments": [
+    { "id": "s01", "type": "clip", "src": "clips/refinery_dawn.mp4", "in_s": 0.0, "out_s": 8.6, "grade": true, "chapter": "hook",
+      "transition_out": { "type": "crash_zoom", "dur_s": 0.58, "src": "transitions/crash01.mp4" } },
+
+    { "id": "s02", "type": "clip", "src": "clips/rockefeller_portrait.mp4", "in_s": 0.0, "out_s": 6.0, "grade": true, "chapter": "hook",
+      "overlay": "overlays/name_lower_third.mov",
+      "transition_out": { "type": "dissolve", "dur_s": 0.6 } },
+
+    { "id": "s03", "type": "clip", "src": "clips/oil_boom_town.mp4", "in_s": 0.0, "out_s": 7.4, "grade": true, "chapter": "hook",
+      "transition_out": { "type": "fadeblack", "dur_s": 0.7 } },
+
+    { "id": "s04", "type": "animation", "src": "animation/net_worth_odometer.mp4", "in_s": 0.0, "out_s": 4.5, "grade": true, "chapter": "rise",
+      "transition_out": { "type": "hard_cut", "dur_s": 0.04 } },
+
+    { "id": "s05", "type": "clip", "src": "clips/standard_oil_map.mp4", "in_s": 0.0, "out_s": 6.8, "grade": true, "chapter": "rise",
+      "transition_out": { "type": "whip_pan", "dur_s": 0.34, "src": null } },
+
+    { "id": "s06", "type": "clip", "src": "clips/monopoly_grip.mp4", "in_s": 0.0, "out_s": 8.0, "grade": true, "chapter": "rise",
+      "transition_out": { "type": "fly_through", "dur_s": 1.67, "src": "transitions/fly01.mp4" } },
+
+    { "id": "s07", "type": "clip", "src": "clips/antitrust_courtroom.mp4", "in_s": 0.0, "out_s": 7.2, "grade": true, "chapter": "fall",
+      "transition_out": { "type": "dof_rack", "dur_s": 0.75, "src": null } },
+
+    { "id": "s08", "type": "clip", "src": "clips/breakup_headlines.mp4", "in_s": 0.0, "out_s": 6.6, "grade": true, "chapter": "fall",
+      "transition_out": { "type": "dissolve", "dur_s": 0.6 } },
+
+    { "id": "s09", "type": "clip", "src": "clips/legacy_skyline.mp4", "in_s": 0.0, "out_s": 9.0, "grade": true, "chapter": "fall",
+      "transition_out": { "type": "fadeblack", "dur_s": 1.4 } }
+  ]
+}

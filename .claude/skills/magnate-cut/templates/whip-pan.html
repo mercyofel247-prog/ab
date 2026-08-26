@@ -1,0 +1,38 @@
+<!--
+  magnate-cut · TRANSITION · WHIP-PAN  (master-prompt 14.6.2)
+  High-energy segment break: camera X-translate + directional blur, ~8 frames.
+  Bridges shot A -> shot B. HyperFrames Path-3; transforms + filter only.
+
+  USE: drop shotA.jpg + shotB.jpg beside this file (solid stand-ins otherwise).
+  Render as its own clip and reference it from transition_out
+  { "type":"whip_pan", "src":"transitions/whipNN.mp4" }  — OR use the native
+  ffmpeg "smoothleft" approximation by leaving src null (assemble.py handles it).
+  Direction: set DIR = -1 (whip left) or +1 (whip right) below.
+    npx hyperframes render -c whip-pan.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/whipNN.mp4
+-->
+<div id="root"
+     data-composition-id="main-video"
+     data-width="1920" data-height="1080" data-fps="24"
+     data-start="0" data-duration="0.34"
+     style="width:1920px;height:1080px;overflow:hidden;background:#000;position:relative;">
+  <div id="track" style="position:absolute;top:0;left:0;width:3840px;height:1080px;will-change:transform;">
+    <div id="a" style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:#241014 center/cover no-repeat;"></div>
+    <div id="b" style="position:absolute;top:0;left:1920px;width:1920px;height:1080px;background:#12202e center/cover no-repeat;"></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  const DIR = -1;  // -1 whip left (A->B moving left), +1 whip right
+  ['a','b'].forEach(function(id){ var u=(id==='a'?'shotA.jpg':'shotB.jpg'); var im=new Image();
+    im.onload=function(){ var el=document.getElementById(id); if(el) el.style.background="url('"+u+"') center/cover no-repeat"; }; im.src=u; });
+
+  const tl = gsap.timeline({ paused:true, defaults:{ ease:"none" } });
+  // start showing A (track x=0); whip so B fills frame (track x=-1920 for left whip)
+  gsap.set("#track", { x: DIR<0 ? 0 : -1920 });
+  const endX = DIR<0 ? -1920 : 0;
+  // accelerate the pan, peak directional blur mid-move, decelerate onto B
+  tl.to("#track", { duration: 0.34, x: endX, ease: "cubic-bezier(0.7,0,0.3,1)" }, 0)
+    .to("#track", { duration: 0.12, filter: "blur(14px)", ease: "power2.in" }, 0.06)
+    .to("#track", { duration: 0.12, filter: "blur(0px)",  ease: "power2.out" }, 0.20);
+  window.__timelines = window.__timelines || {}; window.__timelines["main-video"] = tl;
+</script>
