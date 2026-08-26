@@ -20,6 +20,7 @@ Prints a single line of JSON to stdout on completion:
 
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -179,6 +180,17 @@ def get_metadata(path):
         return round(float(n) / d, 3) if d else None
 
     duration = float(fmt.get("duration", vstream.get("duration", 0) if vstream else 0) or 0)
+
+    aspect_ratio = orientation = None
+    if vstream and vstream.get("width") and vstream.get("height"):
+        w, h = vstream["width"], vstream["height"]
+        g = math.gcd(w, h) or 1
+        aspect_ratio = f"{w // g}:{h // g}"
+        orientation = "landscape" if w > h else ("portrait" if h > w else "square")
+
+    color_transfer = vstream.get("color_transfer") if vstream else None
+    is_hdr = color_transfer in ("smpte2084", "arib-std-b67") if color_transfer else None
+
     return {
         "filename": os.path.basename(path),
         "duration_sec": round(duration, 3),
@@ -191,6 +203,12 @@ def get_metadata(path):
             "fps": parse_rate(vstream.get("avg_frame_rate")) if vstream else None,
             "nb_frames": int(vstream["nb_frames"]) if vstream and vstream.get("nb_frames", "").isdigit() else None,
             "pix_fmt": vstream.get("pix_fmt") if vstream else None,
+            "aspect_ratio": aspect_ratio,
+            "orientation": orientation,
+            "color_space": vstream.get("color_space") if vstream else None,
+            "color_transfer": color_transfer,
+            "color_primaries": vstream.get("color_primaries") if vstream else None,
+            "is_hdr": is_hdr,
         } if vstream else None,
         "audio": {
             "codec": astream.get("codec_name") if astream else None,
@@ -410,6 +428,41 @@ def find_loudness_spikes(curve, jump_db=10.0, window=5):
     return spikes
 
 
+LOUDNORM_JSON_RE = re.compile(r"\{[^{}]*\"input_i\"[^{}]*\}", re.S)
+
+
+def measure_loudness_lufs(path, has_audio, timeout=180):
+    """Integrated loudness (LUFS), true peak, and loudness range (LRA) via
+    ffmpeg's `loudnorm` filter in single-pass measure mode -- the actual
+    broadcast/streaming loudness standard, as opposed to the raw per-second
+    RMS dB in `loudness_curve` (which is better for spotting relative spikes
+    over time, not for checking mix levels against a delivery spec)."""
+    if not has_audio:
+        return {"available": False, "reason": "no audio track"}
+    r = run(["ffmpeg", "-i", path, "-af", "loudnorm=print_format=json", "-f", "null", "-"], timeout=timeout)
+    m = LOUDNORM_JSON_RE.search(r.stderr)
+    if not m:
+        return {"available": False, "reason": "loudnorm did not report measurements (very short/silent audio?)"}
+    try:
+        data = json.loads(m.group(0))
+    except Exception as e:
+        return {"available": False, "reason": f"failed to parse loudnorm output: {e}"}
+
+    def f(key):
+        try:
+            return float(data.get(key))
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "available": True,
+        "integrated_lufs": f("input_i"),
+        "loudness_range_lu": f("input_lra"),
+        "true_peak_dbtp": f("input_tp"),
+        "threshold_lufs": f("input_thresh"),
+    }
+
+
 def compute_pacing(cuts, duration):
     times = [0.0] + [c["time"] for c in cuts] + ([duration] if duration else [])
     times = sorted(set(round(t, 3) for t in times))
@@ -574,7 +627,8 @@ def transcribe(path, has_audio, workdir, model_size="base", skip=False):
 
 # ---------------------------------------------------------------------------
 # Advanced analysis: automatic transition classification, motion, faces,
-# on-screen text (OCR), and music beat/tempo alignment.
+# on-screen text (OCR), music beat/tempo alignment, color palette/grading,
+# per-shot camera movement, and audio/video edit-offset (J-cut/L-cut).
 # ---------------------------------------------------------------------------
 
 def _load_gray_small(path, width=96):
@@ -713,7 +767,10 @@ def motion_curve(path, duration, sample_fps=3, max_dim=160, timeout=600):
 
 def detect_faces_in_frames(frame_manifest, output_dir):
     """Tag already-extracted sample frames with a face count using a bundled
-    Haar cascade (fully offline -- no model download needed)."""
+    Haar cascade (fully offline -- no model download needed). When a face is
+    found, also derive a rough shot-framing guess (close-up/medium/wide) from
+    how much of the frame the largest face occupies -- a cheap, evidence-based
+    stand-in for real shot-type classification (no ML model for that here)."""
     if not frame_manifest:
         return frame_manifest
     if not os.path.isfile(FACE_CASCADE_PATH):
@@ -734,31 +791,70 @@ def detect_faces_in_frames(frame_manifest, output_dir):
             continue
         faces = cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(40, 40))
         entry["faces"] = int(len(faces))
+        if len(faces) > 0:
+            img_h, img_w = img.shape
+            largest_area = max(w * h for (_, _, w, h) in faces)
+            ratio = largest_area / (img_w * img_h) if img_w and img_h else 0
+            entry["largest_face_frame_area_pct"] = round(ratio * 100, 1)
+            if ratio > 0.15:
+                entry["shot_type_guess"] = "close-up"
+            elif ratio > 0.04:
+                entry["shot_type_guess"] = "medium"
+            else:
+                entry["shot_type_guess"] = "wide"
     return frame_manifest
 
 
 def ocr_frames(frame_manifest, output_dir, only_tag_prefix="interval_", max_frames=20, timeout=15):
     """Best-effort OCR for burned-in text (titles, lower-thirds, captions) on
     the evenly-sampled frames. Skipped gracefully if tesseract isn't
-    installed -- it's a system binary, not something this script installs."""
+    installed -- it's a system binary, not something this script installs.
+
+    Also derives a rough text-prominence label from the tallest confident
+    word box on the frame (relative to frame height) -- a cheap stand-in for
+    "is this a title card, a lower-third, or fine-print/captions" since
+    identifying actual font/weight isn't feasible without a layout model."""
     if not which("tesseract"):
         return {"available": False, "reason": "tesseract-ocr binary not found on PATH (optional system package)"}
     if not ensure_pip_package("pytesseract", "pytesseract", timeout=60):
         return {"available": False, "reason": "pytesseract unavailable"}
     import pytesseract
+    from pytesseract import Output
+    from PIL import Image
 
     hits = []
     candidates = [e for e in frame_manifest if e["tag"].startswith(only_tag_prefix)][:max_frames]
     for entry in candidates:
         fpath = os.path.join(output_dir, entry["file"])
         try:
-            text = pytesseract.image_to_string(fpath, config="--psm 11", timeout=timeout).strip()
+            data = pytesseract.image_to_data(fpath, config="--psm 11", output_type=Output.DICT, timeout=timeout)
         except Exception:
             continue
-        text = re.sub(r"\s+", " ", text).strip()
-        if len(text) >= 3:
-            hits.append({"time": entry["time"], "text": text[:200]})
-            entry["ocr_text"] = text[:200]
+        words = [w for w in data.get("text", []) if w.strip()]
+        text = re.sub(r"\s+", " ", " ".join(words)).strip()
+        if len(text) < 3:
+            continue
+        entry["ocr_text"] = text[:200]
+        hit = {"time": entry["time"], "text": text[:200]}
+        try:
+            with Image.open(fpath) as im:
+                img_h = im.height
+            confident_heights = [
+                h for h, conf in zip(data.get("height", []), data.get("conf", []))
+                if h and float(conf) > 30
+            ]
+            max_h = max(confident_heights) if confident_heights else 0
+            if img_h:
+                prom_pct = round(100.0 * max_h / img_h, 1)
+                hit["prominence_pct"] = prom_pct
+                hit["prominence_label"] = (
+                    "title/headline" if prom_pct >= 8 else
+                    "subtitle/lower-third" if prom_pct >= 3 else
+                    "fine-print/caption"
+                )
+        except Exception:
+            pass
+        hits.append(hit)
     return {"available": True, "detections": hits}
 
 
@@ -794,6 +890,234 @@ def beat_analysis(path, workdir, cuts, has_audio, tolerance_sec=0.15):
         "cuts_on_beat_pct": pct,
         "tolerance_sec": tolerance_sec,
     }
+
+
+def analyze_color_palette(frame_manifest, output_dir, k=5, max_frames=20):
+    """Dominant-color extraction (k-means over downsampled pixels) per sampled
+    frame plus an overall palette across all of them, with average
+    saturation/brightness as a quick read on "vibrant vs. desaturated/grungy"
+    grading. Reuses frames already extracted for visual inspection -- no
+    extra decoding pass -- and only needs opencv, already a dependency."""
+    if not ensure_opencv():
+        return {"available": False, "reason": "opencv unavailable"}
+    import cv2
+    import numpy as np
+
+    candidates = [e for e in frame_manifest if e["tag"].startswith("interval_")][:max_frames]
+    if not candidates:
+        candidates = frame_manifest[:max_frames]
+
+    def dominant(pixels, kk):
+        kk = max(1, min(kk, len(pixels)))
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 15, 1.0)
+        _, labels, centers = cv2.kmeans(pixels, kk, None, criteria, 3, cv2.KMEANS_RANDOM_CENTERS)
+        counts = np.bincount(labels.flatten(), minlength=kk)
+        order = np.argsort(-counts)
+        out = []
+        for idx in order:
+            b, g, r = centers[idx]
+            out.append({
+                "hex": "#{:02x}{:02x}{:02x}".format(int(r), int(g), int(b)),
+                "pct": round(100.0 * counts[idx] / counts.sum(), 1),
+            })
+        return out
+
+    per_frame, all_pixels = [], []
+    for entry in candidates:
+        fpath = os.path.join(output_dir, entry["file"])
+        img = cv2.imread(fpath)
+        if img is None:
+            continue
+        small = cv2.resize(img, (64, 36), interpolation=cv2.INTER_AREA)
+        pixels = small.reshape(-1, 3).astype(np.float32)
+        per_frame.append({"time": entry["time"], "palette": dominant(pixels, k)[:5]})
+        all_pixels.append(pixels)
+
+    if not per_frame:
+        return {"available": False, "reason": "no frames to sample"}
+
+    stacked = np.vstack(all_pixels)
+    if len(stacked) > 20000:
+        idx = np.random.default_rng(0).choice(len(stacked), 20000, replace=False)
+        stacked = stacked[idx]
+    overall = dominant(stacked, k)[:6]
+
+    hsv = cv2.cvtColor(stacked.reshape(-1, 1, 3).astype(np.uint8), cv2.COLOR_BGR2HSV).reshape(-1, 3)
+    avg_sat = round(float(np.mean(hsv[:, 1])) / 255 * 100, 1)
+    avg_val = round(float(np.mean(hsv[:, 2])) / 255 * 100, 1)
+
+    return {
+        "available": True,
+        "overall_palette": overall,
+        "avg_saturation_pct": avg_sat,
+        "avg_brightness_pct": avg_val,
+        "per_frame": per_frame,
+    }
+
+
+def detect_camera_movement(path, cuts, duration, max_shots=24, sample_fps=2.0, max_dim=160,
+                            max_shot_span=6.0, min_shot_len=0.4):
+    """Per-shot camera-movement classification (static/pan-tilt/zoom-in/
+    zoom-out/handheld) from dense optical flow -- motion_curve tells you *how
+    much* changed within a shot, this tells you *what kind* of movement did
+    it. A heuristic like the rest of the classifiers here: returns a
+    confidence and the raw flow numbers behind the call, not just a label.
+    Capped to `max_shots` (evenly sampled across the whole shot list) and a
+    `max_shot_span` per shot to keep cost bounded on long/cut-heavy videos.
+    Note: frame seeking by timestamp is approximate on long-GOP codecs, so
+    treat exact per-shot boundaries as approximate too."""
+    if not ensure_opencv():
+        warn("opencv unavailable, skipping camera-movement classification")
+        return []
+    import cv2
+    import numpy as np
+
+    bounds = sorted(set(round(b, 3) for b in [0.0] + [c["time"] for c in cuts] + ([duration] if duration else [])))
+    shots = [(a, b) for a, b in zip(bounds, bounds[1:]) if b - a >= min_shot_len]
+    if not shots:
+        return []
+    selected = select_cuts_subset(shots, max_shots)
+
+    cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        warn("could not open video for camera-movement analysis")
+        return []
+
+    results = []
+    for start, end in selected:
+        span = min(end - start, max_shot_span)
+        n_samples = max(3, int(span * sample_fps))
+        grays = []
+        for i in range(n_samples + 1):
+            t = start + i * (span / n_samples)
+            cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+            ok, frame = cap.read()
+            if not ok:
+                continue
+            g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            h, w = g.shape
+            if w > max_dim:
+                scale = max_dim / w
+                g = cv2.resize(g, (max_dim, max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
+            grays.append(g)
+        if len(grays) < 3:
+            continue
+
+        h, w = grays[0].shape
+        yy, xx = np.mgrid[0:h, 0:w]
+        rx, ry = (xx - w / 2.0), (yy - h / 2.0)
+        rnorm = np.sqrt(rx ** 2 + ry ** 2) + 1e-6
+        rux, ruy = rx / rnorm, ry / rnorm
+
+        mags, mean_dxs, mean_dys, radial_scores = [], [], [], []
+        for a, b in zip(grays, grays[1:]):
+            flow = cv2.calcOpticalFlowFarneback(a, b, None, 0.5, 2, 15, 2, 5, 1.1, 0)
+            fx, fy = flow[..., 0], flow[..., 1]
+            mags.append(float(np.mean(np.sqrt(fx ** 2 + fy ** 2))))
+            mean_dxs.append(float(np.mean(fx)))
+            mean_dys.append(float(np.mean(fy)))
+            radial_scores.append(float(np.mean(fx * rux + fy * ruy)))
+
+        mean_mag = statistics.mean(mags)
+        mean_dx, mean_dy = statistics.mean(mean_dxs), statistics.mean(mean_dys)
+        translation_mag = math.hypot(mean_dx, mean_dy)
+        mean_radial = statistics.mean(radial_scores)
+        angles = [math.atan2(dy, dx) for dx, dy in zip(mean_dxs, mean_dys) if math.hypot(dx, dy) > 0.05]
+        angle_var = statistics.pstdev(angles) if len(angles) > 1 else 0.0
+
+        detail = {
+            "mean_flow_magnitude": round(mean_mag, 3),
+            "mean_translation_magnitude": round(translation_mag, 3),
+            "mean_radial_flow": round(mean_radial, 3),
+            "direction_angle_stdev": round(angle_var, 3),
+            "samples": len(grays),
+        }
+
+        if mean_mag < 0.35:
+            movement = {"type": "static", "confidence": 0.7, "detail": detail}
+        elif abs(mean_radial) > 0.5 * mean_mag and abs(mean_radial) > 0.3:
+            movement = {"type": "zoom_in" if mean_radial > 0 else "zoom_out", "confidence": 0.55, "detail": detail}
+        elif angle_var > 1.2 and mean_mag > 0.6:
+            movement = {"type": "handheld/shake", "confidence": 0.5, "detail": detail}
+        elif translation_mag > 0.4 * mean_mag:
+            movement = {"type": "pan/tilt", "confidence": 0.6, "detail": detail}
+        else:
+            movement = {"type": "static", "confidence": 0.4, "detail": detail}
+
+        results.append({"shot_start": round(start, 2), "shot_end": round(end, 2), "movement": movement})
+    cap.release()
+    return results
+
+
+def detect_edit_offset(path, cut_time, workdir, window=1.2, resolution_sec=0.05, timeout=20):
+    """Check whether the audio actually changes character (a real RMS-level
+    jump, not just ambient noise) right at a video cut, or measurably before
+    (a J-cut -- next scene's sound leads the picture) or after (an L-cut --
+    previous scene's sound trails the picture) it. Standard professional
+    editing techniques that pure video-side cut detection can't see at all.
+    A heuristic on coarse RMS windows, not a proper audio-scene-change model
+    -- treat `confidence` accordingly, and 'no_clear_audio_transition' as
+    just that (this cut's audio didn't shift enough to say anything), not
+    proof there's no edit there."""
+    start = max(cut_time - window, 0.0)
+    clip_path = os.path.join(workdir, "_editoffset_tmp.wav")
+    try:
+        run(["ffmpeg", "-y", "-ss", f"{start:.3f}", "-i", path, "-t", f"{window * 2:.3f}",
+             "-vn", "-ac", "1", "-ar", "16000", clip_path], timeout=timeout, check=True)
+    except Exception as e:
+        return {"type": "unknown", "confidence": 0.0, "detail": {"reason": f"clip extraction failed: {e}"}}
+
+    n = int(16000 * resolution_sec)
+    r = run(
+        ["ffmpeg", "-i", clip_path, "-af",
+         f"asetnsamples=n={n}:p=0,astats=metadata=1:reset=1,"
+         "ametadata=print:key=lavfi.astats.Overall.RMS_level:file=-",
+         "-f", "null", "-"],
+        timeout=timeout,
+    )
+    try:
+        os.remove(clip_path)
+    except OSError:
+        pass
+
+    points = []
+    pending_t = None
+    for line in r.stdout.splitlines():
+        if line.startswith("frame:"):
+            m = re.search(r"pts_time:([\d.]+)", line)
+            if m:
+                pending_t = float(m.group(1))
+        elif "RMS_level=" in line and pending_t is not None:
+            val = line.split("RMS_level=")[1].strip()
+            db = None if val == "-inf" else float(val)
+            points.append((pending_t, db))
+            pending_t = None
+
+    if len(points) < 4:
+        return {"type": "unknown", "confidence": 0.0, "detail": {"reason": "too few audio samples"}}
+
+    best_idx, best_jump = None, 0.0
+    for i in range(1, len(points)):
+        d0, d1 = points[i - 1][1], points[i][1]
+        if d0 is None or d1 is None:
+            continue
+        jump = abs(d1 - d0)
+        if jump > best_jump:
+            best_jump, best_idx = jump, i
+
+    if best_idx is None or best_jump < 4.0:
+        return {"type": "no_clear_audio_transition", "confidence": 0.0, "detail": {"max_jump_db": round(best_jump, 1)}}
+
+    jump_time_abs = start + points[best_idx][0]
+    offset = round(jump_time_abs - cut_time, 3)
+    detail = {"max_jump_db": round(best_jump, 1), "audio_jump_offset_from_cut_sec": offset}
+
+    if abs(offset) <= 0.1:
+        return {"type": "aligned_cut", "confidence": 0.6, "detail": detail}
+    elif offset < -0.1:
+        return {"type": "j_cut_candidate", "confidence": round(min(0.3 + abs(offset), 0.8), 2), "detail": detail}
+    else:
+        return {"type": "l_cut_candidate", "confidence": round(min(0.3 + abs(offset), 0.8), 2), "detail": detail}
 
 
 def build_timeline_html(report_data, outdir):
@@ -855,6 +1179,16 @@ def build_timeline_html(report_data, outdir):
     if bright:
         p = path_from_curve(bright, "luma_mean", 0, 255, H)
         rows.append(("Brightness", f"<{p} class='line-bright' fill='none'/>" if p else "", H))
+
+    palette = report_data.get("color_palette", {})
+    if palette.get("available"):
+        sw_w = W / max(1, len(palette["overall_palette"]))
+        swatches = "".join(
+            f"<rect x='{round(i*sw_w,1)}' y='0' width='{round(sw_w,1)}' height='16' fill='{c['hex']}'>"
+            f"<title>{c['hex']} ({c['pct']}% of sampled pixels)</title></rect>"
+            for i, c in enumerate(palette["overall_palette"])
+        )
+        rows.append(("Color palette", f"<g>{swatches}</g>", 16))
 
     beats = report_data.get("beat_analysis", {})
     if beats.get("available"):
@@ -966,9 +1300,16 @@ def main():
                      help="Skip transition classification, motion curve, face detection, OCR, beat "
                           "detection, and the HTML timeline -- just the original core metrics, fast")
     ap.add_argument("--skip-ocr", action="store_true", help="Skip on-screen text detection")
-    ap.add_argument("--skip-faces", action="store_true", help="Skip face-presence detection")
+    ap.add_argument("--skip-faces", action="store_true", help="Skip face-presence/shot-framing detection")
     ap.add_argument("--skip-beat-detection", action="store_true", help="Skip music tempo/beat analysis")
     ap.add_argument("--skip-timeline", action="store_true", help="Skip generating timeline.html")
+    ap.add_argument("--skip-color", action="store_true", help="Skip color-palette/grading analysis")
+    ap.add_argument("--skip-camera-movement", action="store_true",
+                     help="Skip per-shot camera-movement classification (optical flow)")
+    ap.add_argument("--skip-edit-offset", action="store_true",
+                     help="Skip J-cut/L-cut (audio/video edit offset) detection per cut")
+    ap.add_argument("--max-classified-shots", type=int, default=24,
+                     help="Cap on how many shots get camera-movement classification")
     args = ap.parse_args()
 
     if not which("ffmpeg") or not which("ffprobe"):
@@ -1014,6 +1355,9 @@ def main():
     loudness = loudness_curve(local_path, has_audio)
     spikes = find_loudness_spikes(loudness) if loudness else []
 
+    info("Measuring integrated loudness (LUFS)...")
+    loudness_lufs = measure_loudness_lufs(local_path, has_audio)
+
     info("Building brightness curve...")
     brightness = brightness_curve(local_path)
 
@@ -1030,8 +1374,11 @@ def main():
 
     motion = []
     faces_summary = None
+    shot_type_summary = None
     ocr = {"available": False, "reason": "skipped"}
     beats = {"available": False, "reason": "skipped"}
+    color_palette = {"available": False, "reason": "skipped"}
+    camera_movement = []
     timeline_path = None
 
     if not args.skip_advanced:
@@ -1042,8 +1389,20 @@ def main():
             if c["time"] in classified_times:
                 c["transition"] = classify_transition(local_path, c["time"], outdir)
 
+        if not args.skip_edit_offset and has_audio:
+            info("Checking audio/video edit offset per cut (J-cut/L-cut candidates)...")
+            for c in cuts:
+                if c["time"] in classified_times:
+                    c["edit_offset"] = detect_edit_offset(local_path, c["time"], outdir)
+
         info("Building motion/energy curve...")
         motion = motion_curve(local_path, duration)
+
+        if not args.skip_camera_movement:
+            info("Classifying camera movement per shot (optical flow)...")
+            camera_movement = detect_camera_movement(
+                local_path, cuts, duration, max_shots=args.max_classified_shots,
+            )
 
         if not args.skip_faces:
             info("Detecting faces in sampled frames...")
@@ -1054,6 +1413,9 @@ def main():
                 "frames_checked": len(frame_manifest),
                 "pct_frames_with_face": round(100 * len(with_face) / len(frame_manifest), 1) if frame_manifest else None,
             }
+            shot_types = [f["shot_type_guess"] for f in with_face if f.get("shot_type_guess")]
+            if shot_types:
+                shot_type_summary = {t: shot_types.count(t) for t in ("close-up", "medium", "wide")}
 
         if not args.skip_ocr:
             info("Running OCR on sampled frames for on-screen text...")
@@ -1062,6 +1424,10 @@ def main():
         if not args.skip_beat_detection:
             info("Analyzing music tempo/beat grid...")
             beats = beat_analysis(local_path, outdir, cuts, has_audio)
+
+        if not args.skip_color:
+            info("Extracting color palette / grading signature...")
+            color_palette = analyze_color_palette(frame_manifest, outdir)
 
     elapsed = round(time.time() - t0, 1)
 
@@ -1076,11 +1442,15 @@ def main():
         "freeze_frames": freeze,
         "loudness_curve": loudness,
         "loudness_spikes_candidate_sfx": spikes,
+        "loudness_lufs": loudness_lufs,
         "brightness_curve": brightness,
         "motion_curve": motion,
+        "camera_movement": camera_movement,
         "faces_summary": faces_summary,
+        "shot_type_summary": shot_type_summary,
         "on_screen_text": ocr,
         "beat_analysis": beats,
+        "color_palette": color_palette,
         "transcript": transcript,
         "frames": frame_manifest,
         "analysis_time_sec": elapsed,
@@ -1110,6 +1480,9 @@ def main():
         "transcript_available": transcript.get("available", False),
         "beat_analysis_available": beats.get("available", False),
         "on_screen_text_available": ocr.get("available", False),
+        "color_palette_available": color_palette.get("available", False),
+        "loudness_lufs_available": loudness_lufs.get("available", False),
+        "num_shots_camera_classified": len(camera_movement),
         "warnings": WARNINGS,
         "elapsed_sec": elapsed,
     }))

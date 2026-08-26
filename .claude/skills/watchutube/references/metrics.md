@@ -6,10 +6,17 @@ Everything the analysis script measures, and how to read it.
 
 Basic technical facts from `ffprobe`: `duration_sec`, `size_bytes`,
 `bit_rate`, and nested `video` (`codec`, `width`, `height`, `fps`,
-`nb_frames`, `pix_fmt`) / `audio` (`codec`, `sample_rate`, `channels`).
-`has_audio` is `false` for silent/music-bed-only files with no audio stream
-at all (rare) -- don't confuse with a video whose audio track exists but is
-mostly silence, which shows up in `silence` instead.
+`nb_frames`, `pix_fmt`, `aspect_ratio` (e.g. `"16:9"`), `orientation`
+(`landscape`/`portrait`/`square`), `color_space`, `color_transfer`,
+`color_primaries`, `is_hdr` (`true` if `color_transfer` is a known HDR
+transfer function like `smpte2084`/PQ or `arib-std-b67`/HLG, `false` for a
+normal SDR transfer, `null` if ffprobe didn't report one at all)) / `audio`
+(`codec`, `sample_rate`, `channels`). `has_audio` is `false` for
+silent/music-bed-only files with no audio stream at all (rare) -- don't
+confuse with a video whose audio track exists but is mostly silence, which
+shows up in `silence` instead. `aspect_ratio`/`orientation` are worth a line
+in the report when the user's talking about platform fit (e.g. a landscape
+16:9 video for a vertical/9:16 platform is a real mismatch worth flagging).
 
 ## `cuts`
 
@@ -51,6 +58,22 @@ or classifications look obviously wrong for what the user describes,
 re-run with an adjusted `--cut-threshold`, or just say what you see in the
 frames instead of trusting the label.
 
+Classified cuts (same subset as `transition`, and only when the video has
+audio) also get an `edit_offset` sub-object: `{type, confidence, detail}`.
+`type` is `aligned_cut` (audio and video change together -- the normal
+case), `j_cut_candidate` (the biggest local audio RMS jump happens
+measurably *before* the video cut -- the next scene's sound is already
+audible before you see it), `l_cut_candidate` (the jump happens measurably
+*after* -- the previous scene's audio trails into the new shot),
+`no_clear_audio_transition` (audio around this cut didn't shift enough to
+say anything -- not proof there's no edit trick, just no signal at this
+resolution), or `unknown` (extraction/measurement failed). `detail` carries
+`max_jump_db` and `audio_jump_offset_from_cut_sec` (negative = before the
+cut, positive = after). This is a coarse RMS-level-jump heuristic on ~50ms
+windows, not a real audio-scene-change model -- a genuine signal for
+calling out deliberate J-cut/L-cut editing, but don't overstate precision
+on a borderline `confidence`.
+
 ## `pacing`
 
 Derived from `cuts` + `metadata.duration_sec`:
@@ -64,6 +87,30 @@ Derived from `cuts` + `metadata.duration_sec`:
 - `pacing_curve_per_minute` -- cut count bucketed by minute of runtime, in
   order. Use this to describe how the edit's rhythm changes over time (e.g.
   "opens slow, accelerates into the final third").
+
+## `camera_movement`
+
+List of `{shot_start, shot_end, movement: {type, confidence, detail}}` for
+a sampled subset of shots (up to `--max-classified-shots`, evenly spread
+across the whole shot list -- not necessarily every shot). `type` is one of
+`static`, `pan/tilt`, `zoom_in`, `zoom_out`, or `handheld/shake`, derived
+from dense optical flow (Farneback) between a few frames sampled within the
+shot: overall flow magnitude separates static from moving, a strong radial
+component (flow pointing outward/inward from frame center) signals zoom,
+a large consistent mean flow vector signals pan/tilt, and high
+frame-to-frame direction variance at non-trivial magnitude signals
+handheld/shake. `detail` carries the raw flow numbers
+(`mean_flow_magnitude`, `mean_translation_magnitude`, `mean_radial_flow`,
+`direction_angle_stdev`, `samples`) for transparency. This is what tells
+you *what kind* of camera movement is driving a shot's `motion_curve`
+energy (or confirms a shot is genuinely locked-off) -- `motion_curve` alone
+can't distinguish a pan from a zoom from handheld shake, all of which can
+produce similar magnitude. Treat `confidence` as a rough heuristic signal,
+not ground truth: frame seeking here is timestamp-based (`cv2`
+`CAP_PROP_POS_MSEC`), which is approximate on long-GOP-encoded video, so
+very short shots or shots right after a hard cut can be classified from
+slightly-off frames. `null`/absent if `--skip-camera-movement` was passed
+or OpenCV was unavailable.
 
 ## `silence`
 
@@ -97,6 +144,21 @@ timestamp against `cuts` (impact SFX often land exactly on a cut) and the
 nearest sampled frame before reporting it as a likely SFX moment. Never
 claim to have identified *what* the sound is -- you can't hear it.
 
+## `loudness_lufs`
+
+`{available, integrated_lufs, loudness_range_lu, true_peak_dbtp,
+threshold_lufs}` from a single-pass ffmpeg `loudnorm` measurement -- the
+actual integrated loudness (LUFS), true peak (dBTP), and loudness range
+(LU) used for real broadcast/streaming delivery specs (e.g. YouTube/most
+streaming platforms target roughly -14 LUFS integrated; broadcast specs
+often target -23 or -24 LUFS). This is a single summary number for the
+whole file, unlike `loudness_curve`'s per-second relative RMS -- use
+`loudness_lufs` when the question is "is this mixed to spec," and
+`loudness_curve`/`loudness_spikes_candidate_sfx` when the question is
+"where does the volume change over time." `{available: false, reason}` if
+there's no audio track or `loudnorm` didn't report measurements (e.g. a
+clip too short or fully silent).
+
 ## `brightness_curve`
 
 Average luma (0-255) sampled at 1fps across the whole video. Use it to
@@ -114,17 +176,31 @@ near 0 throughout). Read this alongside `pacing` -- a video can be
 low-cuts-per-minute but still feel energetic if motion stays high, or
 high-cuts-per-minute but feel static if each shot itself barely moves.
 
-## `faces_summary` (and per-frame `faces`)
+## `faces_summary` / `shot_type_summary` (and per-frame `faces`, `shot_type_guess`)
 
-`{frames_with_face, frames_checked, pct_frames_with_face}`, from running a
-face-presence detector (offline Haar cascade, no network needed at
-analysis time) over every extracted still in `frames/`. Each entry in the
-`frames` array also gets its own `faces` count. Use this for "talking-head
-heavy" vs. "b-roll/abstract/product-shot heavy" framing of the visual
-style -- it's a presence count, not identity or emotion detection, and it's
-only as good as the sample of frames extracted, so treat the percentage as
-indicative, not a precise measurement over the full runtime. `null`/absent
-if `--skip-faces` was passed or OpenCV was unavailable.
+`faces_summary`: `{frames_with_face, frames_checked, pct_frames_with_face}`,
+from running a face-presence detector (offline Haar cascade, no network
+needed at analysis time) over every extracted still in `frames/`. Each
+entry in the `frames` array also gets its own `faces` count. Use this for
+"talking-head heavy" vs. "b-roll/abstract/product-shot heavy" framing of
+the visual style -- it's a presence count, not identity or emotion
+detection, and it's only as good as the sample of frames extracted, so
+treat the percentage as indicative, not a precise measurement over the
+full runtime. `null`/absent if `--skip-faces` was passed or OpenCV was
+unavailable.
+
+When a frame has a detected face, it also gets `largest_face_frame_area_pct`
+(the biggest face's bounding-box area as a percentage of the frame) and a
+derived `shot_type_guess`: `close-up` (>15%), `medium` (4-15%), or `wide`
+(<4%). `shot_type_summary` is the aggregate count of each across all
+frames with a detected face. This is a cheap, face-size-based proxy for
+real shot-type/composition classification -- it only applies to frames
+where a face was actually found, says nothing about framing on
+faceless/product/landscape shots, and a face far off-center or a
+group shot can skew the "largest face" reading; treat it as a rough
+framing signal to fold in with what you see in the actual frames; not a
+substitute for a real composition read (rule-of-thirds, headroom, camera
+angle).
 
 ## `on_screen_text`
 
@@ -132,12 +208,18 @@ if `--skip-faces` was passed or OpenCV was unavailable.
 binary isn't installed on the system -- this is a system package, not
 something the script pip-installs, since that needs root; see SKILL.md
 Notes for how to add it). When available: `detections`, a list of
-`{time, text}` for sampled frames where OCR found readable text (title
-cards, lower-thirds, burned-in captions). This only checks the
-evenly-spaced `interval_*` frames, not every frame, so a short-lived title
-card could be missed if no sample frame happens to land on it -- treat an
-empty `detections` list as "no on-screen text found in the sampled frames,"
-not a certainty that none exists anywhere in the video.
+`{time, text, prominence_pct?, prominence_label?}` for sampled frames
+where OCR found readable text (title cards, lower-thirds, burned-in
+captions). `prominence_pct` is the tallest confident word's height as a
+percentage of frame height; `prominence_label` buckets it as
+`title/headline` (>=8%), `subtitle/lower-third` (3-8%), or
+`fine-print/caption` (<3%) -- a cheap stand-in for real typography/font
+analysis (weight, face, kerning aren't measured, just size). This only
+checks the evenly-spaced `interval_*` frames, not every frame, so a
+short-lived title card could be missed if no sample frame happens to land
+on it -- treat an empty `detections` list as "no on-screen text found in
+the sampled frames," not a certainty that none exists anywhere in the
+video.
 
 ## `beat_analysis`
 
@@ -155,6 +237,24 @@ estimation itself is less meaningful on audio without a clear rhythmic
 pulse (ambient beds, pure dialogue). Don't over-read this metric on content
 where it doesn't apply.
 
+## `color_palette`
+
+`{available, overall_palette, avg_saturation_pct, avg_brightness_pct,
+per_frame}` when available (needs OpenCV), or `{available: false, reason}`
+otherwise. `overall_palette` and each `per_frame` entry's `palette` are
+lists of `{hex, pct}` -- dominant colors from k-means clustering over
+downsampled pixels (of the same `interval_*` sample frames used elsewhere),
+ranked by share of sampled pixels. `avg_saturation_pct`/`avg_brightness_pct`
+give a quick numeric read on "vibrant vs. desaturated" and "bright vs. dark"
+grading overall. Use the actual hex values when describing a video's color
+grade instead of an eyeballed impression -- e.g. "the palette centers on
+`#3a1f1f` and `#c94f4f`, a desaturated red/black grade" is concrete in a
+way "looks reddish and dark" isn't. This is computed on the same sparse
+frame sample used for visual inspection, so a strongly-colored moment that
+falls between samples (e.g. a one-frame flash of color) won't show up in
+the overall palette -- treat it as representative of the dominant look, not
+exhaustive. `null`/absent if `--skip-color` was passed.
+
 ## `transcript`
 
 `{available, reason}` when unavailable (no audio track, faster-whisper
@@ -171,28 +271,30 @@ meditative piece and a hype trailer have very different "correct" pacing).
 
 ## `frames`
 
-Manifest of extracted JPEGs: `{time, tag, file, faces?, ocr_text?}` (path
-relative to the output dir). Tags are either `cut_<t>s_before` /
-`cut_<t>s_after` (bracket a specific cut so you can compare the two sides)
-or `interval_<fraction>` (evenly spaced samples across the runtime for
-overall visual-style coverage). `faces` (face count) and `ocr_text`
-(detected on-screen text) are added per-frame when those passes ran and
-found something -- see `faces_summary` / `on_screen_text` above for the
-aggregate view. This is the evidence for everything visual you report --
-always look at the actual images via the Read tool rather than inferring
-from numbers alone.
+Manifest of extracted JPEGs: `{time, tag, file, faces?,
+largest_face_frame_area_pct?, shot_type_guess?, ocr_text?}` (path relative
+to the output dir). Tags are either `cut_<t>s_before` / `cut_<t>s_after`
+(bracket a specific cut so you can compare the two sides) or
+`interval_<fraction>` (evenly spaced samples across the runtime for overall
+visual-style coverage). `faces`/`shot_type_guess` and `ocr_text` are added
+per-frame when those passes ran and found something -- see `faces_summary`
+/ `shot_type_summary` / `on_screen_text` above for the aggregate views.
+This is the evidence for everything visual you report -- always look at
+the actual images via the Read tool rather than inferring from numbers
+alone.
 
 ## `timeline.html`
 
 Not part of `manifest.json` -- a sibling file in the output directory (path
 also given in the script's stdout JSON as `timeline_html`). A
 self-contained, dependency-free HTML/SVG visualization plotting shots/cuts,
-motion, loudness (with SFX-candidate markers), brightness, the beat grid,
-and voice-over segments on one shared, hoverable timeline -- dark/light
-aware, opens in any browser with no server needed. Generated automatically
-unless `--skip-advanced` or `--skip-timeline` was passed. Worth mentioning
-to the user as a companion to the written report; see SKILL.md step 7 for
-how to offer a polished, shareable version via the Artifact tool if wanted.
+motion, loudness (with SFX-candidate markers), brightness, a color-palette
+swatch strip, the beat grid, and voice-over segments on one shared,
+hoverable timeline -- dark/light aware, opens in any browser with no server
+needed. Generated automatically unless `--skip-advanced` or
+`--skip-timeline` was passed. Worth mentioning to the user as a companion
+to the written report; see SKILL.md step 7 for how to offer a polished,
+shareable version via the Artifact tool if wanted.
 
 ## `warnings`
 

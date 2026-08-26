@@ -1,6 +1,6 @@
 ---
 name: watchutube
-description: Deep, evidence-based analysis of a video's editing and craft -- cuts and transitions (hard cut, fade, dissolve, wipe candidate, automatically classified from frame-diff evidence, not guessed), pacing (shot lengths, cuts per minute, pacing curve, plus a motion/energy curve that catches camera movement within a shot), sound design (music/silence/dialogue map, loudness spikes that likely mark sound effects or hits, music tempo/BPM and whether cuts land on the beat), voice-over (transcript, words-per-minute, pauses), on-screen text/captions (OCR), face/subject presence, and technical/visual metrics (resolution, fps, color and brightness trends, freeze frames, black frames) -- plus an auto-generated visual HTML timeline of the whole analysis. Use this whenever the user wants a video "watched," reviewed, or analyzed -- for a local video file (uploaded/attached, or an MP4 sitting in the repo, e.g. a rendered video under videos/*/renders), or for a video URL such as a YouTube link. Trigger on requests like "analyze this video," "check the pacing of this edit," "how's the sound design," "watch this and tell me about the transitions," "review my voice-over timing," "does this cut on the beat," or any ask for feedback on editing/transitions/pacing/sound effects/voice-over/on-screen text in a video -- even if the user doesn't name this skill directly.
+description: Deep, evidence-based, one-stop analysis of a video's editing and craft -- cuts and transitions (hard cut, fade, dissolve, wipe candidate, automatically classified from frame-diff evidence, not guessed), audio/video edit offset per cut (J-cut/L-cut candidates), pacing (shot lengths, cuts per minute, pacing curve, a motion/energy curve that catches camera movement within a shot, plus per-shot camera-movement classification -- static/pan-tilt/zoom/handheld -- from optical flow), sound design (music/silence/dialogue map, loudness spikes that likely mark sound effects or hits, integrated loudness in LUFS/true-peak/loudness-range for mix/delivery checks, music tempo/BPM and whether cuts land on the beat), voice-over (transcript, words-per-minute, pauses), on-screen text/captions with size-based prominence (title vs. lower-third vs. caption), face/subject presence with a rough shot-framing guess (close-up/medium/wide) from face size, color palette/grading (dominant colors, saturation/brightness signature), and technical/visual/delivery metrics (resolution, aspect ratio, orientation, SDR/HDR, fps, color and brightness trends, freeze frames, black frames) -- plus an auto-generated visual HTML timeline of the whole analysis, all on by default. Use this whenever the user wants a video "watched," reviewed, or analyzed -- for a local video file (uploaded/attached, or an MP4 sitting in the repo, e.g. a rendered video under videos/*/renders), or for a video URL such as a YouTube link. Trigger on requests like "analyze this video," "check the pacing of this edit," "how's the sound design," "watch this and tell me about the transitions," "review my voice-over timing," "does this cut on the beat," "what's the color grading," "is the camera static or moving," or any ask for feedback on editing/transitions/pacing/sound effects/voice-over/on-screen text/color/camera-work in a video -- even if the user doesn't name this skill directly.
 ---
 
 # watchutube: deep video analysis
@@ -10,16 +10,23 @@ that gap: `scripts/analyze_video.py` runs ffmpeg/ffprobe/OpenCV/librosa
 passes that turn a video into structured evidence -- exact timestamps for
 cuts (both hard cuts *and* gradual fades/dissolves, which are structurally
 invisible to naive scene detection -- see below), each one pre-classified by
-transition type from real frame-diff evidence, a motion/energy curve, music
-tempo and beat alignment, silence/loudness, freeze/black frames, brightness,
-face-presence and on-screen-text detection, and (when possible) a
-timestamped voice-over transcript -- plus a curated set of still frames at
-the moments that matter, and a self-contained visual timeline.html. Your job
-is to run that script, then actually look at the frames it extracted, read
-the JSON/transcript, and synthesize all of it into a real analysis. The
-script now does real classification work, not just detection -- but it's
-still evidence for you to weigh and sanity-check against what you can
-actually see, not a verdict to transcribe uncritically.
+transition type from real frame-diff evidence and checked for an
+audio/video edit offset (J-cut/L-cut candidates), a motion/energy curve
+plus per-shot camera-movement classification (static/pan/zoom/handheld),
+music tempo and beat alignment, silence/loudness plus integrated loudness
+(LUFS/true-peak/LRA), freeze/black frames, brightness, a color-palette/
+grading signature, face-presence with a rough shot-framing guess
+(close-up/medium/wide), and on-screen-text detection with size-based
+prominence, and (when possible) a timestamped voice-over transcript --
+plus a curated set of still frames at the moments that matter, and a
+self-contained visual timeline.html. Every one of these passes runs by
+default -- this is meant to be a one-stop-shop deep analysis, not a menu
+you assemble yourself. Your job is to run that script, then actually look
+at the frames it extracted, read the JSON/transcript, and synthesize all
+of it into a real analysis. The script does real classification work, not
+just detection -- but it's still evidence for you to weigh and
+sanity-check against what you can actually see, not a verdict to
+transcribe uncritically.
 
 Don't try to reimplement the ffmpeg/OpenCV pipelines yourself -- they're
 already tuned and validated against known ground truth (synthetic test
@@ -58,15 +65,21 @@ renders). Just call the script.
      and skip transition classification, the fade/dissolve scan, motion
      curve, face detection, OCR, beat detection, and the timeline -- useful
      for a quick pass on a long video where you only need the basics fast.
-   - `--skip-faces`, `--skip-ocr`, `--skip-beat-detection`, `--skip-timeline`
-     to selectively drop one of the advanced passes (e.g. skip OCR on a
-     video you already know has no on-screen text, to save time).
+   - `--skip-faces`, `--skip-ocr`, `--skip-beat-detection`, `--skip-timeline`,
+     `--skip-color`, `--skip-camera-movement`, `--skip-edit-offset` to
+     selectively drop one of the advanced passes (e.g. skip OCR on a video
+     you already know has no on-screen text, to save time). Everything is
+     **on by default** -- this is meant to be a one-stop-shop pass; only
+     reach for these to trim cost on a long video where you know a
+     particular signal won't matter.
    - `--max-classified-cuts N` (default 40) -- cap on how many cuts get full
-     frame-diff transition classification, for videos with an extreme
-     number of cuts.
+     frame-diff transition classification and edit-offset (J-cut/L-cut)
+     checking, for videos with an extreme number of cuts.
+   - `--max-classified-shots N` (default 24) -- cap on how many shots get
+     camera-movement classification, for videos with a huge number of shots.
 
    The script prints one JSON line to stdout when done, e.g.
-   `{"ok": true, "outdir": "...", "manifest": ".../manifest.json", "timeline_html": ".../timeline.html", "num_frames": 30, "num_cuts": 14, "transcript_available": true, "beat_analysis_available": true, "warnings": []}`.
+   `{"ok": true, "outdir": "...", "manifest": ".../manifest.json", "timeline_html": ".../timeline.html", "num_frames": 30, "num_cuts": 14, "transcript_available": true, "beat_analysis_available": true, "color_palette_available": true, "loudness_lufs_available": true, "num_shots_camera_classified": 18, "warnings": []}`.
    A long video (many minutes) can take a while -- most of the cost is
    ffmpeg/OpenCV decoding the file several times over (once per detector
    pass) plus transcription. Run it and wait for it to finish rather than
@@ -76,14 +89,18 @@ renders). Just call the script.
    bad path/URL or ffmpeg/ffprobe missing from PATH.
 
 3. **Read `manifest.json`** (path given in the script's output). It contains
-   everything: `metadata`, `cuts` (each with a `transition` sub-object once
-   classified), `pacing`, `silence`, `black_frames`, `freeze_frames`,
-   `loudness_curve`, `loudness_spikes_candidate_sfx`, `brightness_curve`,
-   `motion_curve`, `faces_summary`, `on_screen_text`, `beat_analysis`,
-   `transcript`, `frames`, and `warnings`. See `references/metrics.md` for
-   what each field means and how to reason about it -- read that file
-   before writing the report if you haven't used this skill before in this
-   session.
+   everything: `metadata` (now also `aspect_ratio`, `orientation`,
+   `color_space`/`color_transfer`/`is_hdr`), `cuts` (each with a
+   `transition` sub-object and an `edit_offset` sub-object once classified),
+   `pacing`, `silence`, `black_frames`, `freeze_frames`, `loudness_curve`,
+   `loudness_spikes_candidate_sfx`, `loudness_lufs`, `brightness_curve`,
+   `motion_curve`, `camera_movement`, `faces_summary`, `shot_type_summary`,
+   `on_screen_text` (with per-detection `prominence_pct`/`prominence_label`),
+   `beat_analysis`, `color_palette`, `transcript`, `frames` (with
+   `shot_type_guess` on frames with a detected face), and `warnings`. See
+   `references/metrics.md` for what each field means and how to reason about
+   it -- read that file before writing the report if you haven't used this
+   skill before in this session.
 
 4. **Look at the frames -- to verify, not to guess from scratch.** Each cut
    in `cuts` already carries a `transition` classification (`hard_cut`,
@@ -102,6 +119,18 @@ renders). Just call the script.
    `transition` field if they fell outside `--max-classified-cuts` --
    don't invent a type for those, just note it wasn't classified.
 
+   Each classified cut may also carry an `edit_offset` sub-object --
+   `aligned_cut` (audio and video change together, the default/normal
+   case), `j_cut_candidate` (the audio jump happens measurably *before* the
+   video cut -- next scene's sound leads the picture), `l_cut_candidate`
+   (the audio jump happens measurably *after* -- previous scene's sound
+   trails into the new shot), or `no_clear_audio_transition` (the audio
+   around that cut didn't shift enough to say anything -- not proof there's
+   no edit trick there, just no signal). This is a coarse RMS-jump heuristic
+   on ~50ms windows, not a real audio-scene-change model -- worth calling
+   out J/L-cut candidates as a deliberate editing technique when confidence
+   is reasonable, but don't overstate precision.
+
 5. **Read the transcript** (if `transcript.available` is true) for the
    voice-over content and pacing (`words_per_minute`, `pauses`). If it's
    false, read `transcript.reason` and tell the user plainly why (no audio
@@ -114,51 +143,87 @@ renders). Just call the script.
    - `motion_curve`: visual-change intensity over time, independent of
      cuts -- use it to describe energy within a single unbroken shot (a
      handheld pan, an action sequence) that cut-counting alone would miss.
+   - `camera_movement`: per-shot classification (`static`, `pan/tilt`,
+     `zoom_in`/`zoom_out`, `handheld/shake`) from optical flow, each with a
+     `confidence` and the raw flow numbers in `detail` -- this is *what
+     kind* of movement drives a shot's motion_curve energy, not just how
+     much. Only a sample of shots gets classified (`--max-classified-shots`)
+     on a shot-heavy video; don't invent a type for unclassified shots.
+     Frame seeking for this pass is timestamp-based and approximate on
+     long-GOP codecs, so treat shot boundaries here as approximate.
    - `beat_analysis`: if available, the detected tempo (BPM) and what
      fraction of cuts land on/near a beat (`cuts_on_beat_pct`) -- a real
      "does this cut to the music" signal for music-driven edits. High
      alignment is worth calling out as a deliberate editorial choice;
      don't over-read it on a video without a strong musical pulse.
+   - `loudness_lufs`: integrated loudness, true peak, and loudness range --
+     the actual broadcast/streaming mix-level standard (unlike the raw
+     per-second RMS in `loudness_curve`, which is for spotting relative
+     spikes over time). Useful when the user cares about mix/delivery specs,
+     not just editorial pacing.
    - `faces_summary` / per-frame `faces` count: how much of the sampled
      footage shows a visible face -- useful for "talking-head heavy" vs.
-     "b-roll/abstract" framing of the visual style.
+     "b-roll/abstract" framing of the visual style. `shot_type_summary` (and
+     per-frame `shot_type_guess`/`largest_face_frame_area_pct`) gives a
+     rough close-up/medium/wide framing breakdown derived from face size --
+     only meaningful on frames where a face was actually detected.
    - `on_screen_text`: OCR'd burned-in text/captions/titles with
      timestamps, if `available` (needs the `tesseract` binary -- see
-     Notes). Skip this section of the report if unavailable rather than
-     claiming there's no on-screen text.
+     Notes), each with a `prominence_pct`/`prominence_label`
+     (title/headline, subtitle/lower-third, or fine-print/caption) derived
+     from text height relative to frame height. Skip this section of the
+     report if unavailable rather than claiming there's no on-screen text.
+   - `color_palette`: dominant colors (hex + share) per sampled frame and
+     overall, plus `avg_saturation_pct`/`avg_brightness_pct` -- use this to
+     describe the actual grading (warm/cool, vibrant/desaturated, a
+     specific recurring palette) with real hex values instead of just an
+     eyeballed impression from the frames. The `metadata.video.aspect_ratio`
+     / `orientation` / `is_hdr` fields are also worth a line in Overview,
+     especially if the user is producing something for a specific platform
+     (e.g. vertical/9:16 vs. landscape/16:9).
 
 7. **Write the report.** Use your own judgment on structure for a short
    clip, but for a full deep-analysis request use this shape:
 
    ```markdown
    ## Overview
-   [duration, resolution, fps, codec, one-line read on genre/style]
+   [duration, resolution, aspect ratio/orientation, fps, codec, SDR/HDR,
+   one-line read on genre/style]
 
    ## Transitions & Cuts
    [table or list: timestamp -> transition type (from the script's
    classification) -> confidence -> brief visual note from actually
-   looking at the frames per step 4]
+   looking at the frames per step 4; note any J-cut/L-cut candidates from
+   edit_offset as a deliberate editing technique where confidence supports it]
 
-   ## Pacing
+   ## Pacing & Camera Work
    [shot length stats, cuts/minute, how it changes over the runtime --
    read the pacing_curve_per_minute and motion_curve together to describe
    the rhythm: does it speed up, stay steady, breathe at certain points,
-   or carry energy through motion within shots rather than cuts?]
+   or carry energy through motion within shots rather than cuts? Fold in
+   camera_movement here too: is energy coming from cuts, from camera motion
+   within shots (pans/zooms), or handheld shake -- and is any of that
+   static/locked-off by contrast?]
 
    ## Sound Design
    [silence/dialogue/music segments, tempo/BPM and cut-to-beat alignment
    if available, loudness spike timestamps as candidate SFX/hits -- be
    clear these are volume-spike candidates you detected numerically, not
-   confirmed sound identifications, since you can't actually hear the audio]
+   confirmed sound identifications, since you can't actually hear the audio.
+   Include loudness_lufs (integrated LUFS/true-peak/LRA) if the user cares
+   about mix/delivery levels, not just editorial pacing.]
 
    ## Voice-Over
    [WPM, pause pattern, notable transcript excerpts, or a clear note that
    no transcript was available and why]
 
-   ## Visual Style
-   [what the sampled frames show: color/brightness trends, framing,
-   face presence, on-screen text if any -- from actually looking at the
-   images plus the faces_summary/on_screen_text data]
+   ## Visual Style & Color
+   [what the sampled frames show: framing (close-up/medium/wide mix from
+   shot_type_summary), face presence, on-screen text if any (with
+   prominence -- title cards vs. lower-thirds vs. captions) -- from actually
+   looking at the images plus the faces_summary/on_screen_text data. Include
+   the actual color_palette hex values and avg_saturation/avg_brightness to
+   describe the grading concretely rather than just impressionistically.]
 
    ## Notable Moments
    [timestamped callouts worth the user's attention]
@@ -187,7 +252,19 @@ renders). Just call the script.
    detection assumes a reasonably steady tempo and is less meaningful on
    music without a clear pulse; transcription accuracy depends on audio
    quality and the Whisper model size used (or may be unavailable entirely
-   -- say why if so); OCR can miss stylized or low-contrast text.
+   -- say why if so); OCR can miss stylized or low-contrast text; J-cut/L-cut
+   detection is a coarse RMS-jump heuristic, not a real audio-scene-change
+   model; camera-movement classification uses approximate timestamp-based
+   frame seeking and a small flow-based heuristic, so treat it as a
+   reasonable guess per shot, not ground truth; color-palette k-means runs
+   on downsampled pixels from the same sparse sample of frames used
+   elsewhere, so a brief but strongly-colored moment between samples could
+   be missed from the overall palette. None of this is a substitute for a
+   font/typography reader, real shot-composition (rule-of-thirds/framing
+   beyond close-up-vs-wide) analysis, branding/logo-consistency checks, or
+   AI-generation-artifact detection (flicker, hand/anatomy errors, prompt
+   drift) -- those still require your own visual judgment from the frames,
+   not a number this script can produce.
 
 ## Notes
 
@@ -214,3 +291,8 @@ renders). Just call the script.
   couldn't run reports why (`transcript.reason`, or a `[watchutube]
   WARNING` in stderr surfaced in `warnings`) rather than silently
   producing nothing.
+- Color palette, camera-movement, LUFS loudness, edit-offset (J-cut/L-cut),
+  shot-framing, and OCR-prominence all reuse ffmpeg/opencv/tesseract/
+  pytesseract -- already-required dependencies -- so none of them need a
+  new pip package or a session-start hook change; they run by default
+  wherever the skill already worked before.
