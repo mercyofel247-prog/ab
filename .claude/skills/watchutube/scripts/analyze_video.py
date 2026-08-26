@@ -251,7 +251,7 @@ def detect_cuts(path, duration, threshold=0.28, timeout=600):
 
 
 def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_span_sec=0.12,
-                             pixel_change_threshold=20, min_coverage_frac=0.5, timeout=600):
+                             pixel_change_threshold=20, cluster_window_sec=2.5, timeout=600):
     """Catch gradual transitions (fades, dissolves) that `detect_cuts` structurally
     can't see: scans every decoded frame (downscaled + grayscale, so it's cheap)
     for runs of several consecutive frames with *moderately* elevated
@@ -260,22 +260,33 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
     transition candidate; `classify_transition` (run later, per-candidate) then
     determines whether it's actually a fade/dissolve/wipe from a closer look.
 
-    A run of elevated mean frame-diff alone isn't enough to call it a real
-    transition, though: a small on-screen element animating in place --
+    A run of elevated mean frame-diff alone doesn't distinguish a real
+    transition from a small on-screen element animating in place --
     kinetic-typography text drawing itself on, a bar chart growing, an icon
-    spinning, a graphic scrolling -- produces exactly the same "sustained
-    moderately-elevated" signature in the *global* mean diff, while the rest
-    of the frame (and thus most of its pixels) never changes. A real
-    fade/dissolve/wipe, by contrast, eventually changes most of the frame's
-    *area* (a wipe sweeps across it over the run; a fade/dissolve blends the
-    whole frame). So each candidate run also gets a spatial-coverage check:
-    union the per-pixel changed-mask across every frame pair in the run, and
-    require that union to cover at least `min_coverage_frac` of the frame.
-    This is what actually distinguishes "the whole picture is changing" from
-    "one graphic element in a static composition is animating" -- validated
-    against both a real cross-dissolve (high coverage, correctly kept) and a
-    synthetic small-corner-animation-on-static-background clip (low coverage,
-    correctly dropped) during development."""
+    spinning, a graphic scrolling all produce the same "sustained
+    moderately-elevated global diff" signature a real fade/dissolve/wipe does.
+    An earlier version of this function tried to reject those outright using
+    a spatial-coverage threshold (what fraction of the frame's *area*
+    changed), on the theory that a real transition changes most of the frame
+    while an animating graphic only changes a small region. Tested against
+    real footage, that didn't hold: on dark/stylized content, genuine
+    dissolves between two different scenes can have just as little measured
+    pixel-coverage as a false-positive graphic animation (the coverage
+    ranges overlap), so a hard cutoff there silently dropped real cuts.
+    Distinguishing "the whole picture changed" from "one element animated in
+    a static composition" from motion statistics alone isn't reliable --
+    it's a content-understanding call, not a numeric one.
+
+    So each candidate here still gets computed (never dropped) with two
+    extra diagnostic fields for whoever is *writing the report* to weigh
+    against the actual frames: `frame_coverage` (fraction of frame area that
+    changed across the run -- low is *consistent with* an animating graphic
+    but not proof of one) and `nearby_soft_candidates` (how many other
+    frame_diff_scan candidates fall within `cluster_window_sec` of this one
+    -- a tight cluster of several is the strongest real signal of "this is
+    one continuous on-screen animation registering as multiple candidates,"
+    since genuine edits are rarely stacked that densely). See
+    references/metrics.md for how to read these."""
     if not ensure_opencv():
         warn("opencv unavailable, skipping soft-transition (fade/dissolve) scan")
         return []
@@ -342,14 +353,18 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
             span = run[-1][0] - run[0][0]
             if len(run) >= min_run_frames and span >= min_span_sec:
                 coverage = run_coverage(i, j - 1)
-                if coverage >= min_coverage_frac:
-                    mid_t, _, mid_luma = run[len(run) // 2]
-                    candidates.append({"time": round(mid_t, 3), "luma_mean": round(mid_luma, 1),
-                                        "detection": "frame_diff_scan", "span_sec": round(span, 2),
-                                        "frame_coverage": round(coverage, 2)})
+                mid_t, _, mid_luma = run[len(run) // 2]
+                candidates.append({"time": round(mid_t, 3), "luma_mean": round(mid_luma, 1),
+                                    "detection": "frame_diff_scan", "span_sec": round(span, 2),
+                                    "frame_coverage": round(coverage, 2)})
             i = j
         else:
             i += 1
+
+    for c in candidates:
+        c["nearby_soft_candidates"] = sum(
+            1 for o in candidates if o is not c and abs(o["time"] - c["time"]) <= cluster_window_sec
+        )
     return candidates
 
 

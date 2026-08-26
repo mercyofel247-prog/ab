@@ -119,6 +119,23 @@ renders). Just call the script.
    `transition` field if they fell outside `--max-classified-cuts` --
    don't invent a type for those, just note it wasn't classified.
 
+   `frame_diff_scan`-detected cuts also carry `frame_coverage` and
+   `nearby_soft_candidates` (see `references/metrics.md`) -- use these
+   together with the actual frames to catch a real failure mode on
+   motion-graphics-heavy edits: kinetic-typography text drawing itself on,
+   a bar chart growing, an icon spinning, or a graphic scrolling can all
+   register as a spurious "dissolve" or "wipe" cut, since to a pure
+   frame-diff signal they look identical to a real gradual transition. A
+   low `frame_coverage` plus a nonzero `nearby_soft_candidates` (especially
+   3+, meaning several such candidates are clustered within a couple
+   seconds) is a strong hint you're looking at one continuous on-screen
+   animation, not several real cuts -- check the before/after frames: if
+   the overall composition/background is the same in both and only a
+   foreground graphic element has progressed, say so plainly in the report
+   rather than counting it as an edit point. Don't reject a candidate on
+   the numbers alone, though -- always confirm against the frames, since a
+   real dissolve on dark/sparse footage can also read as low-coverage.
+
    Each classified cut may also carry an `edit_offset` sub-object --
    `aligned_cut` (audio and video change together, the default/normal
    case), `j_cut_candidate` (the audio jump happens measurably *before* the

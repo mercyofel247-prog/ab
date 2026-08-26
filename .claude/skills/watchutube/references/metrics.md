@@ -30,7 +30,37 @@ entry:
 - `frame_diff_scan` -- a dedicated OpenCV pass that scans every decoded
   frame for a *sustained run* of moderately-elevated (not spiking) change,
   which is exactly the signature a fade or dissolve leaves. This is what
-  catches the transitions `scene_score` structurally can't.
+  catches the transitions `scene_score` structurally can't -- but it's also
+  exactly the signature a small on-screen graphic *animating in place*
+  leaves: kinetic-typography text drawing itself on, a bar chart growing,
+  an icon spinning, a graphic scrolling. Motion statistics alone can't
+  reliably tell "the whole picture changed" from "one element animated in
+  an otherwise-static composition" (tested: a spatial-coverage check that
+  tried to reject the latter also silently dropped real dissolves on
+  dark/stylized footage, since genuine transitions there can have just as
+  little pixel-coverage as an animating graphic). So every `frame_diff_scan`
+  entry instead carries two diagnostic fields for you to weigh against the
+  actual frames, not a number the script filters on:
+  - `frame_coverage` -- fraction (0-1) of the frame's pixel area that
+    changed at some point across the candidate run. Low coverage is
+    *consistent with* a localized animating graphic, but on dark/sparse
+    compositions a real cut can also read low -- it's a hint, not proof.
+  - `nearby_soft_candidates` -- how many *other* `frame_diff_scan`
+    candidates fall within 2.5s of this one. A tight cluster of several
+    (e.g. 3+) is the strongest signal here: real edits are rarely stacked
+    that densely, so a cluster usually means "one continuous on-screen
+    animation is registering as multiple separate candidates," not several
+    genuine cuts in a couple seconds. A cluster of exactly 2 is much
+    weaker evidence -- back-to-back real transitions (a wipe immediately
+    followed by a dissolve, say) are common enough in fast-paced editing
+    that a pair alone shouldn't be treated as suspicious.
+  When you see a `frame_diff_scan` cut with low `frame_coverage` *and* a
+  nonzero `nearby_soft_candidates`, look at its before/after frames
+  specifically for whether the overall composition/background is the same
+  in both with just a foreground element further along in an animation --
+  if so, say plainly in the report that it's likely an animated graphic
+  reveal, not an edit point, rather than reporting it as a cut. Don't
+  reject a candidate on the numbers alone without checking the frames.
 
 Unless `--skip-advanced` was passed, each entry also gets a `transition`
 sub-object: `{type, confidence, detail}`, computed by extracting a short
