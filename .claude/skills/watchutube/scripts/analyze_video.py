@@ -250,14 +250,32 @@ def detect_cuts(path, duration, threshold=0.28, timeout=600):
     return cuts
 
 
-def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_span_sec=0.12, timeout=600):
+def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_span_sec=0.12,
+                             pixel_change_threshold=20, min_coverage_frac=0.5, timeout=600):
     """Catch gradual transitions (fades, dissolves) that `detect_cuts` structurally
     can't see: scans every decoded frame (downscaled + grayscale, so it's cheap)
     for runs of several consecutive frames with *moderately* elevated
     frame-to-frame change -- elevated enough to be a real transition, but never
     spiking the way a hard cut does. Each qualifying run's midpoint becomes a
     transition candidate; `classify_transition` (run later, per-candidate) then
-    determines whether it's actually a fade/dissolve/wipe from a closer look."""
+    determines whether it's actually a fade/dissolve/wipe from a closer look.
+
+    A run of elevated mean frame-diff alone isn't enough to call it a real
+    transition, though: a small on-screen element animating in place --
+    kinetic-typography text drawing itself on, a bar chart growing, an icon
+    spinning, a graphic scrolling -- produces exactly the same "sustained
+    moderately-elevated" signature in the *global* mean diff, while the rest
+    of the frame (and thus most of its pixels) never changes. A real
+    fade/dissolve/wipe, by contrast, eventually changes most of the frame's
+    *area* (a wipe sweeps across it over the run; a fade/dissolve blends the
+    whole frame). So each candidate run also gets a spatial-coverage check:
+    union the per-pixel changed-mask across every frame pair in the run, and
+    require that union to cover at least `min_coverage_frac` of the frame.
+    This is what actually distinguishes "the whole picture is changing" from
+    "one graphic element in a static composition is animating" -- validated
+    against both a real cross-dissolve (high coverage, correctly kept) and a
+    synthetic small-corner-animation-on-static-background clip (low coverage,
+    correctly dropped) during development."""
     if not ensure_opencv():
         warn("opencv unavailable, skipping soft-transition (fade/dissolve) scan")
         return []
@@ -272,7 +290,8 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
         return []
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
 
-    series = []  # (time, diff, luma)
+    frames = []   # downscaled grayscale frames, kept so candidate runs can be re-examined spatially
+    series = []   # (time, diff, luma) -- series[k] is the diff between frames[k] and frames[k+1]
     prev = None
     idx = 0
     while True:
@@ -284,6 +303,7 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
         if w > max_dim:
             scale = max_dim / w
             gray = cv2.resize(gray, (max_dim, max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
+        frames.append(gray)
         if prev is not None:
             d = float(np.mean(np.abs(gray.astype(np.int16) - prev.astype(np.int16))))
             series.append((idx / fps, d, float(np.mean(gray))))
@@ -299,6 +319,16 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
     soft_lo = med + 3 * mad + 1.0     # elevated above ambient noise/motion
     soft_hi = med + 8 * mad + 3.0     # below this, i.e. not a hard-cut-grade spike
 
+    def run_coverage(start_idx, end_idx):
+        """Fraction of frame pixels that changed by more than `pixel_change_threshold`
+        at least once across series[start_idx..end_idx] (i.e. frames[start_idx..end_idx+1])."""
+        h, w = frames[0].shape
+        changed = np.zeros((h, w), dtype=bool)
+        for k in range(start_idx, end_idx + 1):
+            d = np.abs(frames[k].astype(np.int16) - frames[k + 1].astype(np.int16))
+            changed |= d > pixel_change_threshold
+        return float(np.count_nonzero(changed)) / (h * w)
+
     candidates = []
     i, n = 0, len(series)
     while i < n:
@@ -311,9 +341,12 @@ def detect_soft_transitions(path, duration, max_dim=120, min_run_frames=3, min_s
                 j += 1
             span = run[-1][0] - run[0][0]
             if len(run) >= min_run_frames and span >= min_span_sec:
-                mid_t, _, mid_luma = run[len(run) // 2]
-                candidates.append({"time": round(mid_t, 3), "luma_mean": round(mid_luma, 1),
-                                    "detection": "frame_diff_scan", "span_sec": round(span, 2)})
+                coverage = run_coverage(i, j - 1)
+                if coverage >= min_coverage_frac:
+                    mid_t, _, mid_luma = run[len(run) // 2]
+                    candidates.append({"time": round(mid_t, 3), "luma_mean": round(mid_luma, 1),
+                                        "detection": "frame_diff_scan", "span_sec": round(span, 2),
+                                        "frame_coverage": round(coverage, 2)})
             i = j
         else:
             i += 1
