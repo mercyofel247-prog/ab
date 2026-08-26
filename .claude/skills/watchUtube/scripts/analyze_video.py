@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-analyze_video.py — offline video analysis engine for the video-analysis skill.
+analyze_video.py — offline video analysis engine for the watchUtube skill.
 
 Given a local video FILE, it produces everything Claude needs to "watch" and
 deeply analyse the video:

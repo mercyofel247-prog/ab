@@ -6,5 +6,5 @@
 !/.claude/hooks/**
 # First-party custom skills tracked as repo source (not npx-installed tooling)
 !/.claude/skills/
-!/.claude/skills/video-analysis/**
+!/.claude/skills/watchUtube/**
 /skills-lock.json

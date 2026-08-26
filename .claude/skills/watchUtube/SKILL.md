@@ -1,5 +1,5 @@
 ---
-name: video-analysis
+name: watchUtube
 description: >-
   Watch and deeply analyse any video — from a URL (YouTube, Vimeo, direct link)
   or a local file — for editing/creation reference. Use whenever the user wants
@@ -42,7 +42,7 @@ against it.
 
 ## Workflow
 
-Let `SKILL=.claude/skills/video-analysis` and pick a working dir, e.g.
+Let `SKILL=.claude/skills/watchUtube` and pick a working dir, e.g.
 `WORK=$(mktemp -d)/va` (or a scratchpad path). Then:
 
 ### 1. Ingest — get the file locally
