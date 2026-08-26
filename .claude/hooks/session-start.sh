@@ -23,6 +23,29 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
   apt-get install -y -qq ffmpeg
 fi
 
+# watchutube skill deps (video analysis): opencv pinned to a 4.x release --
+# the 5.x line dropped the classic CascadeClassifier API the skill's bundled
+# face-detection cascade needs -- plus faster-whisper (voice-over
+# transcription), librosa (music tempo/beat detection), pytesseract
+# (on-screen-text OCR), and yt-dlp (URL downloads). Installed here, once per
+# session, so the skill has zero install latency the first time it actually
+# runs instead of lazily pip-installing mid-analysis. Each check is
+# idempotent -- skip if already satisfied -- so a warm container is a no-op.
+if ! python3 -c "import cv2; assert hasattr(cv2, 'CascadeClassifier')" >/dev/null 2>&1; then
+  python3 -m pip install --quiet "opencv-python-headless==4.14.0.94"
+fi
+python3 -c "import faster_whisper" >/dev/null 2>&1 || python3 -m pip install --quiet faster-whisper
+python3 -c "import librosa" >/dev/null 2>&1 || python3 -m pip install --quiet librosa
+python3 -c "import pytesseract" >/dev/null 2>&1 || python3 -m pip install --quiet pytesseract
+command -v yt-dlp >/dev/null 2>&1 || python3 -m pip install --quiet yt-dlp
+
+# tesseract-ocr (system binary watchutube's OCR feature needs; not pip-installable).
+# Non-fatal: OCR is one optional signal among many the skill produces.
+if ! command -v tesseract >/dev/null 2>&1; then
+  apt-get update -qq
+  apt-get install -y -qq tesseract-ocr || echo "warning: tesseract-ocr install failed; watchutube's on-screen-text OCR won't be available this session"
+fi
+
 # Blender (headless 3D/render tool; not bundled in the sandbox). Script it with
 # `blender --background --python <script.py>` — the apt build ships its own bundled
 # Python, so a standalone `import bpy` from system python3 is not expected to work.

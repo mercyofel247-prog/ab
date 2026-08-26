@@ -4,4 +4,11 @@
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/hooks/**
+!/.claude/skills/
+!/.claude/skills/**
 /skills-lock.json
+
+# watchutube skill output (extracted frames, downloaded source videos, transcripts)
+watchutube_analysis_*/
+__pycache__/
+*.pyc
