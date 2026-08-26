@@ -10,3 +10,5 @@
 
 # watchutube skill output (extracted frames, downloaded source videos, transcripts)
 watchutube_analysis_*/
+__pycache__/
+*.pyc

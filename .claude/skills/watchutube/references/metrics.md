@@ -13,18 +13,43 @@ mostly silence, which shows up in `silence` instead.
 
 ## `cuts`
 
-List of `{time, luma_mean}`. Each entry is a frame where ffmpeg's `scene`
-score (a normalized measure of how much consecutive frames differ) exceeded
-`--cut-threshold`. This is a **candidate scene-change list**, not a verified
-transition-type classification -- that's why the skill has you look at the
-actual before/after frames (see SKILL.md step 4) rather than trust this
-list at face value. `luma_mean` (average brightness 0-255 of that frame) is
-a hint: values near 0 suggest the cut lands during a black frame (fade
-candidate).
+List of `{time, luma_mean, detection, transition?}`. Two independent
+detectors feed this list, and `detection` says which one found a given
+entry:
+- `scene_score` -- ffmpeg's `scene` metric spiked past `--cut-threshold`
+  on a single frame-to-frame jump. This is how hard cuts get found, but a
+  fade or dissolve changes *gradually*, so it structurally never spikes
+  this score no matter how the threshold is tuned.
+- `frame_diff_scan` -- a dedicated OpenCV pass that scans every decoded
+  frame for a *sustained run* of moderately-elevated (not spiking) change,
+  which is exactly the signature a fade or dissolve leaves. This is what
+  catches the transitions `scene_score` structurally can't.
 
-Sensitivity note: fast pans/zooms can produce false positives; very subtle
-dissolves can be missed entirely. If the cut count looks obviously wrong
-for what the user describes, re-run with an adjusted `--cut-threshold`.
+Unless `--skip-advanced` was passed, each entry also gets a `transition`
+sub-object: `{type, confidence, detail}`, computed by extracting a short
+burst of frames straddling that exact timestamp and analyzing frame-to-frame
+diff, luma extremes, and left/right-half diff asymmetry. `type` is one of
+`hard_cut`, `fade_to/from_black`, `fade_to/from_white`, `dissolve/cross_fade`,
+or `wipe_candidate` (or `unknown` if the burst extraction failed for that
+timestamp). `confidence` is 0-1 -- treat anything under ~0.5, and any
+`wipe_candidate` result (the weakest heuristic here, based on which half of
+the frame changes first), as needing a visual look at the actual frames
+before you report it as fact. `detail` carries the raw numbers
+(`max_frame_diff`, `median_frame_diff`, `elevated_frame_pairs`,
+`min_luma_in_window`, `max_luma_in_window`, `left_right_onset_gap_frames`)
+for transparency, not for you to re-derive conclusions from -- the `type`
+field already did that.
+
+Validated against synthetic test clips with known ground truth (hard cuts,
+a fade-to-black, and a cross-dissolve, each at known timestamps) plus a
+real project render -- both detectors and the classifier landed on the
+correct timestamps and types in testing. That's confidence in the
+*mechanism*, not a guarantee on every real-world video: fast pans/zooms can
+still produce a `scene_score` false positive, and an extremely subtle or
+unusually-lit dissolve could confuse the burst classifier. If the cut count
+or classifications look obviously wrong for what the user describes,
+re-run with an adjusted `--cut-threshold`, or just say what you see in the
+frames instead of trusting the label.
 
 ## `pacing`
 
@@ -79,6 +104,57 @@ describe overall visual tone (consistently dark/moody vs. bright, or a
 mid-video shift), and to sanity-check fade guesses (a dip toward 0 right
 at a cut timestamp corroborates a fade-to-black read).
 
+## `motion_curve`
+
+List of `{time, motion}` (0-100), sampled ~3x/second via frame-to-frame
+grayscale diff over the *whole* video -- independent of `cuts` entirely.
+This is what catches energy *within* a single unbroken shot: a handheld pan,
+a zoom, an action sequence, or conversely a locked-off static shot (motion
+near 0 throughout). Read this alongside `pacing` -- a video can be
+low-cuts-per-minute but still feel energetic if motion stays high, or
+high-cuts-per-minute but feel static if each shot itself barely moves.
+
+## `faces_summary` (and per-frame `faces`)
+
+`{frames_with_face, frames_checked, pct_frames_with_face}`, from running a
+face-presence detector (offline Haar cascade, no network needed at
+analysis time) over every extracted still in `frames/`. Each entry in the
+`frames` array also gets its own `faces` count. Use this for "talking-head
+heavy" vs. "b-roll/abstract/product-shot heavy" framing of the visual
+style -- it's a presence count, not identity or emotion detection, and it's
+only as good as the sample of frames extracted, so treat the percentage as
+indicative, not a precise measurement over the full runtime. `null`/absent
+if `--skip-faces` was passed or OpenCV was unavailable.
+
+## `on_screen_text`
+
+`{available, reason}` when unavailable (most commonly: the `tesseract`
+binary isn't installed on the system -- this is a system package, not
+something the script pip-installs, since that needs root; see SKILL.md
+Notes for how to add it). When available: `detections`, a list of
+`{time, text}` for sampled frames where OCR found readable text (title
+cards, lower-thirds, burned-in captions). This only checks the
+evenly-spaced `interval_*` frames, not every frame, so a short-lived title
+card could be missed if no sample frame happens to land on it -- treat an
+empty `detections` list as "no on-screen text found in the sampled frames,"
+not a certainty that none exists anywhere in the video.
+
+## `beat_analysis`
+
+`{available, tempo_bpm, num_beats, beat_times, cuts_on_beat, cuts_on_beat_pct, tolerance_sec}`
+when available (via `librosa`), or `{available: false, reason}` otherwise
+(no audio, librosa unavailable, or detection failed on unusual audio).
+`tempo_bpm` is the estimated overall tempo; `cuts_on_beat_pct` is the
+percentage of entries in `cuts` that fall within `tolerance_sec` (0.15s by
+default) of a detected beat -- a genuine "is this edited to the music"
+signal. High alignment (call it roughly 60%+ for a short clip) is worth
+noting as a deliberate editorial choice on a music-driven edit; low
+alignment isn't necessarily a flaw -- plenty of well-edited video (dialogue
+scenes, narrative pacing) has no reason to cut on a beat at all, and tempo
+estimation itself is less meaningful on audio without a clear rhythmic
+pulse (ambient beds, pure dialogue). Don't over-read this metric on content
+where it doesn't apply.
+
 ## `transcript`
 
 `{available, reason}` when unavailable (no audio track, faster-whisper
@@ -95,13 +171,28 @@ meditative piece and a hype trailer have very different "correct" pacing).
 
 ## `frames`
 
-Manifest of extracted JPEGs: `{time, tag, file}` (path relative to the
-output dir). Tags are either `cut_<t>s_before` / `cut_<t>s_after` (bracket a
-specific cut so you can compare the two sides) or `interval_<fraction>`
-(evenly spaced samples across the runtime for overall visual-style
-coverage). This is the evidence for everything visual you report -- always
-look at the actual images via the Read tool rather than inferring from
-numbers alone.
+Manifest of extracted JPEGs: `{time, tag, file, faces?, ocr_text?}` (path
+relative to the output dir). Tags are either `cut_<t>s_before` /
+`cut_<t>s_after` (bracket a specific cut so you can compare the two sides)
+or `interval_<fraction>` (evenly spaced samples across the runtime for
+overall visual-style coverage). `faces` (face count) and `ocr_text`
+(detected on-screen text) are added per-frame when those passes ran and
+found something -- see `faces_summary` / `on_screen_text` above for the
+aggregate view. This is the evidence for everything visual you report --
+always look at the actual images via the Read tool rather than inferring
+from numbers alone.
+
+## `timeline.html`
+
+Not part of `manifest.json` -- a sibling file in the output directory (path
+also given in the script's stdout JSON as `timeline_html`). A
+self-contained, dependency-free HTML/SVG visualization plotting shots/cuts,
+motion, loudness (with SFX-candidate markers), brightness, the beat grid,
+and voice-over segments on one shared, hoverable timeline -- dark/light
+aware, opens in any browser with no server needed. Generated automatically
+unless `--skip-advanced` or `--skip-timeline` was passed. Worth mentioning
+to the user as a companion to the written report; see SKILL.md step 7 for
+how to offer a polished, shareable version via the Artifact tool if wanted.
 
 ## `warnings`
 
