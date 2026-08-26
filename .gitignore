@@ -4,4 +4,7 @@
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/hooks/**
+# First-party custom skills tracked as repo source (not npx-installed tooling)
+!/.claude/skills/
+!/.claude/skills/video-analysis/**
 /skills-lock.json
