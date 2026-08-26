@@ -49,3 +49,12 @@ fi
 # Non-fatal: on a network hiccup the renderer still falls back to an on-demand
 # download, so a failed pre-fetch shouldn't abort the whole session.
 hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
+
+# watchUtube skill deps: ffmpeg/ffprobe are ensured above; yt-dlp is only needed
+# for URL downloads and isn't preinstalled in a fresh container. Install it here so
+# the skill is ready every session. Idempotent (pip no-ops if current) and non-fatal
+# (URL downloads are blocked by egress policy in the web sandbox anyway; local-file
+# analysis needs no network, and yt-dlp works wherever egress is allowed).
+if ! command -v yt-dlp >/dev/null 2>&1; then
+  pip3 install -q yt-dlp || echo "warning: yt-dlp install failed; watchUtube URL downloads unavailable this session (local-file analysis still works)"
+fi
