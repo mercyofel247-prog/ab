@@ -39,28 +39,43 @@ empirical half and every default here traces to it.
 Put everything in one project directory:
 ```
 <project>/
-  clips/            provided Omni-flash scenes (MP4, silent)
+  clips/            provided Omni-flash scenes (MP4, silent) — NAME IN ORDER:
+                    0001_*.mp4, 0002_*.mp4, ... so a natural sort = the edit order
   vo/               provided voice-over narration (wav/mp3) — the spine
   animation/        animations you generate (HyperFrames/Remotion/Blender)
   transitions/      signature transition bridges you render (HyperFrames)
-  audio/music/      music beds you generate/source
+  audio/music/      music beds you generate/source (one per tonal family)
   audio/sfx/        sound effects you generate/source
   overlays/         optional transparent Mode-A elements (kinetic type/arrows)
   renders/          output
-  timeline.json     the machine-readable clip table (you author this)
+  beats.csv         optional per-clip overrides (transition/dur/chapter/overlay/sfx)
+  timeline.json     the machine-readable clip table (generated in step 2)
 ```
 Confirm the VO exists and get its duration — the whole edit hangs off it.
+See **Scaling to hundreds of clips** below for where large clip sets live and
+how they reach the pipeline.
 
-### 2. Build the timeline (the machine-readable clip table)
-`timeline.json` is the M-HYBRID clip table (master prompt Part 13) expressed as
-data `assemble.py` can execute. Schema + field docs:
-`references/timeline.schema.json`; a worked example: `examples/timeline.example.json`.
+### 2. Generate the timeline (don't hand-author it)
+For anything past a handful of clips, run the generator instead of writing
+`timeline.json` by hand:
+```bash
+python3 .claude/skills/magnate-cut/scripts/build_timeline.py <project> [--chapters auto]
+```
+It natural-sorts `clips/`, finds the VO, lays every clip as an ordered segment
+with a VARIED native transition rotation (hard-cut base, periodic dissolves, a
+fade-to-black at each chapter break — so nothing reads locked), auto-splits
+chapters, and lays one music bed per chapter (families rotated) if
+`audio/music/` has files. It bakes in the delivery + mastering targets. Output
+is a correct, complete `timeline.json` you then refine.
 
-Author it from the script/VO: one `segments[]` entry per shot/beat (a provided
-`clip` or a generated `animation`), each with its `transition_out` to the next;
-`music[]` chapter beds (rotate tonal families); `sfx[]` events placed in the
-gaps; the `grade` look-block; the delivery `meta`. Map narration timing to
-segment durations so picture and voice line up.
+Refine by editing `timeline.json` directly, or by filling `beats.csv` (columns:
+`clip` or `index`, `transition`, `dur`, `chapter`, `in`, `out`, `overlay`,
+`sfx_file`, `sfx_at`) and re-running the generator — CSV rows override the
+auto defaults per clip. Swap any transition to `crash_zoom`/`fly_through` once
+you've rendered its HyperFrames bridge (step 3). Schema + field docs:
+`references/timeline.schema.json`; worked example:
+`examples/timeline.example.json`. Map narration timing to segment durations so
+picture and voice line up.
 
 ### 3. Generate the missing visual pieces
 - **Animations** (Mode B — data motion, number reveals, kinetic type, charts,
@@ -93,7 +108,7 @@ Full authority + tiers: `references/audio.md`.
 ### 5. Assemble + master (the merge)
 ```bash
 python3 .claude/skills/magnate-cut/scripts/assemble.py <project> \
-    [--timeline timeline.json] [--out renders/final.mp4] [--draft]
+    [--timeline timeline.json] [--out renders/final.mp4] [--draft] [--batch-size 50]
 ```
 It normalizes every segment to 1920×1080@24 + the shared grade, joins them with
 the timeline's transitions (native ffmpeg + spliced HyperFrames bridges),
@@ -101,6 +116,35 @@ composites overlays, mixes the audio stack (music ducked under VO via real
 sidechain compression + SFX in the gaps + scored silence + VO on top), masters
 to −14 LUFS / ≤ −1 dBTP, and muxes the final. Use `--draft` for a fast preview
 pass; drop it for delivery. It prints one JSON line with the result.
+
+It renders in **batches** (`--batch-size`, default 50): it normalizes and joins
+one batch of segments at a time, deletes that batch's intermediates, then
+concatenates the batch outputs — so peak disk stays at ~one batch's worth of
+1080p intermediates no matter how many clips there are. Batch boundaries land on
+hard cuts (concat-safe, no transition lost). This is what makes hundreds of
+clips feasible on a bounded disk. `--batch-size 0` forces one pass (fine for
+small projects). If a warning says a boundary had no nearby hard cut, raise the
+batch size or place a hard cut near every ~N segments.
+
+### 5a. Scaling to hundreds of clips — where the media lives
+A 500-clip project is ~5–15 GB of source. It does NOT go in git, and it will
+not all fit in a chat upload or a small container. Two ways to run it:
+
+- **Best for 500 clips: run Claude Code locally** (desktop app / CLI) on the
+  machine where the clips already are. `git pull` this repo so the skill is
+  present, drop the clips in `<project>/clips/` (named in order) and the VO in
+  `<project>/vo/`, then run the generator + assembler against local disk. No
+  upload, real disk, optional GPU. The clips never leave your machine.
+
+- **In a remote / web session:** host the clips in cloud storage (one archive,
+  or a manifest of URLs — S3/GCS/Drive/Dropbox), give the session the link, and
+  it fetches them into `clips/` (outbound HTTPS works through the agent proxy).
+  Watch the container's disk allowance: pull + assemble in batches (fetch a
+  batch → it's rendered → delete it) rather than downloading all 500 at once.
+  Chat upload is fine for a handful of files but not for 500.
+
+Either way the pipeline is identical — the generator + batched assembler run the
+same locally or remotely; only where the bytes sit changes.
 
 ### 6. QC the cut with watchutube — always
 Run the `watchutube` skill on the finished MP4 and check it against target:

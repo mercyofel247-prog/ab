@@ -1,0 +1,7 @@
+clip,transition,dur,chapter,in,out,overlay,sfx_file,sfx_at,note
+0001_hook.mp4,crash_zoom,0.58,0,0,8.6,,audio/sfx/subdrop.wav,8.5,"open on the hook; sub-drop lands the reveal"
+0002_portrait.mp4,dissolve,0.6,0,0,,overlays/name_lower_third.mov,,,"name lower-third overlay"
+0007_number.mp4,hard_cut,0.04,1,0,4.5,,audio/sfx/stamp.wav,0.2,"hero number STAMP"
+0015_map.mp4,whip_pan,0.34,1,,,,,,"high-energy segment break"
+0023_court.mp4,dof_rack,0.75,2,,,,,,"rack focus into the fall"
+0040_legacy.mp4,fadeblack,1.4,2,,,,,,"clean out-point: pair with the last bed's fade-out"

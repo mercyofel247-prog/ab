@@ -133,7 +133,7 @@ def normalize_segment(seg, project, workdir, meta, grade, idx):
     if out_s is not None:
         trim += ["-t", f"{float(out_s) - in_s:.3f}"]
 
-    out = os.path.join(workdir, f"seg_{idx:03d}.mp4")
+    out = os.path.join(workdir, f"seg_{idx}.mp4")
     cmd = ["ffmpeg", "-y", *trim, "-i", src]
 
     overlay = seg.get("overlay")
@@ -156,38 +156,35 @@ def normalize_segment(seg, project, workdir, meta, grade, idx):
     return out, ffprobe_dur(out)
 
 
-def build_units(segments, project, workdir, meta, grade):
-    """Expand segments into a flat list of video 'units' plus the join spec
-    between consecutive units. A spliced signature transition (crash_zoom /
-    fly_through) becomes its own unit, hard-joined on both sides."""
-    units = []   # list of {path, dur}
-    joins = []   # join[i] describes unit[i] -> unit[i+1]
+def plan_units(segments, project):
+    """Expand segments into a flat list of video 'units' + the join between
+    consecutive ones -- WITHOUT normalizing yet (so we never hold 500
+    re-encoded intermediates on disk at once). A spliced signature
+    transition (crash_zoom / fly_through) becomes its own unit, hard-joined
+    on both sides. Each unit keeps the seg dict it renders from."""
+    units = []   # {seg, id}
+    joins = []   # join[i]: unit[i] -> unit[i+1]
     for i, seg in enumerate(segments):
-        path, dur = normalize_segment(seg, project, workdir, meta, grade, len(units))
-        units.append({"path": path, "dur": dur, "id": seg.get("id")})
-
+        units.append({"seg": seg, "id": seg.get("id")})
         tr = seg.get("transition_out") or None
         is_last = (i == len(segments) - 1)
-        if is_last or tr is None:
-            if not is_last:
-                joins.append({"type": "hard_cut", "dur": ONE_FRAME})
+        if is_last:
+            continue
+        if tr is None:
+            joins.append({"type": "hard_cut", "dur": ONE_FRAME})
             continue
 
         ttype = tr.get("type", "hard_cut")
         tdur = float(tr.get("dur_s", 0.5) or 0.5)
-
         if ttype in SPLICE_TYPES:
             bridge = tr.get("src")
             if bridge and os.path.isfile(os.path.join(project, bridge)):
-                # normalize the bridge as its own unit; hard-join both sides
-                bseg = {"src": bridge, "grade": True, "id": f"{seg.get('id')}_bridge"}
-                bpath, bdur = normalize_segment(bseg, project, workdir, meta, grade, len(units))
                 joins.append({"type": "hard_cut", "dur": ONE_FRAME})   # A -> bridge
-                units.append({"path": bpath, "dur": bdur, "id": bseg["id"]})
+                units.append({"seg": {"src": bridge, "grade": True,
+                                      "id": f"{seg.get('id')}_bridge"},
+                              "id": f"{seg.get('id')}_bridge"})
                 joins.append({"type": "hard_cut", "dur": ONE_FRAME})   # bridge -> B
             else:
-                # no bridge supplied: fall back to a fast dissolve so the cut
-                # still reads intentional (and warn).
                 sys.stderr.write(f"[magnate-cut] WARNING: {ttype} on {seg.get('id')} has no "
                                  f"pre-rendered `src` bridge; falling back to a {tdur}s dissolve.\n")
                 joins.append({"type": "dissolve", "dur": tdur})
@@ -196,47 +193,129 @@ def build_units(segments, project, workdir, meta, grade):
     return units, joins
 
 
-def build_video(units, joins, workdir, meta, out_path):
-    """Fold the units into one video via a single xfade filter_complex.
-    Cumulative offsets account for each xfade shortening the running total."""
+def split_into_batches(units, joins, batch_size):
+    """Group units into batches so we normalize + render one batch at a time
+    and delete its intermediates before the next. Batch boundaries are placed
+    on hard_cut joins (concat-safe, so no visual transition is lost across a
+    boundary). If no hard_cut is available within the window, the boundary
+    falls on the nearest join and that transition degrades to a cut (warned).
+    batch_size <= 0 disables batching (one batch)."""
+    n = len(units)
+    if batch_size <= 0 or n <= batch_size:
+        return [(0, n)], []
+    batches, degraded = [], []
+    start = 0
+    while start < n:
+        if n - start <= batch_size:
+            batches.append((start, n)); break
+        lo = start + max(1, int(batch_size * 0.6))
+        hi = min(n - 1, start + batch_size)
+        # prefer a hard_cut join in [lo, hi]; joins[k] is the join after unit k
+        cut_at = None
+        for k in range(hi - 1, lo - 2, -1):
+            if 0 <= k < len(joins) and joins[k]["type"] == "hard_cut":
+                cut_at = k; break
+        if cut_at is None:
+            cut_at = min(hi - 1, len(joins) - 1)
+            if joins[cut_at]["type"] != "hard_cut":
+                degraded.append(cut_at)
+        batches.append((start, cut_at + 1))
+        start = cut_at + 1
+    return batches, degraded
+
+
+def render_batch(units, joins, batch_range, project, workdir, meta, grade, bidx):
+    """Normalize this batch's units, xfade-chain them into one batch MP4,
+    then delete the batch's per-unit intermediates. Returns (path, duration)."""
     FPS = meta["fps"]
-    if len(units) == 1:
-        shutil.copy(units[0]["path"], out_path)
+    s, e = batch_range
+    group = units[s:e]
+    seg_paths = []
+    for li, u in enumerate(group):
+        p, d = normalize_segment(u["seg"], project, workdir, meta, grade, f"{bidx}_{li}")
+        u["_path"] = p; u["_dur"] = d
+        seg_paths.append(p)
+
+    out_path = os.path.join(workdir, f"batch_{bidx:04d}.mp4")
+    if len(group) == 1:
+        shutil.copy(group[0]["_path"], out_path)
+    else:
+        inputs = []
+        for u in group:
+            inputs += ["-i", u["_path"]]
+        # Re-force fps + a frame-rate-matched timebase before xfade. NOTE:
+        # settb=AVTB here silently collapses the xfade chain on clips whose
+        # container timebase isn't a clean multiple of the frame rate (the
+        # normalized intermediates land on 1/12288), producing a video the
+        # length of one clip. fps + setpts is the robust prep.
+        fc = [f"[{i}:v]fps={FPS},format=yuv420p,setpts=PTS-STARTPTS[v{i}]"
+              for i in range(len(group))]
+        running = group[0]["_dur"]; cur = "v0"
+        for i in range(1, len(group)):
+            j = joins[s + i - 1]
+            tdur = float(j["dur"])
+            tdur = max(1.0 / FPS, min(tdur, group[i - 1]["_dur"] - 1.0 / FPS,
+                                      group[i]["_dur"] - 1.0 / FPS))
+            trans = XFADE_MAP.get(j["type"], "fade")
+            offset = max(0.0, running - tdur)
+            outl = f"x{i}"
+            fc.append(f"[{cur}][v{i}]xfade=transition={trans}:duration={tdur:.3f}:"
+                      f"offset={offset:.3f}[{outl}]")
+            running = running + group[i]["_dur"] - tdur
+            cur = outl
+        cmd = ["ffmpeg", "-y", *inputs, "-filter_complex", ";".join(fc),
+               "-map", f"[{cur}]", "-r", str(FPS),
+               "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+               "-pix_fmt", "yuv420p", out_path]
+        must(run(cmd, timeout=3600), f"render batch {bidx} (xfade chain)")
+
+    # free the per-unit intermediates now (keeps peak disk to ~one batch)
+    for p in seg_paths:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+    return out_path, ffprobe_dur(out_path)
+
+
+def build_video(units, joins, project, workdir, meta, grade, out_path, batch_size):
+    """Batched assembly: render each batch to its own MP4 (deleting per-unit
+    intermediates as it goes), then concat the batch MP4s. Boundaries sit on
+    hard cuts so the concat loses no transition. This is what makes 500 clips
+    feasible in a bounded disk allowance."""
+    batches, degraded = split_into_batches(units, joins, batch_size)
+    if degraded:
+        sys.stderr.write(f"[magnate-cut] NOTE: {len(degraded)} batch boundary/ies had no nearby "
+                         f"hard cut; those transitions became straight cuts. Raise --batch-size or "
+                         f"place a hard_cut near every ~{batch_size} segments to avoid this.\n")
+    sys.stderr.write(f"[magnate-cut] rendering in {len(batches)} batch(es) of ~{batch_size} units...\n")
+    batch_files = []
+    for bidx, br in enumerate(batches):
+        sys.stderr.write(f"[magnate-cut]   batch {bidx+1}/{len(batches)}: units {br[0]}..{br[1]-1}\n")
+        bp, _ = render_batch(units, joins, br, project, workdir, meta, grade, bidx)
+        batch_files.append(bp)
+
+    if len(batch_files) == 1:
+        shutil.move(batch_files[0], out_path)
         return
-
-    inputs = []
-    for u in units:
-        inputs += ["-i", u["path"]]
-
-    fc = []
-    # label each input v0..vN (already normalized, just relabel with settb/setpts reset)
-    for i in range(len(units)):
-        fc.append(f"[{i}:v]settb=AVTB,setpts=PTS-STARTPTS[v{i}]")
-
-    running = units[0]["dur"]
-    cur = "v0"
-    for i in range(1, len(units)):
-        j = joins[i - 1]
-        tdur = float(j["dur"])
-        # clamp: transition can't exceed either neighbouring clip
-        tdur = max(1.0 / FPS, min(tdur, units[i - 1]["dur"] - 1.0 / FPS,
-                                  units[i]["dur"] - 1.0 / FPS))
-        trans = XFADE_MAP.get(j["type"], "fade")
-        offset = running - tdur
-        if offset < 0:
-            offset = 0.0
-        outl = f"x{i}"
-        fc.append(f"[{cur}][v{i}]xfade=transition={trans}:duration={tdur:.3f}:"
-                  f"offset={offset:.3f}[{outl}]")
-        running = running + units[i]["dur"] - tdur
-        cur = outl
-
-    filter_complex = ";".join(fc)
-    cmd = ["ffmpeg", "-y", *inputs, "-filter_complex", filter_complex,
-           "-map", f"[{cur}]", "-r", str(FPS),
-           "-c:v", "libx264", "-preset", "medium", "-crf", "18",
-           "-pix_fmt", "yuv420p", out_path]
-    must(run(cmd, timeout=1800), "build video (xfade chain)")
+    # concat the batch MP4s (identical encode params -> stream copy)
+    listf = os.path.join(workdir, "concat.txt")
+    with open(listf, "w") as f:
+        for bp in batch_files:
+            f.write(f"file '{bp}'\n")
+    cp = run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", listf,
+              "-c", "copy", out_path], timeout=1800)
+    if cp.returncode != 0:
+        # fallback: re-encode concat if stream-copy refused (param drift)
+        must(run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", listf,
+                  "-r", str(meta["fps"]), "-c:v", "libx264", "-preset", "medium",
+                  "-crf", "18", "-pix_fmt", "yuv420p", out_path], timeout=3600),
+             "concat batches (re-encode)")
+    for bp in batch_files:
+        try:
+            os.remove(bp)
+        except OSError:
+            pass
 
 
 def build_audio(tl, project, workdir, total_dur, meta, out_path):
@@ -368,6 +447,10 @@ def main():
     ap.add_argument("--out", default=None, help="output path (default: <project>/renders/final.mp4)")
     ap.add_argument("--draft", action="store_true", help="faster/lower-quality encode")
     ap.add_argument("--no-master", action="store_true", help="skip the LUFS mastering pass")
+    ap.add_argument("--batch-size", type=int, default=50,
+                     help="normalize+render this many segments at a time, deleting each batch's "
+                          "intermediates before the next (keeps peak disk bounded for big projects "
+                          "-- essential at hundreds of clips). Boundaries land on hard cuts. 0 = one pass.")
     ap.add_argument("--keep-temp", action="store_true")
     args = ap.parse_args()
 
@@ -396,13 +479,13 @@ def main():
         if not segments:
             print(json.dumps({"ok": False, "error": "no segments in timeline"})); sys.exit(1)
 
-        sys.stderr.write(f"[magnate-cut] normalizing {len(segments)} segments to "
+        sys.stderr.write(f"[magnate-cut] planning {len(segments)} segments for "
                          f"{meta['width']}x{meta['height']}@{meta['fps']} + shared grade...\n")
-        units, joins = build_units(segments, project, workdir, meta, tl.get("grade"))
+        units, joins = plan_units(segments, project)
 
         video_only = os.path.join(workdir, "video.mp4")
-        sys.stderr.write(f"[magnate-cut] joining {len(units)} units with transitions...\n")
-        build_video(units, joins, workdir, meta, video_only)
+        build_video(units, joins, project, workdir, meta, tl.get("grade"),
+                    video_only, args.batch_size)
         total = ffprobe_dur(video_only)
 
         sys.stderr.write("[magnate-cut] designing + mixing audio (VO-ducked beds + SFX)...\n")
@@ -435,6 +518,7 @@ def main():
             "duration_sec": round(ffprobe_dur(out_path), 2),
             "num_segments": len(segments),
             "num_units": len(units),
+            "batch_size": args.batch_size,
             "resolution": f"{meta['width']}x{meta['height']}",
             "fps": meta["fps"],
             "mastered": mastered,
