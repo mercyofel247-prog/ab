@@ -18,6 +18,36 @@ shows up in `silence` instead. `aspect_ratio`/`orientation` are worth a line
 in the report when the user's talking about platform fit (e.g. a landscape
 16:9 video for a vertical/9:16 platform is a real mismatch worth flagging).
 
+## `platform_metadata`
+
+`{available, platform, title, uploader, channel_follower_count, upload_date,
+view_count, like_count, comment_count, average_rating, categories, tags,
+description_excerpt}` for a URL source, fetched via `yt-dlp --dump-json`
+(the same tool already used to download the video -- no extra dependency,
+no OAuth). `{available: false, reason}` for a local file (no platform to
+query) or if the fetch failed (network policy, extractor doesn't expose
+these fields, etc.). This is **public page metadata only** -- it is not,
+and can never become without the video owner's own OAuth-authenticated
+Analytics API access, a replacement for CTR, audience-retention graph,
+watch time, traffic-source breakdown, subscribers-gained-per-video, or
+session data. Say so plainly if the user asks for those specifically.
+
+## `frame_rate_consistency`
+
+`{available, implied_avg_fps, mean_frame_delta_sec, stdev_frame_delta_sec,
+coefficient_of_variation, num_long_gaps_over_2.5x_mean,
+long_gap_examples_sec, likely_variable_frame_rate}` from real per-frame
+`pts_time` values via `ffprobe -show_entries frame=pts_time` -- unlike
+`metadata.video.fps` (a single averaged value from the stream header), this
+catches actual variable-frame-rate encoding or dropped frames.
+`coefficient_of_variation` near 0 means very even frame spacing (true CFR);
+a high value or several `long_gap_examples_sec` entries suggests VFR,
+dropped frames, or a screen-recording-style source. Cross-check
+`num_long_gaps_over_2.5x_mean` against `freeze_frames` before reporting a
+gap as a problem -- a legitimate held/freeze-frame shot produces the exact
+same signature. `{available: false, reason}` if ffprobe couldn't read
+per-frame timestamps.
+
 ## `cuts`
 
 List of `{time, luma_mean, detection, transition?}`. Two independent
@@ -104,6 +134,21 @@ windows, not a real audio-scene-change model -- a genuine signal for
 calling out deliberate J-cut/L-cut editing, but don't overstate precision
 on a borderline `confidence`.
 
+Classified cuts with both a `cut_<t>s_before` and `cut_<t>s_after` frame
+extracted (see `frames`) also get a `scene_similarity` sub-object:
+`{color_histogram_correlation, likely_read, note}`.
+`color_histogram_correlation` (-1 to 1, via `cv2.compareHist` with
+`HISTCMP_CORREL` on 8x8x8-bin BGR histograms) measures how similar the two
+frames' overall color distributions are. `likely_read` buckets it: above
+0.75 is `"same-scene continuation (jump-cut-like, small change)"`, below
+0.35 is `"different scene/location (full cut/cutaway-like)"`, otherwise
+`"ambiguous"`. This is a coarse pixel-statistics proxy, not real shot/
+continuity understanding -- a same-location cut under a big lighting change
+can read as low, and two differently-lit-but-similarly-colored scenes can
+read as high. Absent if either frame wasn't extracted (e.g. deduped against
+a nearby `interval_*` frame on a short/sparse-sample video) or OpenCV was
+unavailable.
+
 ## `pacing`
 
 Derived from `cuts` + `metadata.duration_sec`:
@@ -189,6 +234,77 @@ whole file, unlike `loudness_curve`'s per-second relative RMS -- use
 there's no audio track or `loudnorm` didn't report measurements (e.g. a
 clip too short or fully silent).
 
+## `av_sync_drift_summary`
+
+`{available, num_cuts_sampled, mean_offset_sec, stdev_offset_sec,
+likely_systematic_av_drift, note}` -- aggregates every classified cut's
+`edit_offset.detail.audio_jump_offset_from_cut_sec` reading into one
+whole-file signal, distinct from any single cut's J-cut/L-cut call.
+`likely_systematic_av_drift: true` (a consistent nonzero `mean_offset_sec`
+with LOW `stdev_offset_sec` across many cuts) points at a real mux/encode
+sync bug -- audio and video genuinely out of sync throughout the file. A
+high `stdev_offset_sec` with offsets scattered in both directions is what
+normal editorial J-cut/L-cut usage looks like in aggregate (a deliberate
+technique, not a sync bug) -- don't conflate the two. Same coarse RMS-jump
+heuristic underneath as `edit_offset`, so treat it accordingly, not as a
+frame-accurate sync measurement. `{available: false, reason}` if fewer than
+3 cuts got a usable audio-offset reading.
+
+## `exposure`
+
+`{available, avg_shadow_clip_pct, avg_highlight_clip_pct,
+avg_contrast_range_0_255, per_frame, note}` -- per sampled `interval_*`
+frame (and averaged), the percentage of pixels crushed near-black (luma
+<=5) or blown near-white (luma >=250), plus `contrast_range_0_255` (5th-
+95th percentile luma spread, a visual dynamic-range proxy). A luma-
+histogram heuristic on the sparse sampled-frame set, not a waveform/
+vectorscope-grade trace of the whole timeline, and it says nothing about
+*why* a frame is clipped (deliberate high-key/low-key look vs. an actual
+exposure mistake) -- weigh it against the actual frame before calling it a
+flaw. `{available: false, reason}` if OpenCV was unavailable or
+`--skip-exposure` was passed.
+
+## `sharpness_noise`
+
+`{available, avg_sharpness_laplacian_var, per_frame, read_guide}` -- a
+focus/blur proxy per sampled frame via Laplacian variance (crisp edges =
+high variance, soft/out-of-focus/heavily-denoised = low). Rough feel only
+(see `read_guide` in the field for thresholds), varies hugely by content/
+resolution/detail level -- always sanity-check against the actual frame.
+Not a true signal-to-noise-ratio measurement (that needs a clean reference
+signal a single frame can't provide). `{available: false, reason}` if
+OpenCV was unavailable or `--skip-sharpness` was passed.
+
+## `compression_artifacts`
+
+`{available, avg_block_edge_ratio, read_guide, note}` -- a coarse
+blockiness estimate: DCT-block-based codecs encode in 8x8-aligned blocks,
+and heavy compression tends to leave faint edges at those boundaries. This
+compares mean horizontal-gradient energy at 8-pixel-aligned columns vs.
+non-aligned columns across the sampled frames. ~1.0 means no detectable
+block edges above the surrounding gradient; notably above ~1.15 suggests
+visible blocking. No ringing/mosquito-noise detection, no bitrate-ladder
+awareness, and it can't distinguish deliberate stylized noise/grain from
+real compression damage -- a rough hint, confirm against the actual frames.
+`{available: false, reason}` if OpenCV was unavailable or
+`--skip-compression-check` was passed.
+
+## `composition`
+
+`{available, per_frame, pct_frames_closer_to_thirds_than_center, note}` --
+a rule-of-thirds proxy per sampled frame. Finds an "interest point" (the
+detected face center from `frames[].largest_face_center_pct` when
+available, otherwise the centroid of strong Sobel edge energy) and reports
+its distance to the nearest rule-of-thirds intersection vs. to dead-center,
+both as a percentage of the frame diagonal. This is a cheap geometric
+heuristic, NOT real composition analysis -- no leading-lines, headroom, or
+framing-intent understanding, and the edge-energy fallback can land on
+background clutter rather than the real subject on busy or faceless
+(product/landscape) shots. Use it to flag a tendency toward
+centered/flat framing vs. off-center/thirds-leaning framing, always
+verified by actually looking at the frame. `{available: false, reason}` if
+OpenCV was unavailable or `--skip-composition` was passed.
+
 ## `brightness_curve`
 
 Average luma (0-255) sampled at 1fps across the whole video. Use it to
@@ -208,29 +324,35 @@ high-cuts-per-minute but feel static if each shot itself barely moves.
 
 ## `faces_summary` / `shot_type_summary` (and per-frame `faces`, `shot_type_guess`)
 
-`faces_summary`: `{frames_with_face, frames_checked, pct_frames_with_face}`,
-from running a face-presence detector (offline Haar cascade, no network
-needed at analysis time) over every extracted still in `frames/`. Each
-entry in the `frames` array also gets its own `faces` count. Use this for
-"talking-head heavy" vs. "b-roll/abstract/product-shot heavy" framing of
-the visual style -- it's a presence count, not identity or emotion
-detection, and it's only as good as the sample of frames extracted, so
-treat the percentage as indicative, not a precise measurement over the
-full runtime. `null`/absent if `--skip-faces` was passed or OpenCV was
-unavailable.
+`faces_summary`: `{frames_with_face, frames_checked, pct_frames_with_face,
+style_guess, note}`, from running a face-presence detector (offline Haar
+cascade, no network needed at analysis time) over every extracted still in
+`frames/`. Each entry in the `frames` array also gets its own `faces`
+count. `style_guess` is a coarse label from `pct_frames_with_face`:
+`"talking-head-heavy"` (>=60%), `"b-roll/abstract-heavy"` (<=20%), or
+`"mixed"` -- a whole-video summary label, not a scene-by-scene breakdown.
+Use this for "talking-head heavy" vs. "b-roll/abstract/product-shot heavy"
+framing of the visual style -- it's a presence count, not identity or
+emotion detection, and it's only as good as the sample of frames
+extracted, so treat the percentage as indicative, not a precise
+measurement over the full runtime. `null`/absent if `--skip-faces` was
+passed or OpenCV was unavailable.
 
 When a frame has a detected face, it also gets `largest_face_frame_area_pct`
-(the biggest face's bounding-box area as a percentage of the frame) and a
-derived `shot_type_guess`: `close-up` (>15%), `medium` (4-15%), or `wide`
-(<4%). `shot_type_summary` is the aggregate count of each across all
-frames with a detected face. This is a cheap, face-size-based proxy for
+(the biggest face's bounding-box area as a percentage of the frame),
+`largest_face_center_pct` (`[x_pct, y_pct]` of that face's center -- used
+as the "interest point" for the `composition` rule-of-thirds proxy when
+present), and a derived `shot_type_guess`: `close-up` (>15%), `medium`
+(4-15%), or `wide` (<4%). `shot_type_summary` is the aggregate count of
+each across all frames with a detected face. This is a cheap, face-size-based proxy for
 real shot-type/composition classification -- it only applies to frames
 where a face was actually found, says nothing about framing on
 faceless/product/landscape shots, and a face far off-center or a
 group shot can skew the "largest face" reading; treat it as a rough
 framing signal to fold in with what you see in the actual frames; not a
 substitute for a real composition read (rule-of-thirds, headroom, camera
-angle).
+angle) -- see `composition` below for the (also coarse) geometric proxy
+that goes one step further.
 
 ## `on_screen_text`
 
@@ -238,18 +360,26 @@ angle).
 binary isn't installed on the system -- this is a system package, not
 something the script pip-installs, since that needs root; see SKILL.md
 Notes for how to add it). When available: `detections`, a list of
-`{time, text, prominence_pct?, prominence_label?}` for sampled frames
-where OCR found readable text (title cards, lower-thirds, burned-in
-captions). `prominence_pct` is the tallest confident word's height as a
-percentage of frame height; `prominence_label` buckets it as
-`title/headline` (>=8%), `subtitle/lower-third` (3-8%), or
-`fine-print/caption` (<3%) -- a cheap stand-in for real typography/font
-analysis (weight, face, kerning aren't measured, just size). This only
-checks the evenly-spaced `interval_*` frames, not every frame, so a
-short-lived title card could be missed if no sample frame happens to land
-on it -- treat an empty `detections` list as "no on-screen text found in
-the sampled frames," not a certainty that none exists anywhere in the
-video.
+`{time, text, prominence_pct?, prominence_label?, text_luma?,
+background_luma?, luma_contrast_0_255?, readability_label?}` for sampled
+frames where OCR found readable text (title cards, lower-thirds, burned-in
+captions), plus a top-level `readability_note`. `prominence_pct` is the
+tallest confident word's height as a percentage of frame height;
+`prominence_label` buckets it as `title/headline` (>=8%),
+`subtitle/lower-third` (3-8%), or `fine-print/caption` (<3%) -- a cheap
+stand-in for real typography/font analysis (weight, face, kerning aren't
+measured, just size). `luma_contrast_0_255` is the luma difference between
+that same tallest word's bounding box and a padded ring around it;
+`readability_label` buckets it as `"high contrast/likely readable"`
+(>=80), `"medium contrast"` (>=30), or `"low contrast/may be hard to
+read"` (<30) -- a coarse text-vs-background luma proxy, NOT a real WCAG
+contrast-ratio formula and not aware of hue (equally-bright but
+differently-hued text/background can read as low contrast here while
+still being legible to a viewer). This only checks the evenly-spaced
+`interval_*` frames, not every frame, so a short-lived title card could be
+missed if no sample frame happens to land on it -- treat an empty
+`detections` list as "no on-screen text found in the sampled frames," not
+a certainty that none exists anywhere in the video.
 
 ## `beat_analysis`
 
@@ -270,20 +400,28 @@ where it doesn't apply.
 ## `color_palette`
 
 `{available, overall_palette, avg_saturation_pct, avg_brightness_pct,
-per_frame}` when available (needs OpenCV), or `{available: false, reason}`
-otherwise. `overall_palette` and each `per_frame` entry's `palette` are
-lists of `{hex, pct}` -- dominant colors from k-means clustering over
-downsampled pixels (of the same `interval_*` sample frames used elsewhere),
-ranked by share of sampled pixels. `avg_saturation_pct`/`avg_brightness_pct`
-give a quick numeric read on "vibrant vs. desaturated" and "bright vs. dark"
-grading overall. Use the actual hex values when describing a video's color
-grade instead of an eyeballed impression -- e.g. "the palette centers on
-`#3a1f1f` and `#c94f4f`, a desaturated red/black grade" is concrete in a
-way "looks reddish and dark" isn't. This is computed on the same sparse
-frame sample used for visual inspection, so a strongly-colored moment that
-falls between samples (e.g. a one-frame flash of color) won't show up in
-the overall palette -- treat it as representative of the dominant look, not
-exhaustive. `null`/absent if `--skip-color` was passed.
+white_balance_estimate, per_frame}` when available (needs OpenCV), or
+`{available: false, reason}` otherwise. `overall_palette` and each
+`per_frame` entry's `palette` are lists of `{hex, pct}` -- dominant colors
+from k-means clustering over downsampled pixels (of the same `interval_*`
+sample frames used elsewhere), ranked by share of sampled pixels.
+`avg_saturation_pct`/`avg_brightness_pct` give a quick numeric read on
+"vibrant vs. desaturated" and "bright vs. dark" grading overall. Use the
+actual hex values when describing a video's color grade instead of an
+eyeballed impression -- e.g. "the palette centers on `#3a1f1f` and
+`#c94f4f`, a desaturated red/black grade" is concrete in a way "looks
+reddish and dark" isn't. `white_balance_estimate` is
+`{avg_r, avg_g, avg_b, warmth_score, label, note}` -- a channel-mean-ratio
+proxy for warm/cool color-temperature bias (`label` is `"warm (amber/red-
+leaning)"`, `"cool (blue-leaning)"`, or `"neutral"`), NOT a measured Kelvin
+value or a substitute for a real white-balance reading off a reference
+card -- a genuinely warm-lit scene (e.g. a sunset) reads "warm" here
+whether or not the camera's white balance was actually set correctly. This
+is all computed on the same sparse frame sample used for visual
+inspection, so a strongly-colored moment that falls between samples (e.g.
+a one-frame flash of color) won't show up in the overall palette -- treat
+it as representative of the dominant look, not exhaustive. `null`/absent
+if `--skip-color` was passed.
 
 ## `transcript`
 
@@ -302,8 +440,8 @@ meditative piece and a hype trailer have very different "correct" pacing).
 ## `frames`
 
 Manifest of extracted JPEGs: `{time, tag, file, faces?,
-largest_face_frame_area_pct?, shot_type_guess?, ocr_text?}` (path relative
-to the output dir). Tags are either `cut_<t>s_before` / `cut_<t>s_after`
+largest_face_frame_area_pct?, largest_face_center_pct?, shot_type_guess?,
+ocr_text?}` (path relative to the output dir). Tags are either `cut_<t>s_before` / `cut_<t>s_after`
 (bracket a specific cut so you can compare the two sides) or
 `interval_<fraction>` (evenly spaced samples across the runtime for overall
 visual-style coverage). `faces`/`shot_type_guess` and `ocr_text` are added

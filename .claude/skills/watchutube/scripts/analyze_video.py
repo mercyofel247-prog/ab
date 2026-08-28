@@ -158,6 +158,99 @@ def resolve_input(source, workdir, max_height=1080, download_timeout=900):
     return os.path.join(workdir, sorted(candidates)[0])
 
 
+def get_source_platform_metadata(source, timeout=60):
+    """Public platform metadata for a URL source (views/likes/comments/upload
+    date/channel/etc.) via yt-dlp's own extractor -- no OAuth, no private
+    analytics, just whatever the platform's public page exposes at fetch
+    time. NOT available for a local file (there's no platform to query), and
+    NOT the same thing as creator-only YouTube Analytics data: this has no
+    path to CTR, retention graph, watch time, traffic-source breakdown,
+    subscribers-gained, or session data, all of which require the video
+    owner's OAuth-authenticated Analytics API access."""
+    if not is_url(source):
+        return {"available": False, "reason": "local file input has no associated platform metadata"}
+    if not ensure_yt_dlp():
+        return {"available": False, "reason": "yt-dlp unavailable"}
+    r = run(["yt-dlp", "--dump-json", "--no-playlist", "--skip-download", source], timeout=timeout)
+    if r.returncode != 0 or not r.stdout.strip():
+        reason = (r.stderr or "no output").strip()[-500:]
+        return {"available": False, "reason": f"yt-dlp metadata fetch failed: {reason}"}
+    try:
+        data = json.loads(r.stdout.splitlines()[0])
+    except Exception as e:
+        return {"available": False, "reason": f"failed to parse yt-dlp metadata: {e}"}
+    return {
+        "available": True,
+        "platform": data.get("extractor_key"),
+        "title": data.get("title"),
+        "uploader": data.get("uploader") or data.get("channel"),
+        "channel_follower_count": data.get("channel_follower_count"),
+        "upload_date": data.get("upload_date"),
+        "view_count": data.get("view_count"),
+        "like_count": data.get("like_count"),
+        "comment_count": data.get("comment_count"),
+        "average_rating": data.get("average_rating"),
+        "categories": data.get("categories"),
+        "tags": (data.get("tags") or [])[:25],
+        "description_excerpt": ((data.get("description") or "")[:500] or None),
+        "note": "public metadata only, as exposed by the platform's page at fetch time -- not the same as "
+                "creator-only Analytics data (no CTR, retention, watch time, traffic sources, subscribers "
+                "gained, or session data; those require the owner's OAuth-authenticated Analytics API "
+                "access, which this tool cannot obtain).",
+    }
+
+
+def check_frame_rate_consistency(path, timeout=180):
+    """Detect variable frame rate / dropped-frame irregularities from actual
+    per-frame presentation timestamps (not just the single averaged fps
+    ffprobe reports in the stream header)."""
+    r = run(
+        ["ffprobe", "-v", "quiet", "-select_streams", "v:0", "-show_entries",
+         "frame=pts_time", "-of", "csv=p=0", path],
+        timeout=timeout,
+    )
+    if r.returncode != 0 or not r.stdout.strip():
+        return {"available": False, "reason": "ffprobe could not read per-frame timestamps"}
+    times = []
+    for line in r.stdout.splitlines():
+        line = line.strip()
+        if not line or line == "N/A":
+            continue
+        try:
+            times.append(float(line))
+        except ValueError:
+            continue
+    if len(times) < 10:
+        return {"available": False, "reason": "too few frame timestamps read"}
+
+    times.sort()
+    deltas = [round(b - a, 4) for a, b in zip(times, times[1:]) if b > a]
+    if not deltas:
+        return {"available": False, "reason": "no valid inter-frame deltas"}
+
+    mean_delta = statistics.mean(deltas)
+    stdev_delta = statistics.pstdev(deltas) if len(deltas) > 1 else 0.0
+    implied_fps = round(1 / mean_delta, 2) if mean_delta else None
+    cv = (stdev_delta / mean_delta) if mean_delta else 0.0
+    long_gaps = [round(d, 3) for d in deltas if d > mean_delta * 2.5]
+
+    return {
+        "available": True,
+        "implied_avg_fps": implied_fps,
+        "mean_frame_delta_sec": round(mean_delta, 4),
+        "stdev_frame_delta_sec": round(stdev_delta, 4),
+        "coefficient_of_variation": round(cv, 3),
+        "num_long_gaps_over_2.5x_mean": len(long_gaps),
+        "long_gap_examples_sec": long_gaps[:10],
+        "likely_variable_frame_rate": cv > 0.15,
+        "note": "coefficient_of_variation near 0 means frames are spaced very evenly (true CFR); a high value "
+                "or several long-gap entries suggests variable frame rate, dropped frames during capture/"
+                "encode, or a screen-recording-style source -- but a single legitimate held/freeze-frame shot "
+                "will also show up as one long gap, so cross-check num_long_gaps against `freeze_frames` "
+                "before calling it a real problem.",
+    }
+
+
 def ffprobe_json(path):
     r = run(
         ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path],
@@ -841,9 +934,13 @@ def detect_faces_in_frames(frame_manifest, output_dir):
         entry["faces"] = int(len(faces))
         if len(faces) > 0:
             img_h, img_w = img.shape
-            largest_area = max(w * h for (_, _, w, h) in faces)
-            ratio = largest_area / (img_w * img_h) if img_w and img_h else 0
+            fx, fy, fw, fh = max(faces, key=lambda f: f[2] * f[3])
+            ratio = (fw * fh) / (img_w * img_h) if img_w and img_h else 0
             entry["largest_face_frame_area_pct"] = round(ratio * 100, 1)
+            if img_w and img_h:
+                entry["largest_face_center_pct"] = [
+                    round(100 * (fx + fw / 2) / img_w, 1), round(100 * (fy + fh / 2) / img_h, 1),
+                ]
             if ratio > 0.15:
                 entry["shot_type_guess"] = "close-up"
             elif ratio > 0.04:
@@ -866,9 +963,32 @@ def ocr_frames(frame_manifest, output_dir, only_tag_prefix="interval_", max_fram
         return {"available": False, "reason": "tesseract-ocr binary not found on PATH (optional system package)"}
     if not ensure_pip_package("pytesseract", "pytesseract", timeout=60):
         return {"available": False, "reason": "pytesseract unavailable"}
+    import numpy as np
     import pytesseract
     from pytesseract import Output
     from PIL import Image
+
+    def region_contrast(arr, box, pad=8):
+        """Mean luma inside a text bbox vs. a padded ring around it -- a coarse
+        proxy for text/background contrast (not a true WCAG contrast-ratio
+        formula, just a luma-difference read on 0-255)."""
+        H, W = arr.shape
+        l, t, w, h = box
+        l0, t0 = max(int(l), 0), max(int(t), 0)
+        l1, t1 = min(int(l + w), W), min(int(t + h), H)
+        if l1 <= l0 or t1 <= t0:
+            return None
+        text_mean = float(arr[t0:t1, l0:l1].mean())
+        ol0, ot0 = max(l0 - pad, 0), max(t0 - pad, 0)
+        ol1, ot1 = min(l1 + pad, W), min(t1 + pad, H)
+        outer = arr[ot0:ot1, ol0:ol1]
+        mask = np.ones(outer.shape, dtype=bool)
+        mask[(t0 - ot0):(t1 - ot0), (l0 - ol0):(l1 - ol0)] = False
+        bg_pixels = outer[mask]
+        if bg_pixels.size == 0:
+            return None
+        bg_mean = float(bg_pixels.mean())
+        return text_mean, bg_mean, abs(text_mean - bg_mean)
 
     hits = []
     candidates = [e for e in frame_manifest if e["tag"].startswith(only_tag_prefix)][:max_frames]
@@ -887,23 +1007,45 @@ def ocr_frames(frame_manifest, output_dir, only_tag_prefix="interval_", max_fram
         try:
             with Image.open(fpath) as im:
                 img_h = im.height
-            confident_heights = [
-                h for h, conf in zip(data.get("height", []), data.get("conf", []))
-                if h and float(conf) > 30
-            ]
-            max_h = max(confident_heights) if confident_heights else 0
-            if img_h:
-                prom_pct = round(100.0 * max_h / img_h, 1)
-                hit["prominence_pct"] = prom_pct
-                hit["prominence_label"] = (
-                    "title/headline" if prom_pct >= 8 else
-                    "subtitle/lower-third" if prom_pct >= 3 else
-                    "fine-print/caption"
-                )
+                arr = np.array(im.convert("L"), dtype=np.float64)
+            heights = data.get("height", [])
+            confs = data.get("conf", [])
+            confident_idx = [i for i, (h, c) in enumerate(zip(heights, confs)) if h and float(c) > 30]
+            if confident_idx:
+                best_i = max(confident_idx, key=lambda i: heights[i])
+                max_h = heights[best_i]
+                if img_h:
+                    prom_pct = round(100.0 * max_h / img_h, 1)
+                    hit["prominence_pct"] = prom_pct
+                    hit["prominence_label"] = (
+                        "title/headline" if prom_pct >= 8 else
+                        "subtitle/lower-third" if prom_pct >= 3 else
+                        "fine-print/caption"
+                    )
+                box = (data["left"][best_i], data["top"][best_i], data["width"][best_i], data["height"][best_i])
+                contrast = region_contrast(arr, box)
+                if contrast:
+                    text_mean, bg_mean, diff = contrast
+                    hit["text_luma"] = round(text_mean, 1)
+                    hit["background_luma"] = round(bg_mean, 1)
+                    hit["luma_contrast_0_255"] = round(diff, 1)
+                    hit["readability_label"] = (
+                        "high contrast/likely readable" if diff >= 80 else
+                        "medium contrast" if diff >= 30 else
+                        "low contrast/may be hard to read"
+                    )
         except Exception:
             pass
         hits.append(hit)
-    return {"available": True, "detections": hits}
+    return {
+        "available": True,
+        "detections": hits,
+        "readability_note": "luma_contrast_0_255/readability_label is a coarse text-vs-background luma-"
+                             "difference proxy on the tallest confident word's box, not a real WCAG contrast-"
+                             "ratio calculation and not aware of text color vs. background color separately "
+                             "from brightness (e.g. equally-bright but differently-hued text/background can "
+                             "read as low contrast here while still being readable to a viewer).",
+    }
 
 
 def beat_analysis(path, workdir, cuts, has_audio, tolerance_sec=0.15):
@@ -994,11 +1136,27 @@ def analyze_color_palette(frame_manifest, output_dir, k=5, max_frames=20):
     avg_sat = round(float(np.mean(hsv[:, 1])) / 255 * 100, 1)
     avg_val = round(float(np.mean(hsv[:, 2])) / 255 * 100, 1)
 
+    b_mean, g_mean, r_mean = (float(np.mean(stacked[:, i])) for i in range(3))
+    warmth = (r_mean - b_mean) / max(r_mean + b_mean, 1.0)
+    wb_label = (
+        "warm (amber/red-leaning)" if warmth > 0.08 else
+        "cool (blue-leaning)" if warmth < -0.08 else
+        "neutral"
+    )
+
     return {
         "available": True,
         "overall_palette": overall,
         "avg_saturation_pct": avg_sat,
         "avg_brightness_pct": avg_val,
+        "white_balance_estimate": {
+            "avg_r": round(r_mean, 1), "avg_g": round(g_mean, 1), "avg_b": round(b_mean, 1),
+            "warmth_score": round(warmth, 3), "label": wb_label,
+            "note": "a channel-mean-ratio proxy for warm/cool color-temperature bias across the sampled "
+                    "frames, not a measured Kelvin value and not a substitute for a real white-balance "
+                    "reading off a reference card -- a scene that's genuinely warm-lit (e.g. a sunset) will "
+                    "read 'warm' here whether or not the white balance itself was set correctly.",
+        },
         "per_frame": per_frame,
     }
 
@@ -1166,6 +1324,290 @@ def detect_edit_offset(path, cut_time, workdir, window=1.2, resolution_sec=0.05,
         return {"type": "j_cut_candidate", "confidence": round(min(0.3 + abs(offset), 0.8), 2), "detail": detail}
     else:
         return {"type": "l_cut_candidate", "confidence": round(min(0.3 + abs(offset), 0.8), 2), "detail": detail}
+
+
+def analyze_exposure(frame_manifest, output_dir, max_frames=20):
+    """Histogram-based exposure read per sampled frame: percentage of pixels
+    clipped near-black (crushed shadows) or near-white (blown highlights),
+    and a contrast/dynamic-range estimate from the 5th/95th percentile luma
+    spread. Reuses frames already extracted -- no extra decode pass."""
+    if not ensure_opencv():
+        return {"available": False, "reason": "opencv unavailable"}
+    import cv2
+    import numpy as np
+
+    candidates = [e for e in frame_manifest if e["tag"].startswith("interval_")][:max_frames]
+    if not candidates:
+        candidates = frame_manifest[:max_frames]
+
+    per_frame, all_shadow, all_highlight, all_contrast = [], [], [], []
+    for entry in candidates:
+        img = cv2.imread(os.path.join(output_dir, entry["file"]), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        total = img.size
+        shadow_clip = float(np.count_nonzero(img <= 5)) / total * 100
+        highlight_clip = float(np.count_nonzero(img >= 250)) / total * 100
+        p5, p95 = np.percentile(img, [5, 95])
+        contrast = float(p95 - p5)
+        per_frame.append({
+            "time": entry["time"], "shadow_clip_pct": round(shadow_clip, 1),
+            "highlight_clip_pct": round(highlight_clip, 1), "contrast_range_0_255": round(contrast, 1),
+        })
+        all_shadow.append(shadow_clip); all_highlight.append(highlight_clip); all_contrast.append(contrast)
+
+    if not per_frame:
+        return {"available": False, "reason": "no frames to sample"}
+
+    return {
+        "available": True,
+        "avg_shadow_clip_pct": round(statistics.mean(all_shadow), 1),
+        "avg_highlight_clip_pct": round(statistics.mean(all_highlight), 1),
+        "avg_contrast_range_0_255": round(statistics.mean(all_contrast), 1),
+        "per_frame": per_frame,
+        "note": "clipping/contrast measured on the sparse sampled-frame set, not a full waveform/vectorscope "
+                "trace of the whole timeline -- a brief clipped moment between samples can be missed. This is "
+                "a luma-histogram proxy for exposure and (visual) dynamic range, not a calibrated light-meter "
+                "or scope reading, and says nothing about *why* a frame is clipped (deliberate high-key/low-"
+                "key look vs. an actual exposure mistake) -- weigh it against the actual frame.",
+    }
+
+
+def analyze_sharpness_noise(frame_manifest, output_dir, max_frames=20):
+    """Focus/detail proxy per sampled frame via Laplacian variance -- a
+    standard cheap blur metric: crisp edges produce a high-variance
+    Laplacian response, a soft/out-of-focus or heavily-denoised image
+    produces a low one. Not a real signal-to-noise-ratio measurement (that
+    needs a clean reference signal to compare against, which a single frame
+    doesn't provide) -- it's the closest local proxy available."""
+    if not ensure_opencv():
+        return {"available": False, "reason": "opencv unavailable"}
+    import cv2
+
+    candidates = [e for e in frame_manifest if e["tag"].startswith("interval_")][:max_frames]
+    if not candidates:
+        candidates = frame_manifest[:max_frames]
+
+    per_frame, sharp_vals = [], []
+    for entry in candidates:
+        img = cv2.imread(os.path.join(output_dir, entry["file"]), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        lap_var = float(cv2.Laplacian(img, cv2.CV_64F).var())
+        per_frame.append({"time": entry["time"], "sharpness_laplacian_var": round(lap_var, 1)})
+        sharp_vals.append(lap_var)
+
+    if not per_frame:
+        return {"available": False, "reason": "no frames to sample"}
+
+    return {
+        "available": True,
+        "avg_sharpness_laplacian_var": round(statistics.mean(sharp_vals), 1),
+        "per_frame": per_frame,
+        "read_guide": "rough feel only, varies hugely by content/resolution/detail level: under ~50 often "
+                       "reads as soft/out-of-focus/heavily denoised, 50-300 is typical, 300+ is crisp/highly "
+                       "detailed -- always sanity-check against the actual frame before calling something "
+                       "soft or noisy, this is not a calibrated focus-pull or SNR measurement.",
+    }
+
+
+def analyze_compression_artifacts(frame_manifest, output_dir, max_frames=20):
+    """Coarse blockiness estimate: DCT-block-based codecs (H.264/H.265/etc.)
+    encode in 8x8-aligned blocks, and heavy compression tends to leave faint
+    edges at those block boundaries. Compares mean horizontal-gradient
+    energy at 8-pixel-aligned columns vs. non-aligned columns -- a
+    meaningfully higher ratio suggests visible block-edge artifacting."""
+    if not ensure_opencv():
+        return {"available": False, "reason": "opencv unavailable"}
+    import cv2
+    import numpy as np
+
+    candidates = [e for e in frame_manifest if e["tag"].startswith("interval_")][:max_frames]
+    if not candidates:
+        candidates = frame_manifest[:max_frames]
+
+    ratios = []
+    for entry in candidates:
+        img = cv2.imread(os.path.join(output_dir, entry["file"]), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        img = img.astype(np.float32)
+        gx = np.abs(np.diff(img, axis=1))
+        h, w = gx.shape
+        if w < 16:
+            continue
+        cols = np.arange(w)
+        aligned = gx[:, (cols % 8 == 7)]
+        other = gx[:, (cols % 8 != 7)]
+        if aligned.size == 0 or other.size == 0:
+            continue
+        other_mean = float(np.mean(other)) or 1e-6
+        ratios.append(float(np.mean(aligned)) / other_mean)
+
+    if not ratios:
+        return {"available": False, "reason": "no frames to sample"}
+
+    return {
+        "available": True,
+        "avg_block_edge_ratio": round(statistics.mean(ratios), 3),
+        "read_guide": "~1.0 means no detectable 8x8 block edges above the surrounding gradient (clean/high-"
+                       "bitrate footage, or a compression scheme not aligned to 8px blocks); notably above "
+                       "~1.15 suggests visible blocking from heavy compression.",
+        "note": "a coarse gradient-ratio heuristic on the sparse sampled-frame set -- no ringing/mosquito-"
+                "noise detection, no bitrate-ladder awareness, and it can't tell deliberate stylized noise/"
+                "grain from real compression damage. Treat as a rough hint, and confirm against the actual "
+                "frames before reporting visible blocking.",
+    }
+
+
+def analyze_composition(frame_manifest, output_dir, max_frames=20):
+    """Coarse rule-of-thirds proxy: finds each frame's main point of visual
+    interest (the detected face center when one exists, otherwise the
+    centroid of strong edge energy) and measures how close it falls to a
+    rule-of-thirds intersection vs. dead-center. This is NOT real
+    composition analysis (no leading-lines, headroom, or framing-intent
+    understanding) -- it's a cheap geometric heuristic to flag likely
+    centered/flat framing vs. off-center/thirds-leaning framing for
+    whoever writes the report to verify against the actual frame."""
+    if not ensure_opencv():
+        return {"available": False, "reason": "opencv unavailable"}
+    import cv2
+    import numpy as np
+
+    candidates = [e for e in frame_manifest if e["tag"].startswith("interval_")][:max_frames]
+    if not candidates:
+        candidates = frame_manifest[:max_frames]
+
+    per_frame = []
+    for entry in candidates:
+        img = cv2.imread(os.path.join(output_dir, entry["file"]), cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            continue
+        h, w = img.shape
+        cx = cy = source = None
+        face_center = entry.get("largest_face_center_pct")
+        if face_center:
+            cx, cy = face_center[0] / 100.0 * w, face_center[1] / 100.0 * h
+            source = "face_center"
+        else:
+            gx = cv2.Sobel(img, cv2.CV_32F, 1, 0, ksize=3)
+            gy = cv2.Sobel(img, cv2.CV_32F, 0, 1, ksize=3)
+            mag = np.hypot(gx, gy)
+            total = float(mag.sum())
+            if total < 1e-3:
+                continue
+            yy, xx = np.mgrid[0:h, 0:w]
+            cx, cy = float((xx * mag).sum() / total), float((yy * mag).sum() / total)
+            source = "edge_energy_centroid"
+
+        thirds_x, thirds_y = (w / 3, 2 * w / 3), (h / 3, 2 * h / 3)
+        nearest_thirds_dist = min(math.hypot(cx - tx, cy - ty) for tx in thirds_x for ty in thirds_y)
+        center_dist = math.hypot(cx - w / 2, cy - h / 2)
+        diag = math.hypot(w, h)
+        per_frame.append({
+            "time": entry["time"],
+            "interest_point_source": source,
+            "interest_point_pct": [round(100 * cx / w, 1), round(100 * cy / h, 1)],
+            "dist_to_nearest_thirds_intersection_pct_of_diagonal": round(100 * nearest_thirds_dist / diag, 1),
+            "dist_to_center_pct_of_diagonal": round(100 * center_dist / diag, 1),
+        })
+
+    if not per_frame:
+        return {"available": False, "reason": "no frames to sample"}
+
+    thirds_leaning = sum(
+        1 for f in per_frame
+        if f["dist_to_nearest_thirds_intersection_pct_of_diagonal"] < f["dist_to_center_pct_of_diagonal"]
+    )
+    return {
+        "available": True,
+        "per_frame": per_frame,
+        "pct_frames_closer_to_thirds_than_center": round(100 * thirds_leaning / len(per_frame), 1),
+        "note": "a geometric proxy only -- 'interest point' is the detected face center when available, "
+                "otherwise the centroid of strong edge energy, which can land on background clutter rather "
+                "than the real subject on busy/textured or faceless (product/landscape) shots. Says nothing "
+                "about headroom, leading lines, or framing intent. Not a substitute for actually looking at "
+                "the frame's composition.",
+    }
+
+
+def analyze_cut_similarity(cuts, frame_manifest, output_dir):
+    """For each cut with extracted before/after frames, a coarse 'how much
+    did the whole scene change' read via color-histogram correlation --
+    high correlation is consistent with a same-scene/same-subject cut
+    (jump-cut-like), low correlation with a full scene/location change
+    (cutaway/hard-scene-cut-like). Mutates `cuts` in place, adding a
+    `scene_similarity` sub-object to entries where both frames exist. This
+    does NOT identify true editing grammar (jump cut vs. match cut vs.
+    cutaway needs subject/continuity understanding, not pixel statistics)
+    -- it's a numeric hint to weigh against the actual frames."""
+    if not ensure_opencv():
+        return
+    import cv2
+
+    by_time = {}
+    for f in frame_manifest:
+        m = re.match(r"cut_([\d.]+)s_(before|after)", f["tag"])
+        if m:
+            by_time.setdefault(round(float(m.group(1)), 2), {})[m.group(2)] = f["file"]
+
+    for c in cuts:
+        pair = by_time.get(round(c["time"], 2))
+        if not pair or "before" not in pair or "after" not in pair:
+            continue
+        img_a = cv2.imread(os.path.join(output_dir, pair["before"]))
+        img_b = cv2.imread(os.path.join(output_dir, pair["after"]))
+        if img_a is None or img_b is None:
+            continue
+        hist_a = cv2.calcHist([img_a], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        hist_b = cv2.calcHist([img_b], [0, 1, 2], None, [8, 8, 8], [0, 256, 0, 256, 0, 256])
+        cv2.normalize(hist_a, hist_a)
+        cv2.normalize(hist_b, hist_b)
+        corr = float(cv2.compareHist(hist_a, hist_b, cv2.HISTCMP_CORREL))
+        c["scene_similarity"] = {
+            "color_histogram_correlation": round(corr, 3),
+            "likely_read": (
+                "same-scene continuation (jump-cut-like, small change)" if corr > 0.75 else
+                "different scene/location (full cut/cutaway-like)" if corr < 0.35 else
+                "ambiguous"
+            ),
+            "note": "color-histogram correlation between the before/after frames is a coarse pixel-statistics "
+                    "proxy, not real shot/scene understanding -- a same-location cut under different lighting "
+                    "can read as low, and two different-but-similarly-colored scenes can read as high. Verify "
+                    "against the actual frames before calling something a jump cut vs. a scene change.",
+        }
+
+
+def summarize_av_sync_drift(cuts):
+    """Aggregates the per-cut `edit_offset` audio-jump-vs-video-cut readings
+    into a whole-file signal, distinct from any single cut's J-cut/L-cut
+    call: a consistent nonzero offset with LOW spread across many cuts
+    suggests a systematic mux/sync problem (audio and video genuinely out
+    of sync throughout the file), whereas a high spread with offsets
+    scattered in both directions is what normal editorial J-cuts/L-cuts
+    look like in aggregate (a deliberate technique, not a sync bug)."""
+    offsets = [
+        c["edit_offset"]["detail"]["audio_jump_offset_from_cut_sec"]
+        for c in cuts
+        if c.get("edit_offset", {}).get("type") in ("aligned_cut", "j_cut_candidate", "l_cut_candidate")
+        and c["edit_offset"].get("detail", {}).get("audio_jump_offset_from_cut_sec") is not None
+    ]
+    if len(offsets) < 3:
+        return {"available": False, "reason": "too few classified cuts with a usable audio-offset reading"}
+    mean_offset = statistics.mean(offsets)
+    stdev_offset = statistics.pstdev(offsets) if len(offsets) > 1 else 0.0
+    return {
+        "available": True,
+        "num_cuts_sampled": len(offsets),
+        "mean_offset_sec": round(mean_offset, 3),
+        "stdev_offset_sec": round(stdev_offset, 3),
+        "likely_systematic_av_drift": abs(mean_offset) > 0.08 and stdev_offset < 0.06,
+        "note": "derived from the same coarse RMS-jump heuristic as each cut's `edit_offset` (see "
+                "references/metrics.md), so treat it accordingly -- not a frame-accurate sync measurement. "
+                "`likely_systematic_av_drift: true` (consistent offset, low spread) points at a real mux/"
+                "encode sync bug; a high spread with offsets in both directions is normal editorial J-cut/"
+                "L-cut usage, not a drift problem -- don't conflate the two.",
+    }
 
 
 def build_timeline_html(report_data, outdir):
@@ -1358,6 +1800,16 @@ def main():
                      help="Skip J-cut/L-cut (audio/video edit offset) detection per cut")
     ap.add_argument("--max-classified-shots", type=int, default=24,
                      help="Cap on how many shots get camera-movement classification")
+    ap.add_argument("--skip-platform-metadata", action="store_true",
+                     help="Skip fetching public platform metadata (views/likes/etc.) for a URL source")
+    ap.add_argument("--skip-frame-rate-check", action="store_true",
+                     help="Skip the per-frame-timestamp frame-rate-consistency/dropped-frame check")
+    ap.add_argument("--skip-exposure", action="store_true", help="Skip exposure/dynamic-range analysis")
+    ap.add_argument("--skip-sharpness", action="store_true", help="Skip focus/sharpness (blur) analysis")
+    ap.add_argument("--skip-compression-check", action="store_true",
+                     help="Skip the coarse compression-blockiness heuristic")
+    ap.add_argument("--skip-composition", action="store_true",
+                     help="Skip the rule-of-thirds composition-proxy analysis")
     args = ap.parse_args()
 
     if not which("ffmpeg") or not which("ffprobe"):
@@ -1381,6 +1833,16 @@ def main():
     metadata = get_metadata(local_path)
     duration = metadata["duration_sec"]
     has_audio = metadata["has_audio"]
+
+    platform_metadata = {"available": False, "reason": "skipped"}
+    if not args.skip_platform_metadata:
+        info("Fetching public platform metadata (if URL source)...")
+        platform_metadata = get_source_platform_metadata(args.source)
+
+    frame_rate_consistency = {"available": False, "reason": "skipped"}
+    if not args.skip_frame_rate_check:
+        info("Checking frame-rate consistency (per-frame timestamps)...")
+        frame_rate_consistency = check_frame_rate_consistency(local_path)
 
     info("Detecting hard cuts (scene-score spikes)...")
     cuts = detect_cuts(local_path, duration, threshold=args.cut_threshold)
@@ -1427,6 +1889,11 @@ def main():
     beats = {"available": False, "reason": "skipped"}
     color_palette = {"available": False, "reason": "skipped"}
     camera_movement = []
+    av_sync_drift = {"available": False, "reason": "skipped"}
+    exposure = {"available": False, "reason": "skipped"}
+    sharpness_noise = {"available": False, "reason": "skipped"}
+    compression_artifacts = {"available": False, "reason": "skipped"}
+    composition = {"available": False, "reason": "skipped"}
     timeline_path = None
 
     if not args.skip_advanced:
@@ -1437,11 +1904,16 @@ def main():
             if c["time"] in classified_times:
                 c["transition"] = classify_transition(local_path, c["time"], outdir)
 
+        info("Estimating before/after scene similarity per cut (jump-cut vs. scene-change hint)...")
+        analyze_cut_similarity(cuts, frame_manifest, outdir)
+
         if not args.skip_edit_offset and has_audio:
             info("Checking audio/video edit offset per cut (J-cut/L-cut candidates)...")
             for c in cuts:
                 if c["time"] in classified_times:
                     c["edit_offset"] = detect_edit_offset(local_path, c["time"], outdir)
+            info("Summarizing whole-file audio/video sync drift...")
+            av_sync_drift = summarize_av_sync_drift(cuts)
 
         info("Building motion/energy curve...")
         motion = motion_curve(local_path, duration)
@@ -1456,14 +1928,27 @@ def main():
             info("Detecting faces in sampled frames...")
             frame_manifest = detect_faces_in_frames(frame_manifest, outdir)
             with_face = [f for f in frame_manifest if f.get("faces", 0) > 0]
+            pct_with_face = round(100 * len(with_face) / len(frame_manifest), 1) if frame_manifest else None
             faces_summary = {
                 "frames_with_face": len(with_face),
                 "frames_checked": len(frame_manifest),
-                "pct_frames_with_face": round(100 * len(with_face) / len(frame_manifest), 1) if frame_manifest else None,
+                "pct_frames_with_face": pct_with_face,
+                "style_guess": (
+                    None if pct_with_face is None else
+                    "talking-head-heavy" if pct_with_face >= 60 else
+                    "b-roll/abstract-heavy" if pct_with_face <= 20 else
+                    "mixed"
+                ),
+                "note": "style_guess is a coarse label from the sampled-frame face-presence percentage, not "
+                        "a scene-by-scene breakdown of talking-head vs. b-roll segments.",
             }
             shot_types = [f["shot_type_guess"] for f in with_face if f.get("shot_type_guess")]
             if shot_types:
                 shot_type_summary = {t: shot_types.count(t) for t in ("close-up", "medium", "wide")}
+
+        if not args.skip_composition:
+            info("Estimating composition / rule-of-thirds proxy...")
+            composition = analyze_composition(frame_manifest, outdir)
 
         if not args.skip_ocr:
             info("Running OCR on sampled frames for on-screen text...")
@@ -1477,12 +1962,26 @@ def main():
             info("Extracting color palette / grading signature...")
             color_palette = analyze_color_palette(frame_manifest, outdir)
 
+        if not args.skip_exposure:
+            info("Analyzing exposure / dynamic range...")
+            exposure = analyze_exposure(frame_manifest, outdir)
+
+        if not args.skip_sharpness:
+            info("Analyzing focus/sharpness...")
+            sharpness_noise = analyze_sharpness_noise(frame_manifest, outdir)
+
+        if not args.skip_compression_check:
+            info("Estimating compression-artifact/blockiness signal...")
+            compression_artifacts = analyze_compression_artifacts(frame_manifest, outdir)
+
     elapsed = round(time.time() - t0, 1)
 
     report_data = {
         "source": args.source,
         "local_path": local_path,
         "metadata": metadata,
+        "platform_metadata": platform_metadata,
+        "frame_rate_consistency": frame_rate_consistency,
         "cuts": cuts,
         "pacing": pacing,
         "silence": silence,
@@ -1491,9 +1990,14 @@ def main():
         "loudness_curve": loudness,
         "loudness_spikes_candidate_sfx": spikes,
         "loudness_lufs": loudness_lufs,
+        "av_sync_drift_summary": av_sync_drift,
         "brightness_curve": brightness,
+        "exposure": exposure,
+        "sharpness_noise": sharpness_noise,
+        "compression_artifacts": compression_artifacts,
         "motion_curve": motion,
         "camera_movement": camera_movement,
+        "composition": composition,
         "faces_summary": faces_summary,
         "shot_type_summary": shot_type_summary,
         "on_screen_text": ocr,
@@ -1531,6 +2035,13 @@ def main():
         "color_palette_available": color_palette.get("available", False),
         "loudness_lufs_available": loudness_lufs.get("available", False),
         "num_shots_camera_classified": len(camera_movement),
+        "platform_metadata_available": platform_metadata.get("available", False),
+        "frame_rate_consistency_available": frame_rate_consistency.get("available", False),
+        "exposure_available": exposure.get("available", False),
+        "sharpness_available": sharpness_noise.get("available", False),
+        "compression_check_available": compression_artifacts.get("available", False),
+        "composition_available": composition.get("available", False),
+        "av_sync_drift_available": av_sync_drift.get("available", False),
         "warnings": WARNINGS,
         "elapsed_sec": elapsed,
     }))

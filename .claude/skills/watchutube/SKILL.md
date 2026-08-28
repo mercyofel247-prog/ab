@@ -1,6 +1,6 @@
 ---
 name: watchutube
-description: Deep, evidence-based, one-stop analysis of a video's editing and craft -- cuts and transitions (hard cut, fade, dissolve, wipe candidate, automatically classified from frame-diff evidence, not guessed), audio/video edit offset per cut (J-cut/L-cut candidates), pacing (shot lengths, cuts per minute, pacing curve, a motion/energy curve that catches camera movement within a shot, plus per-shot camera-movement classification -- static/pan-tilt/zoom/handheld -- from optical flow), sound design (music/silence/dialogue map, loudness spikes that likely mark sound effects or hits, integrated loudness in LUFS/true-peak/loudness-range for mix/delivery checks, music tempo/BPM and whether cuts land on the beat), voice-over (transcript, words-per-minute, pauses), on-screen text/captions with size-based prominence (title vs. lower-third vs. caption), face/subject presence with a rough shot-framing guess (close-up/medium/wide) from face size, color palette/grading (dominant colors, saturation/brightness signature), and technical/visual/delivery metrics (resolution, aspect ratio, orientation, SDR/HDR, fps, color and brightness trends, freeze frames, black frames) -- plus an auto-generated visual HTML timeline of the whole analysis, all on by default. Use this whenever the user wants a video "watched," reviewed, or analyzed -- for a local video file (uploaded/attached, or an MP4 sitting in the repo, e.g. a rendered video under videos/*/renders), or for a video URL such as a YouTube link. Trigger on requests like "analyze this video," "check the pacing of this edit," "how's the sound design," "watch this and tell me about the transitions," "review my voice-over timing," "does this cut on the beat," "what's the color grading," "is the camera static or moving," or any ask for feedback on editing/transitions/pacing/sound effects/voice-over/on-screen text/color/camera-work in a video -- even if the user doesn't name this skill directly.
+description: Deep, evidence-based, one-stop analysis of a video's editing and craft -- cuts and transitions (hard cut, fade, dissolve, wipe candidate, automatically classified from frame-diff evidence, not guessed, plus a per-cut before/after scene-similarity read for jump-cut-like vs. full-scene-change-like), audio/video edit offset per cut (J-cut/L-cut candidates) and a whole-file audio/video sync-drift summary, pacing (shot lengths, cuts per minute, pacing curve, a motion/energy curve that catches camera movement within a shot, plus per-shot camera-movement classification -- static/pan-tilt/zoom/handheld -- from optical flow), sound design (music/silence/dialogue map, loudness spikes that likely mark sound effects or hits, integrated loudness in LUFS/true-peak/loudness-range for mix/delivery checks, music tempo/BPM and whether cuts land on the beat), voice-over (transcript, words-per-minute, pauses), on-screen text/captions with size-based prominence (title vs. lower-third vs. caption) and a text/background luma-contrast readability read, face/subject presence with a rough shot-framing guess (close-up/medium/wide) from face size and a talking-head-vs-b-roll style guess, color palette/grading (dominant colors, saturation/brightness signature, plus a warm/cool white-balance estimate), a rule-of-thirds composition proxy (face-center or edge-energy interest point vs. thirds intersections), exposure/dynamic-range (shadow/highlight clipping, contrast range), focus/sharpness (blur proxy) and a coarse compression-blockiness heuristic, frame-rate consistency (variable-frame-rate/dropped-frame detection from real per-frame timestamps), technical/visual/delivery metrics (resolution, aspect ratio, orientation, SDR/HDR, fps, color and brightness trends, freeze frames, black frames), and -- for a video URL -- public platform metadata (views, likes, comment count, upload date, channel) via the same yt-dlp fetch already used to download it -- plus an auto-generated visual HTML timeline of the whole analysis, all on by default. Use this whenever the user wants a video "watched," reviewed, or analyzed -- for a local video file (uploaded/attached, or an MP4 sitting in the repo, e.g. a rendered video under videos/*/renders), or for a video URL such as a YouTube link. Trigger on requests like "analyze this video," "check the pacing of this edit," "how's the sound design," "watch this and tell me about the transitions," "review my voice-over timing," "does this cut on the beat," "what's the color grading," "is the camera static or moving," "how many views does this have," "check the exposure/focus/compression," or any ask for feedback on editing/transitions/pacing/sound effects/voice-over/on-screen text/color/camera-work/exposure/composition in a video -- even if the user doesn't name this skill directly.
 ---
 
 # watchutube: deep video analysis
@@ -77,6 +77,11 @@ renders). Just call the script.
      checking, for videos with an extreme number of cuts.
    - `--max-classified-shots N` (default 24) -- cap on how many shots get
      camera-movement classification, for videos with a huge number of shots.
+   - `--skip-platform-metadata`, `--skip-frame-rate-check`, `--skip-exposure`,
+     `--skip-sharpness`, `--skip-compression-check`, `--skip-composition` --
+     selectively drop one of the newer signal-processing passes described
+     below (each reuses ffmpeg/opencv/yt-dlp, no new dependency). Also on by
+     default; only reach for these to trim cost on a long video.
 
    The script prints one JSON line to stdout when done, e.g.
    `{"ok": true, "outdir": "...", "manifest": ".../manifest.json", "timeline_html": ".../timeline.html", "num_frames": 30, "num_cuts": 14, "transcript_available": true, "beat_analysis_available": true, "color_palette_available": true, "loudness_lufs_available": true, "num_shots_camera_classified": 18, "warnings": []}`.
@@ -90,17 +95,27 @@ renders). Just call the script.
 
 3. **Read `manifest.json`** (path given in the script's output). It contains
    everything: `metadata` (now also `aspect_ratio`, `orientation`,
-   `color_space`/`color_transfer`/`is_hdr`), `cuts` (each with a
-   `transition` sub-object and an `edit_offset` sub-object once classified),
-   `pacing`, `silence`, `black_frames`, `freeze_frames`, `loudness_curve`,
-   `loudness_spikes_candidate_sfx`, `loudness_lufs`, `brightness_curve`,
-   `motion_curve`, `camera_movement`, `faces_summary`, `shot_type_summary`,
-   `on_screen_text` (with per-detection `prominence_pct`/`prominence_label`),
-   `beat_analysis`, `color_palette`, `transcript`, `frames` (with
-   `shot_type_guess` on frames with a detected face), and `warnings`. See
-   `references/metrics.md` for what each field means and how to reason about
-   it -- read that file before writing the report if you haven't used this
-   skill before in this session.
+   `color_space`/`color_transfer`/`is_hdr`), `platform_metadata` (public
+   views/likes/comments/upload-date/channel for a URL source),
+   `frame_rate_consistency` (VFR/dropped-frame check from real per-frame
+   timestamps), `cuts` (each with a `transition` sub-object, a
+   `scene_similarity` sub-object, and an `edit_offset` sub-object once
+   classified), `pacing`, `silence`, `black_frames`, `freeze_frames`,
+   `loudness_curve`, `loudness_spikes_candidate_sfx`, `loudness_lufs`,
+   `av_sync_drift_summary` (whole-file aggregate of the per-cut audio
+   offsets), `brightness_curve`, `exposure` (shadow/highlight clipping,
+   contrast range), `sharpness_noise` (focus/blur proxy),
+   `compression_artifacts` (blockiness heuristic), `motion_curve`,
+   `camera_movement`, `composition` (rule-of-thirds proxy), `faces_summary`
+   (with a `style_guess`: talking-head-heavy / b-roll-heavy / mixed),
+   `shot_type_summary`, `on_screen_text` (with per-detection
+   `prominence_pct`/`prominence_label` and `luma_contrast_0_255`/
+   `readability_label`), `beat_analysis`, `color_palette` (with a
+   `white_balance_estimate`), `transcript`, `frames` (with `shot_type_guess`
+   and `largest_face_center_pct` on frames with a detected face), and
+   `warnings`. See `references/metrics.md` for what each field means and how
+   to reason about it -- read that file before writing the report if you
+   haven't used this skill before in this session.
 
 4. **Look at the frames -- to verify, not to guess from scratch.** Each cut
    in `cuts` already carries a `transition` classification (`hard_cut`,
@@ -135,6 +150,15 @@ renders). Just call the script.
    rather than counting it as an edit point. Don't reject a candidate on
    the numbers alone, though -- always confirm against the frames, since a
    real dissolve on dark/sparse footage can also read as low-coverage.
+
+   Each classified cut may also carry a `scene_similarity` sub-object --
+   `color_histogram_correlation` between the before/after frames plus a
+   `likely_read` (`same-scene continuation (jump-cut-like...)`,
+   `different scene/location (full cut/cutaway-like)`, or `ambiguous`). This
+   is a coarse pixel-statistics hint for distinguishing a likely jump cut
+   (small change, same scene) from a likely cutaway/hard scene change --
+   not real shot/continuity understanding, so weigh it against the actual
+   before/after frames, not as a verdict on its own.
 
    Each classified cut may also carry an `edit_offset` sub-object --
    `aligned_cut` (audio and video change together, the default/normal
@@ -191,13 +215,59 @@ renders). Just call the script.
      from text height relative to frame height. Skip this section of the
      report if unavailable rather than claiming there's no on-screen text.
    - `color_palette`: dominant colors (hex + share) per sampled frame and
-     overall, plus `avg_saturation_pct`/`avg_brightness_pct` -- use this to
-     describe the actual grading (warm/cool, vibrant/desaturated, a
-     specific recurring palette) with real hex values instead of just an
-     eyeballed impression from the frames. The `metadata.video.aspect_ratio`
-     / `orientation` / `is_hdr` fields are also worth a line in Overview,
-     especially if the user is producing something for a specific platform
-     (e.g. vertical/9:16 vs. landscape/16:9).
+     overall, plus `avg_saturation_pct`/`avg_brightness_pct` and a
+     `white_balance_estimate` (avg R/G/B channel means, a `warmth_score`,
+     and a warm/cool/neutral `label`) -- use this to describe the actual
+     grading (warm/cool, vibrant/desaturated, a specific recurring palette)
+     with real hex values instead of just an eyeballed impression from the
+     frames. The `metadata.video.aspect_ratio` / `orientation` / `is_hdr`
+     fields are also worth a line in Overview, especially if the user is
+     producing something for a specific platform (e.g. vertical/9:16 vs.
+     landscape/16:9).
+   - `exposure`: per-sampled-frame and average `shadow_clip_pct` /
+     `highlight_clip_pct` (crushed blacks / blown highlights) and
+     `contrast_range_0_255` (5th-95th percentile luma spread, a visual
+     dynamic-range proxy) -- flag a video that's consistently clipping
+     shadows or highlights, but note whether it reads as a deliberate
+     high-key/low-key look from the frames rather than an exposure mistake.
+   - `sharpness_noise`: `avg_sharpness_laplacian_var` (a focus/blur proxy --
+     see `read_guide` in the field for rough thresholds) per sampled frame
+     -- useful for calling out a soft/out-of-focus shot or a consistently
+     crisp look, always cross-checked against the actual frame.
+   - `compression_artifacts`: `avg_block_edge_ratio`, a coarse 8x8-block-
+     edge heuristic -- notably above ~1.15 is worth a mention as possible
+     visible compression blocking, but confirm against the frames first
+     (see `read_guide` in the field).
+   - `frame_rate_consistency`: `coefficient_of_variation` and
+     `likely_variable_frame_rate` from real per-frame timestamps (not the
+     single averaged fps in `metadata`) -- a real VFR/dropped-frame signal,
+     worth a line if the user cares about delivery-spec technical quality.
+     Cross-check `num_long_gaps_over_2.5x_mean` against `freeze_frames`
+     before calling a gap a problem (a legitimate held shot looks the same).
+   - `composition`: a rule-of-thirds proxy per sampled frame (face-center or
+     edge-energy "interest point" vs. the nearest thirds intersection) and
+     `pct_frames_closer_to_thirds_than_center` -- a coarse geometric hint
+     for describing framing tendencies (centered/flat vs. off-center), not
+     a substitute for actually looking at the frame's composition.
+   - `av_sync_drift_summary`: aggregates every classified cut's
+     `edit_offset` reading into one whole-file signal --
+     `likely_systematic_av_drift: true` (a consistent offset with low
+     spread across many cuts) points at a real mux/encode sync bug, while a
+     high spread with offsets in both directions is normal editorial J-cut/
+     L-cut usage in aggregate, not a drift problem -- don't conflate the two
+     in the report.
+   - `platform_metadata`: for a URL source only (`available: false` with a
+     reason for a local file) -- public `view_count`/`like_count`/
+     `comment_count`/`upload_date`/`uploader`/`channel_follower_count` as
+     exposed by the platform's page at fetch time via the same yt-dlp call
+     used to download the video. Worth a line in Overview when available.
+     This is NOT creator-only Analytics data: no CTR, retention graph,
+     watch time, traffic-source breakdown, subscribers-gained-per-video, or
+     session data -- those require the video owner's OAuth-authenticated
+     platform Analytics API access, which this skill has no path to and
+     never will for an arbitrary video URL. If the user asks for those
+     specifically, say plainly that they're out of reach here, not just
+     silently omitted.
 
 7. **Write the report.** Use your own judgment on structure for a short
    clip, but for a full deep-analysis request use this shape:
@@ -205,7 +275,8 @@ renders). Just call the script.
    ```markdown
    ## Overview
    [duration, resolution, aspect ratio/orientation, fps, codec, SDR/HDR,
-   one-line read on genre/style]
+   one-line read on genre/style; if `platform_metadata.available`, a line
+   with views/likes/comments/upload date/channel]
 
    ## Transitions & Cuts
    [table or list: timestamp -> transition type (from the script's
@@ -242,6 +313,14 @@ renders). Just call the script.
    the actual color_palette hex values and avg_saturation/avg_brightness to
    describe the grading concretely rather than just impressionistically.]
 
+   ## Technical Quality
+   [exposure/dynamic range (shadow/highlight clipping, contrast range),
+   focus/sharpness read, frame-rate consistency (flag if
+   `likely_variable_frame_rate`), compression-artifact hint if
+   `avg_block_edge_ratio` is notably elevated, whole-file
+   `av_sync_drift_summary` if it flags `likely_systematic_av_drift` -- skip
+   any subsection whose signal is `available: false` rather than guessing]
+
    ## Notable Moments
    [timestamped callouts worth the user's attention]
 
@@ -276,12 +355,40 @@ renders). Just call the script.
    reasonable guess per shot, not ground truth; color-palette k-means runs
    on downsampled pixels from the same sparse sample of frames used
    elsewhere, so a brief but strongly-colored moment between samples could
-   be missed from the overall palette. None of this is a substitute for a
-   font/typography reader, real shot-composition (rule-of-thirds/framing
-   beyond close-up-vs-wide) analysis, branding/logo-consistency checks, or
-   AI-generation-artifact detection (flicker, hand/anatomy errors, prompt
-   drift) -- those still require your own visual judgment from the frames,
-   not a number this script can produce.
+   be missed from the overall palette; `scene_similarity`'s color-histogram
+   correlation is a coarse pixel-statistics proxy, not real shot/continuity
+   understanding, so a same-location cut under different lighting can read
+   as low and two differently-lit-but-similarly-colored scenes can read as
+   high; `exposure`/`sharpness_noise`/`compression_artifacts` are all
+   heuristics on the same sparse sampled-frame set (a luma-histogram proxy,
+   a Laplacian-variance blur proxy, and a gradient-ratio blockiness proxy
+   respectively), not calibrated scope/SNR/codec-analysis readings, and none
+   of them distinguish a deliberate stylistic choice (crushed blacks for
+   mood, intentional grain, a soft dreamlike look) from an actual technical
+   flaw -- that judgment call is yours from the frames; `composition`'s
+   rule-of-thirds proxy uses a face center when available or otherwise the
+   centroid of raw edge energy, which can land on background clutter rather
+   than the real subject on busy or faceless shots; `frame_rate_consistency`
+   and `av_sync_drift_summary` are both derived signals (real per-frame
+   timestamps, and an aggregate of the same coarse per-cut RMS-jump
+   heuristic, respectively) worth real weight but not frame-accurate ground
+   truth; and `platform_metadata` (URL sources only) is whatever public
+   numbers the platform's page exposed at fetch time, not creator-only
+   Analytics data -- there is no view into CTR, retention, watch time,
+   traffic sources, or subscriber/session data for any video this skill did
+   not upload itself, and no future version of this script will be able to
+   get there without the owner's own OAuth-authenticated Analytics access.
+   None of this is a substitute for a font/typography reader, real shot-
+   composition analysis beyond the coarse thirds proxy (leading lines,
+   headroom, camera angle/lens/depth-of-field), branding/logo-consistency
+   checks, or AI-generation-artifact detection (flicker, hand/anatomy
+   errors, prompt drift) -- those still require your own visual judgment
+   from the frames, not a number this script can produce. Pre-production
+   facts (script, storyboard, budget, casting, equipment list, etc.) are
+   not present in a rendered video file at all and are permanently out of
+   scope for this skill -- if the user wants those cross-checked against
+   the final cut, that needs a separate document they provide, not
+   something this analysis can infer from the video alone.
 
 ## Notes
 
@@ -313,3 +420,17 @@ renders). Just call the script.
   pytesseract -- already-required dependencies -- so none of them need a
   new pip package or a session-start hook change; they run by default
   wherever the skill already worked before.
+- Same for the newer passes: white-balance estimate, exposure/dynamic-
+  range, focus/sharpness, compression-blockiness, composition, scene-
+  similarity, OCR-readability, and frame-rate consistency all reuse
+  ffmpeg/opencv/pytesseract/numpy -- already-required. `platform_metadata`
+  reuses the same yt-dlp already required for a URL source (no download
+  needed to fetch it, just `--dump-json`), and is simply unavailable
+  (correctly, not a bug) for a local file input.
+- These newer passes are numeric/geometric heuristics validated for
+  correct *behavior* (they don't crash, and their output shape/ranges are
+  sane) against synthetic test clips, not benchmarked against a large
+  labeled real-world dataset the way the cut/transition detectors were --
+  weigh them accordingly, same as everything else this script reports:
+  evidence to synthesize and sanity-check against the actual frames, not a
+  verdict to transcribe uncritically.
