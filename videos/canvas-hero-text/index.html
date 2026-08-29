@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$209 BILLION — Hero Text</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* ---- Part 0.5 · Track-2 theme ---- */
+      :root {
+        --near-black: #0b0b0c; /* vast negative space */
+        --oxblood: #7a160e; /* emissive rim */
+        --bone: #ede8dd; /* warm-bone hero face */
+        --gray: #3a3a3e; /* neutral extrusion top */
+
+        /* derived tones for the key-lit bone face + depth */
+        --bone-hi: #f6f2ea; /* upper-left, catching the key */
+        --bone-lo: #cbc5b8; /* lower-right, falling into shade */
+        --ox-lo: #4c0d07; /* deepest oxblood, rim core */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--near-black);
+      }
+
+      body {
+        /* Oswald (heavy, condensed) with Bebas Neue as fallback — both
+           auto-resolved by the renderer to condensed all-caps faces;
+           scaleX below tightens the proportion a touch further */
+        font-family: "Oswald", "Bebas Neue", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        /* near-black field, a hair of depth toward centre */
+        background:
+          radial-gradient(120% 120% at 50% 46%, #131315 0%, #0e0e10 34%, var(--near-black) 70%, #050506 100%);
+      }
+
+      /* ---- the scene, centred inside the 2.35:1 window ---- */
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      /* the ONLY animated transform target — a 4% scale push */
+      #hero-wrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: transform;
+        /* scale is owned by GSAP (see fromTo below) — no CSS transform here */
+      }
+
+      /* all three layers share one grid cell so they register exactly */
+      .layer {
+        grid-area: 1 / 1;
+        white-space: nowrap;
+        font-size: 244px;
+        font-weight: 700;
+        line-height: 1;
+        text-transform: uppercase;
+        letter-spacing: -0.006em; /* static — never animated */
+        font-stretch: condensed;
+        /* static horizontal condense — a transform, not width/height,
+           and never animated */
+        transform: scaleX(0.86);
+      }
+
+      /* ---- oxblood emissive rim-light bloom (arrival awe lever) ---- */
+      #bloom {
+        color: var(--oxblood);
+        opacity: 0; /* animated in on arrival */
+        z-index: 0;
+        filter: blur(26px) drop-shadow(0 0 44px var(--oxblood));
+        text-shadow:
+          0 0 40px var(--oxblood),
+          0 0 90px rgba(122, 22, 14, 0.7);
+        pointer-events: none;
+      }
+
+      /* ---- deep oxblood emissive rim down one (left) edge ---- */
+      #rim {
+        color: var(--oxblood);
+        opacity: 0.7; /* animated 0.70 -> 0.85 on a slow sine */
+        z-index: 1;
+        /* pushed a few px off the face so it kisses the left/lower edge,
+           its blurred halo bleeding out as an emissive rim */
+        transform: scaleX(0.86) translate(-6px, 5px);
+        text-shadow:
+          -2px 0 2px var(--ox-lo),
+          0 0 14px var(--oxblood),
+          0 0 30px rgba(122, 22, 14, 0.85),
+          0 0 60px rgba(122, 22, 14, 0.45);
+        pointer-events: none;
+      }
+
+      /* ---- the warm-bone hero face: extruded, key-lit upper-left ---- */
+      #hero {
+        z-index: 2;
+        /* key-light gradient across the face: bright upper-left ->
+           bone -> shaded lower-right */
+        background: linear-gradient(
+          135deg,
+          var(--bone-hi) 0%,
+          var(--bone) 42%,
+          #ddd7ca 72%,
+          var(--bone-lo) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        /* real depth: extrusion recedes DOWN-RIGHT (key from upper-left),
+           progressively darker into the near-black, then a soft contact
+           shadow beneath. A single bone highlight kisses the upper-left. */
+        text-shadow:
+          -1px -1px 0 #fbf8f0,
+          1px 1px 0 var(--gray),
+          2px 2px 0 #313135,
+          3px 3px 0 #2a2a2d,
+          4px 4px 0 #232326,
+          5px 5px 0 #1d1d20,
+          6px 6px 0 #18181a,
+          7px 7px 0 #141416,
+          8px 8px 0 #101012,
+          9px 9px 0 #0d0d0f,
+          10px 10px 0 var(--near-black),
+          20px 26px 40px rgba(0, 0, 0, 0.72),
+          32px 44px 66px rgba(0, 0, 0, 0.5);
+      }
+
+      /* ---- film-grain (deterministic feTurbulence, fixed seed) ---- */
+      #grain {
+        position: absolute;
+        inset: 0;
+        opacity: 0.16;
+        mix-blend-mode: soft-light;
+        pointer-events: none;
+      }
+
+      /* ---- vignette overlay ---- */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          80% 78% at 50% 46%,
+          rgba(0, 0, 0, 0) 40%,
+          rgba(0, 0, 0, 0.55) 82%,
+          rgba(0, 0, 0, 0.82) 100%
+        );
+        pointer-events: none;
+      }
+
+      /* ---- 2.35:1 letterbox bars: (1080 - 1920/2.35)/2 = 131.5px ---- */
+      .bar {
+        position: absolute;
+        left: 0;
+        width: 1920px;
+        height: 132px;
+        background: #000;
+        pointer-events: none;
+        z-index: 20;
+      }
+      #bar-top {
+        top: 0;
+      }
+      #bar-bottom {
+        bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <!-- vignette sits behind the hero so the bone face is never occluded -->
+        <div id="vignette"></div>
+
+        <div id="scene">
+          <div id="hero-wrap" data-layout-allow-overflow>
+            <!-- Text is a real DOM string on every layer — never an image,
+                 so it cannot warp or mis-spell. -->
+            <div id="bloom" class="layer" aria-hidden="true" data-layout-ignore>$209 BILLION</div>
+            <div id="rim" class="layer" aria-hidden="true" data-layout-ignore>$209 BILLION</div>
+            <div id="hero" class="layer">$209&nbsp;BILLION</div>
+          </div>
+        </div>
+
+        <!-- deterministic film grain -->
+        <svg id="grain" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+          <filter id="grainFilter" x="0" y="0" width="100%" height="100%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.9"
+              numOctaves="2"
+              seed="7"
+              stitchTiles="stitch"
+            />
+            <feColorMatrix type="saturate" values="0" />
+          </filter>
+          <rect width="1920" height="1080" filter="url(#grainFilter)" />
+        </svg>
+
+        <div id="bar-top" class="bar"></div>
+        <div id="bar-bottom" class="bar"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      /* Deterministic — no Math.random / Date.now anywhere. A named
+         ease-out-cubic is registered explicitly. */
+      gsap.registerEase("easeOutCubic", function (p) {
+        return 1 - Math.pow(1 - p, 3);
+      });
+
+      const DWELL = 3.0; // seconds
+
+      const tl = gsap.timeline({ paused: true });
+
+      // fixed initial state
+      gsap.set("#rim", { opacity: 0.7 });
+      gsap.set("#bloom", { opacity: 0 });
+
+      // (1) the ONLY spatial motion: a 4% scale push across the full dwell,
+      //     on the named ease-out-cubic. fromTo owns the transform outright.
+      tl.fromTo(
+        "#hero-wrap",
+        { scale: 1.0 },
+        { scale: 1.04, duration: DWELL, ease: "easeOutCubic" },
+        0,
+      );
+
+      // (2) emissive rim opacity swells 0.70 -> 0.85 on a slow sine.
+      tl.to("#rim", { opacity: 0.85, duration: DWELL, ease: "sine.inOut" }, 0);
+
+      // (3) awe lever: dimensional rim-light bloom on arrival — a quick
+      //     oxblood swell that settles. Opacity only.
+      tl.to("#bloom", { opacity: 0.6, duration: 0.42, ease: "power2.out" }, 0);
+      tl.to("#bloom", { opacity: 0.28, duration: 1.4, ease: "sine.out" }, 0.42);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
