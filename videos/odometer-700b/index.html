@@ -443,11 +443,12 @@
       const driver = { t: 0 };
       tl.to(driver, { t: 6, duration: 6, ease: "none", onUpdate: () => renderAt(driver.t) }, 0);
 
-      // Camera push-in: two depths of the same push, foreground moves more than
-      // background — real dolly-in parallax — both settling to a dead stop
-      // exactly when the final digit's spring snap completes.
-      tl.to("#cameraFg", { scale: 1.055, duration: SETTLE_TIME, ease: "power2.out" }, 0);
-      tl.to("#cameraBg", { scale: 1.018, duration: SETTLE_TIME, ease: "power2.out" }, 0);
+      // Camera pulls back for the whole clip: two depths of the same zoom-out,
+      // foreground recedes more than background — real dolly-out parallax —
+      // running continuously through the count and finishing exactly at the
+      // last frame of the video, rather than settling early.
+      tl.to("#cameraFg", { scale: 0.82, duration: 6, ease: "power1.out" }, 0);
+      tl.to("#cameraBg", { scale: 0.93, duration: 6, ease: "power1.out" }, 0);
 
       // Diagonal light sweep — crosses once, centered on the moment the digits
       // read the correct value, catching a specular glint on the brushed metal.
