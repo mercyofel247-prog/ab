@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>The Verdict — $800,000,000,000</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #050506;      /* near-black field */
+        --black-2: #08070a;
+        /* bone-white metal face */
+        --bone-hi: #f7f3ea;
+        --bone: #e9e2d3;
+        --bone-mid: #cbc3b1;
+        --bone-lo: #a89f8c;
+        /* dark grey haze */
+        --haze: 150, 150, 156;
+        /* dark blood-red glow */
+        --blood: 130, 16, 24;
+        --blood-deep: 92, 10, 16;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        /* near-black studio sweep with the faintest warm floor */
+        background:
+          radial-gradient(120% 100% at 50% 46%, #100c0e 0%, #0a0709 34%, #070506 62%, var(--black) 100%);
+      }
+
+      /* thin dark-grey haze drifting the whole shot */
+      .haze {
+        position: absolute;
+        inset: -18%;
+        background:
+          radial-gradient(40% 30% at 32% 40%, rgba(var(--haze), 0.10) 0%, rgba(var(--haze), 0) 70%),
+          radial-gradient(46% 34% at 70% 60%, rgba(var(--haze), 0.09) 0%, rgba(var(--haze), 0) 72%),
+          radial-gradient(34% 26% at 54% 26%, rgba(var(--haze), 0.06) 0%, rgba(var(--haze), 0) 70%);
+        mix-blend-mode: screen;
+        opacity: 0.85;
+        will-change: transform;
+      }
+
+      /* a second, slower haze band for depth (drifts opposite) */
+      .haze.b {
+        inset: -22%;
+        background:
+          radial-gradient(50% 38% at 60% 44%, rgba(var(--haze), 0.07) 0%, rgba(var(--haze), 0) 74%),
+          radial-gradient(38% 30% at 24% 64%, rgba(var(--haze), 0.06) 0%, rgba(var(--haze), 0) 72%);
+        opacity: 0.7;
+      }
+
+      /* faint drifting dust motes (dark grey) */
+      .dust {
+        position: absolute;
+        inset: -10%;
+        background-image:
+          radial-gradient(2px 2px at 18% 30%, rgba(var(--haze), 0.5), rgba(var(--haze), 0) 60%),
+          radial-gradient(1.5px 1.5px at 42% 70%, rgba(var(--haze), 0.4), rgba(var(--haze), 0) 60%),
+          radial-gradient(2px 2px at 66% 22%, rgba(var(--haze), 0.45), rgba(var(--haze), 0) 60%),
+          radial-gradient(1.5px 1.5px at 80% 58%, rgba(var(--haze), 0.4), rgba(var(--haze), 0) 60%),
+          radial-gradient(1.5px 1.5px at 30% 84%, rgba(var(--haze), 0.35), rgba(var(--haze), 0) 60%),
+          radial-gradient(2px 2px at 88% 80%, rgba(var(--haze), 0.4), rgba(var(--haze), 0) 60%),
+          radial-gradient(1.5px 1.5px at 10% 60%, rgba(var(--haze), 0.35), rgba(var(--haze), 0) 60%);
+        opacity: 0.5;
+        will-change: transform;
+      }
+
+      /* camera — the slow creep-in lives here */
+      #camera {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 48%;
+        will-change: transform;
+      }
+
+      /* ambient dark blood-red pool behind the number, gently breathing */
+      #glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1700px;
+        height: 760px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%,
+          rgba(var(--blood), 0.42) 0%,
+          rgba(var(--blood-deep), 0.18) 42%,
+          rgba(var(--blood-deep), 0) 72%);
+        opacity: 0.32;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        will-change: opacity, transform;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 74% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.78) 100%);
+        pointer-events: none;
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      #numwrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: transform, filter;
+      }
+
+      /* shared number geometry */
+      #num,
+      #numGlow {
+        grid-area: 1 / 1;
+        font-size: 150px;
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.012em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      /* dark blood-red edge glow — a blurred red copy behind the metal.
+         The opaque bone face covers the centre, leaving a red halo on the
+         edges that we pulse for the whole shot. */
+      #numGlow {
+        color: rgb(var(--blood));
+        filter: blur(11px);
+        mix-blend-mode: screen;
+        opacity: 0.55;
+        will-change: opacity, transform, filter;
+      }
+
+      /* bone-white heavy metal, studio-lit, with a dark extruded body + cast shadow */
+      #num {
+        position: relative;
+        background: linear-gradient(
+          180deg,
+          var(--bone-hi) 0%,
+          var(--bone) 16%,
+          var(--bone-mid) 38%,
+          #f2ecdd 52%,        /* studio specular re-lift */
+          var(--bone-lo) 70%,
+          var(--bone-mid) 86%,
+          #9c927e 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        /* extruded dark-metal body (progressively darker, cool) + soft cast shadow */
+        text-shadow:
+          0 1px 0 #6c675e,
+          0 2px 0 #565049,
+          0 3px 0 #423d38,
+          1px 4px 0 #35312d,
+          1px 5px 0 #2a2724,
+          1px 6px 0 #211f1d,
+          1px 7px 0 #1a1917,
+          2px 8px 0 #141315,
+          2px 9px 1px #101013,
+          3px 14px 22px rgba(0, 0, 0, 0.78),
+          0 34px 60px rgba(0, 0, 0, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3.5"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.5" data-track-index="1">
+        <div class="haze a" data-layout-allow-overflow></div>
+        <div class="haze b" data-layout-allow-overflow></div>
+        <div class="dust" data-layout-allow-overflow></div>
+
+        <div id="camera" data-layout-allow-overflow>
+          <div id="glow"></div>
+          <div id="scene">
+            <div id="numwrap" data-layout-allow-overflow>
+              <div id="numGlow" data-layout-allow-overflow data-layout-ignore aria-hidden="true">$800,000,000,000</div>
+              <div id="num" data-layout-allow-overflow data-layout-allow-occlusion>$800,000,000,000</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vignette" data-layout-allow-occlusion></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const STAMP_T = 1.15; // the verdict lands
+      const DUR = 3.5;
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------------------------------------------------------------
+      // CONTINUOUS LIFE — runs the whole shot so it never sits frozen
+      // ---------------------------------------------------------------
+
+      // slow camera creep-in; power1.out so it keeps moving but eases
+      // to near-stillness only at the very last moment.
+      gsap.set("#camera", { scale: 1.0, transformOrigin: "50% 48%" });
+      tl.to("#camera", { scale: 1.065, duration: DUR, ease: "power1.out" }, 0);
+
+      // dark-grey haze drifting the entire time (two bands, opposite ways)
+      gsap.set(".haze.a", { xPercent: -3, yPercent: -2 });
+      tl.to(".haze.a", { xPercent: 4, yPercent: 3, duration: DUR, ease: "sine.inOut" }, 0);
+      gsap.set(".haze.b", { xPercent: 3, yPercent: 2, scale: 1.04 });
+      tl.to(".haze.b", { xPercent: -3, yPercent: -1, scale: 1.0, duration: DUR, ease: "sine.inOut" }, 0);
+
+      // faint dust drifting diagonally, slowly
+      gsap.set(".dust", { xPercent: -2, yPercent: 3 });
+      tl.to(".dust", { xPercent: 3, yPercent: -3, duration: DUR, ease: "none" }, 0);
+
+      // ambient blood-red pool breathing gently, all the way through
+      gsap.set("#glow", { opacity: 0.22, scale: 0.98 });
+      tl.to("#glow", {
+        opacity: 0.36, scale: 1.03, duration: 1.35, ease: "sine.inOut",
+        repeat: 3, yoyo: true,
+      }, 0);
+
+      // red EDGE glow on the number — pulses gently for the whole shot
+      const rblur = { v: 11 };
+      const applyBlur = () => { document.querySelector("#numGlow").style.filter = "blur(" + rblur.v + "px)"; };
+      gsap.set("#numGlow", { opacity: 0.42, scale: 1.0 });
+      tl.to("#numGlow", {
+        opacity: 0.72, scale: 1.02, duration: 1.15, ease: "sine.inOut",
+        repeat: 2, yoyo: true, overwrite: "auto",
+      }, STAMP_T);
+      tl.to(rblur, {
+        v: 15, duration: 1.15, ease: "sine.inOut",
+        repeat: 2, yoyo: true, onUpdate: applyBlur,
+      }, STAMP_T);
+
+      // ---------------------------------------------------------------
+      // THE STAMP — number drops from above, huge + soft, and slams flat
+      // ---------------------------------------------------------------
+      gsap.set("#numwrap", { y: -34, scale: 1.9, opacity: 0, filter: "blur(24px)" });
+      gsap.set("#numGlow", { opacity: 0 }); // red edge stays dark until the hit
+
+      // the descent accelerates into the impact (power4.in = a falling verdict)
+      tl.to("#numwrap", {
+        y: 0, scale: 1.0, opacity: 1, filter: "blur(0px)",
+        duration: STAMP_T - 0.18, ease: "power4.in",
+      }, 0.18);
+
+      // impact: a hard press-down overshoot then settle
+      tl.to("#numwrap", { scale: 0.965, duration: 0.05, ease: "power2.out" }, STAMP_T);
+      tl.to("#numwrap", { scale: 1.0, duration: 0.55, ease: "elastic.out(1, 0.55)" }, STAMP_T + 0.05);
+
+      // a short, hard shake that stops dead
+      tl.to("#numwrap", { x: -6, duration: 0.03, ease: "none", overwrite: "auto" }, STAMP_T);
+      tl.to("#numwrap", { x: 5, duration: 0.03, ease: "none", overwrite: "auto" }, STAMP_T + 0.03);
+      tl.to("#numwrap", { x: 0, duration: 0.14, ease: "power2.out", overwrite: "auto" }, STAMP_T + 0.06);
+
+      // red edge-glow ignites on impact, flares, then hands off to the pulse
+      tl.set("#numGlow", { opacity: 0.42 }, STAMP_T);
+      tl.fromTo("#numGlow",
+        { opacity: 0.9, scale: 1.06 },
+        { opacity: 0.55, scale: 1.0, duration: 0.4, ease: "power2.out" },
+        STAMP_T);
+
+      // ambient pool spikes with the verdict, then resumes its breathing
+      tl.to("#glow", { opacity: 0.5, duration: 0.07, ease: "power2.out", overwrite: "auto" }, STAMP_T);
+      tl.to("#glow", { opacity: 0.28, duration: 0.6, ease: "power2.out", overwrite: "auto" }, STAMP_T + 0.08);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
