@@ -1,6 +1,30 @@
 #!/bin/bash
 set -euo pipefail
 
+# Disable hyperframes' own background auto-updater for the whole session, not
+# just this script. hyperframes ships a self-update mechanism
+# (src/utils/autoUpdate.ts, `scheduleBackgroundInstall`) that any `hyperframes`
+# invocation can trigger: it spawns a fully DETACHED, unref'd child process
+# that runs `npm install -g hyperframes@latest` in the background, outside
+# this (or any) script's process tree entirely -- so no amount of locking
+# inside this hook can stop it. It treats a 0.7.x -> 0.8.x bump as a minor
+# version (0.x semver has no real "major"), so it silently overwrote the
+# pinned global install below within seconds of any `hyperframes` call
+# (confirmed by checkpointing `hyperframes --version` through a run, and by
+# reading the shipped source directly). `HYPERFRAMES_NO_AUTO_INSTALL=1` is
+# the library's own documented escape hatch for this. Writing it to
+# /etc/profile.d/ (regenerated fresh each session, same as this whole
+# container -- see e.g. ccr-agent-proxy-ca.sh alongside it) makes it apply to
+# every shell for the rest of the session, not just this script's own
+# process, since the updater can just as easily fire from a project's
+# `npm run render` or a later `hyperframes doctor` as from here.
+cat > /etc/profile.d/hyperframes-no-autoupdate.sh <<'EOF'
+export HYPERFRAMES_NO_AUTO_INSTALL=1
+export HYPERFRAMES_NO_UPDATE_CHECK=1
+EOF
+export HYPERFRAMES_NO_AUTO_INSTALL=1
+export HYPERFRAMES_NO_UPDATE_CHECK=1
+
 # Remotion project deps (remotion-app/node_modules is gitignored, must be restored per session)
 if [ -f "$CLAUDE_PROJECT_DIR/remotion-app/package.json" ]; then
   (cd "$CLAUDE_PROJECT_DIR/remotion-app" && npm install)
@@ -55,23 +79,44 @@ if ! command -v blender >/dev/null 2>&1; then
   apt-get install -y -qq blender || echo "warning: blender install failed; 3D/blender renders won't be available this session"
 fi
 
-# HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts)
-npm install -g hyperframes@0.7.107
+# HyperFrames CLI (used via `hyperframes ...` / npx by videos/*/package.json scripts),
+# pinned to an exact version for deterministic renders (mirrors each video
+# project's own local devDependency pin), plus the Chrome pre-fetch below.
+#
+# This whole block is guarded two ways:
+#   1. Skip the reinstall if the pin is already satisfied -- like every other
+#      check in this file, so a warm session is a fast no-op instead of an
+#      unconditional `npm install -g` on every single firing.
+#   2. flock serializes the block across overlapping hook firings (this hook
+#      can fire more than once in close succession -- e.g. overlapping resume
+#      events -- in this environment). An earlier unpinned/unconditional
+#      version of this block raced with itself under exactly that overlap and
+#      intermittently corrupted the global install (hyperframes.mjs missing,
+#      package.json left on the wrong version, `hyperframes` briefly
+#      "command not found") -- reproduced and confirmed by checkpointing
+#      `hyperframes --version` through a full run. The lock plus the
+#      already-pinned fast-path together close that race.
+(
+  flock -w 120 200 || exit 0
+  if [ "$(hyperframes --version 2>/dev/null || true)" != "0.7.107" ]; then
+    npm install -g hyperframes@0.7.107
 
-# Work around hyperframes shipping its CLI entry point without the executable bit set
-HYPERFRAMES_BIN="$(npm root -g)/hyperframes/bin/hyperframes.mjs"
-if [ -f "$HYPERFRAMES_BIN" ]; then
-  chmod +x "$HYPERFRAMES_BIN"
-fi
+    # Work around hyperframes shipping its CLI entry point without the executable bit set
+    HYPERFRAMES_BIN="$(npm root -g)/hyperframes/bin/hyperframes.mjs"
+    if [ -f "$HYPERFRAMES_BIN" ]; then
+      chmod +x "$HYPERFRAMES_BIN"
+    fi
+  fi
 
-# Pre-fetch the Chrome the hyperframes renderer needs. Unlike Remotion (which is
-# wired to the sandbox's pre-installed browser in remotion.config.ts), hyperframes
-# resolves its own pinned chrome-headless-shell and downloads it (~114 MB) on the
-# first render otherwise. Doing it here moves that cost into setup, keeps the first
-# render instant, and preserves hyperframes' pinned-Chromium deterministic output.
-# Non-fatal: on a network hiccup the renderer still falls back to an on-demand
-# download, so a failed pre-fetch shouldn't abort the whole session.
-hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
+  # Pre-fetch the Chrome the hyperframes renderer needs. Unlike Remotion (which is
+  # wired to the sandbox's pre-installed browser in remotion.config.ts), hyperframes
+  # resolves its own pinned chrome-headless-shell and downloads it (~114 MB) on the
+  # first render otherwise. Doing it here moves that cost into setup, keeps the first
+  # render instant, and preserves hyperframes' pinned-Chromium deterministic output.
+  # Non-fatal: on a network hiccup the renderer still falls back to an on-demand
+  # download, so a failed pre-fetch shouldn't abort the whole session.
+  hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
+) 200>/tmp/hyperframes-global-cli.lock
 
 # Optional local-fallback tooling for hyperframes' transcription/TTS/BGM
 # features (surfaced by `hyperframes doctor`) and the Docker daemon (for
