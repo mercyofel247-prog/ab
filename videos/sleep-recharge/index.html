@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Sleep Recharges You — 8s</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ink: #05060f;
+        --night-top: #131a3a;
+        --night-mid: #0c1030;
+        --night-lo: #070812;
+        --moon: #f3ecd0;
+        --text: #eaf0ff;
+        --muted: #93a0c8;
+        --low: #e8503a; /* depleted */
+        --mid: #f2b33a; /* charging */
+        --full: #2fd18a; /* restored */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ink);
+        font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 100% at 50% 8%, var(--night-top) 0%, var(--night-mid) 42%, var(--night-lo) 78%, var(--ink) 100%);
+      }
+
+      /* starfield */
+      .stars {
+        position: absolute;
+        inset: 0;
+        background-image:
+          radial-gradient(1.6px 1.6px at 12% 22%, rgba(255,255,255,0.9) 50%, transparent 51%),
+          radial-gradient(1.3px 1.3px at 26% 12%, rgba(255,255,255,0.7) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 41% 30%, rgba(255,255,255,0.8) 50%, transparent 51%),
+          radial-gradient(1.2px 1.2px at 63% 15%, rgba(255,255,255,0.65) 50%, transparent 51%),
+          radial-gradient(1.7px 1.7px at 78% 26%, rgba(255,255,255,0.85) 50%, transparent 51%),
+          radial-gradient(1.2px 1.2px at 88% 12%, rgba(255,255,255,0.6) 50%, transparent 51%),
+          radial-gradient(1.4px 1.4px at 34% 8%, rgba(255,255,255,0.7) 50%, transparent 51%),
+          radial-gradient(1.3px 1.3px at 55% 34%, rgba(255,255,255,0.6) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 70% 40%, rgba(255,255,255,0.55) 50%, transparent 51%),
+          radial-gradient(1.2px 1.2px at 18% 40%, rgba(255,255,255,0.5) 50%, transparent 51%);
+        opacity: 0.9;
+      }
+
+      #moon {
+        position: absolute;
+        left: 76%;
+        top: 20%;
+        width: 132px;
+        height: 132px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 36%, #fff8e6 0%, var(--moon) 46%, #d9cfa4 100%);
+        box-shadow:
+          0 0 60px 18px rgba(243, 236, 208, 0.28),
+          inset -18px -14px 0 -2px rgba(9, 12, 30, 0.9); /* crescent shadow */
+        opacity: 0;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 74% at 50% 52%, rgba(0,0,0,0) 46%, rgba(0,0,0,0.6) 100%);
+        pointer-events: none;
+      }
+
+      /* ---- headline ---- */
+      #headline {
+        position: absolute;
+        top: 132px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: var(--text);
+        font-size: 62px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        opacity: 0;
+      }
+      #headline .accent { color: var(--full); }
+
+      /* ---- battery (the metaphor) ---- */
+      #batt {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+      }
+
+      #shell {
+        position: relative;
+        width: 720px;
+        height: 320px;
+        border: 12px solid #cdd6f5;
+        border-radius: 40px;
+        background: rgba(8, 11, 28, 0.55);
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.4), inset 0 0 40px rgba(0,0,0,0.55);
+        overflow: hidden;
+        padding: 16px;
+      }
+
+      #cap {
+        width: 34px;
+        height: 130px;
+        margin-left: 14px;
+        border-radius: 8px;
+        background: #cdd6f5;
+      }
+
+      #fill {
+        position: absolute;
+        left: 16px;
+        top: 16px;
+        bottom: 16px;
+        width: 12%;
+        border-radius: 26px;
+        background: var(--low);
+        box-shadow: 0 0 60px 6px rgba(232, 80, 58, 0.55);
+      }
+
+      /* soft energy shimmer inside the fill */
+      #fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 26px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 42%);
+        mix-blend-mode: screen;
+      }
+
+      #pct {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        color: #ffffff;
+        font-size: 118px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+        padding: 6px 40px;
+        border-radius: 28px;
+        background: rgba(4, 6, 18, 0.72); /* stable dark chip so the readout stays legible over any fill color */
+        box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+        z-index: 3;
+      }
+
+      /* the "asleep" Z's rising above the battery into the dark sky */
+      .zzz {
+        position: absolute;
+        left: -200px;
+        top: 40px;
+        color: var(--text);
+        font-weight: 800;
+        opacity: 0;
+        text-shadow: 0 2px 14px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9);
+        z-index: 4;
+      }
+      #z1 { font-size: 46px; }
+      #z2 { font-size: 60px; }
+      #z3 { font-size: 78px; }
+
+      /* ---- benefit tags that light up as it charges ---- */
+      #benefits {
+        position: absolute;
+        bottom: 176px;
+        left: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 26px;
+      }
+      .tag {
+        color: var(--text);
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        padding: 16px 34px;
+        border-radius: 999px;
+        border: 2px solid rgba(205, 214, 245, 0.35);
+        background: rgba(255, 255, 255, 0.05);
+        opacity: 0;
+        white-space: nowrap;
+      }
+
+      /* ---- closing line ---- */
+      #subline {
+        position: absolute;
+        bottom: 104px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: var(--muted);
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        opacity: 0;
+      }
+
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(46% 46% at 50% 50%, rgba(120, 255, 190, 0.5) 0%, rgba(120, 255, 190, 0) 68%);
+        opacity: 0;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="8" data-track-index="1">
+        <div class="stars"></div>
+        <div id="moon"></div>
+
+        <h1 id="headline">Sleep <span class="accent">recharges</span> you</h1>
+
+        <div id="batt" data-layout-allow-overflow>
+          <div id="shell">
+            <div id="fill"></div>
+            <div id="pct">12%</div>
+          </div>
+          <div id="cap"></div>
+
+          <div class="zzz" id="z1" data-layout-allow-overlap>Z</div>
+          <div class="zzz" id="z2" data-layout-allow-overlap>Z</div>
+          <div class="zzz" id="z3" data-layout-allow-overlap>Z</div>
+        </div>
+
+        <div id="benefits">
+          <div class="tag" id="t1">Sharper memory</div>
+          <div class="tag" id="t2">Stronger immunity</div>
+          <div class="tag" id="t3">Healthier heart</div>
+          <div class="tag" id="t4">Steadier mood</div>
+        </div>
+
+        <div id="subline">7–9 hours a night — your body's nightly repair</div>
+
+        <div class="vignette"></div>
+        <div id="flash"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const pctEl = document.querySelector("#pct");
+      const fillEl = document.querySelector("#fill");
+
+      const START = 12;
+      const CHARGE_START = 0.9;
+      const CHARGE_END = 6.2;
+
+      const charge = { v: START };
+      function setPct(v) {
+        pctEl.textContent = Math.round(v) + "%";
+      }
+      setPct(START);
+
+      const tl = gsap.timeline({ paused: true });
+
+      // --- scene in ---
+      tl.fromTo("#moon", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" }, 0.1);
+      tl.to("#moon", { x: -26, y: 10, duration: 7.0, ease: "sine.inOut", overwrite: "auto" }, 1.1);
+      tl.fromTo("#headline", { opacity: 0, y: -18 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 0.25);
+      tl.fromTo("#batt", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, 0.3);
+
+      // --- the charge: width + counter + color, red -> amber -> green ---
+      tl.to("#fill", { width: "100%", duration: CHARGE_END - CHARGE_START, ease: "power2.inOut" }, CHARGE_START);
+      tl.to(
+        "#fill",
+        {
+          keyframes: {
+            backgroundColor: ["#e8503a", "#f2b33a", "#7ad06a", "#2fd18a"],
+            boxShadow: [
+              "0 0 60px 6px rgba(232,80,58,0.55)",
+              "0 0 70px 8px rgba(242,179,58,0.55)",
+              "0 0 80px 10px rgba(122,208,106,0.55)",
+              "0 0 92px 12px rgba(47,209,138,0.6)",
+            ],
+            easeEach: "none",
+          },
+          duration: CHARGE_END - CHARGE_START,
+          ease: "none",
+        },
+        CHARGE_START,
+      );
+      tl.to(
+        charge,
+        {
+          v: 100,
+          duration: CHARGE_END - CHARGE_START,
+          ease: "power2.inOut",
+          onUpdate: () => setPct(charge.v),
+          onComplete: () => setPct(100),
+        },
+        CHARGE_START,
+      );
+
+      // --- benefit tags light up in sequence as it fills ---
+      const tags = ["#t1", "#t2", "#t3", "#t4"];
+      const tagAt = [2.1, 3.2, 4.3, 5.4];
+      tags.forEach((sel, i) => {
+        tl.fromTo(
+          sel,
+          { opacity: 0, y: 16, scale: 0.9 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.7)" },
+          tagAt[i],
+        );
+        // tag border glows to green once lit
+        tl.to(sel, { borderColor: "rgba(47,209,138,0.75)", color: "#daffe9", duration: 0.4, ease: "none" }, tagAt[i] + 0.1);
+      });
+
+      // --- drifting Z's (repeat through the sleep) ---
+      const zEls = ["#z1", "#z2", "#z3"];
+      zEls.forEach((sel, i) => {
+        tl.fromTo(
+          sel,
+          { opacity: 0, x: 0, y: 0, scale: 0.8 },
+          {
+            opacity: 0.9,
+            x: -(30 + i * 18),
+            y: -120 - i * 40,
+            scale: 1.1,
+            duration: 2.2,
+            ease: "sine.out",
+            repeat: 2,
+            repeatDelay: 0.2,
+            yoyo: false,
+            immediateRender: false,
+          },
+          1.0 + i * 0.55,
+        );
+        // fade each pulse out as it rises
+        tl.to(sel, { opacity: 0, duration: 0.7, ease: "power1.in" }, 1.0 + i * 0.55 + 1.5);
+      });
+
+      // --- reaches full: green flash + battery breathe ---
+      tl.to("#flash", { opacity: 1, duration: 0.12, ease: "power2.out" }, CHARGE_END);
+      tl.to("#flash", { opacity: 0, duration: 0.8, ease: "power2.out" }, CHARGE_END + 0.12);
+      tl.to("#batt", { scale: 1.03, duration: 0.18, ease: "power3.out" }, CHARGE_END);
+      tl.to("#batt", { scale: 1, duration: 0.6, ease: "sine.inOut" }, CHARGE_END + 0.18);
+      // gentle restful breathing to the end
+      tl.to("#batt", { scale: 1.015, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 1 }, CHARGE_END + 0.8);
+
+      // --- closing line ---
+      tl.fromTo("#subline", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, 6.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
