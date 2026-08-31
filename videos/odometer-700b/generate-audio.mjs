@@ -131,50 +131,130 @@ for (const w of wheels) {
   }
 }
 
-// ---- Layer 2: the LOUD impact hit at $700B lock ---------------------------
+// ---- Layer 2: a premium cinematic "braam" hit at the $700B lock -----------
 const hitStart = Math.floor(LOCK_TIME * SR);
 
-// (a) sharp attack transient
+// (a) pre-hit riser-snap — a fast rising sweep that arrives right at the hit,
+// giving the impact a sense of momentum instead of appearing from nowhere.
+{
+  let lp = 0;
+  const preLen = Math.floor(0.11 * SR);
+  const preStart = hitStart - preLen;
+  for (let k = 0; k < preLen && preStart + k >= 0; k++) {
+    const tk = k / preLen; // 0..1 across the riser
+    const env = tk * tk * 0.5;
+    const white = rnd() * 2;
+    const cutoff = 0.05 + 0.7 * tk * tk;
+    lp += cutoff * (white - lp);
+    const chirp = Math.sin(2 * Math.PI * (500 + 2600 * tk * tk) * (k / SR));
+    buf[preStart + k] += (lp * 0.6 + chirp * 0.5) * env;
+  }
+}
+
+// Build the hit "dry" (un-reverberated) so a shared reverb tail can be
+// derived from it below — this is what makes it read as a real space
+// rather than a flat synthesized blip.
+const HIT_LEN = Math.floor(2.4 * SR);
+const hitDry = new Float64Array(HIT_LEN);
+
+// (b) tight transient: a fast noise crack + a pitch-dropping "thwack"
 {
   let click = 0;
-  const len = Math.floor(0.025 * SR);
-  for (let k = 0; k < len && hitStart + k < N; k++) {
-    const env = Math.exp(-k / (0.005 * SR));
-    click += 0.4 * (rnd() * 2 - click);
-    buf[hitStart + k] += click * env * 1.1;
+  const len = Math.floor(0.018 * SR);
+  for (let k = 0; k < len; k++) {
+    const env = Math.exp(-k / (0.0032 * SR));
+    click += 0.55 * (rnd() * 2 - click);
+    hitDry[k] += click * env * 1.3;
+  }
+  const thLen = Math.floor(0.02 * SR);
+  for (let k = 0; k < thLen; k++) {
+    const tk = k / SR;
+    const env = Math.exp(-tk / 0.007);
+    const pf = 210 - 150 * (k / thLen);
+    hitDry[k] += Math.sin(2 * Math.PI * pf * tk) * env * 0.9;
   }
 }
 
-// (b) low boom — bright, weighty, not hollow (a triumphant hit, not a break)
+// (c) sub-bass thump — the physical weight of the hit
 {
-  const len = Math.floor(1.0 * SR);
-  for (let k = 0; k < len && hitStart + k < N; k++) {
+  const len = Math.floor(0.65 * SR);
+  for (let k = 0; k < len; k++) {
     const tk = k / SR;
-    const env = Math.exp(-tk / 0.32);
-    const pf = 96 - 30 * Math.exp(-tk / 0.05);
-    let body = Math.sin(2 * Math.PI * pf * tk);
-    body += 0.6 * Math.sin(2 * Math.PI * pf * 2 * tk); // octave for brightness
-    body += 0.35 * Math.sin(2 * Math.PI * pf * 3.0 * tk); // fifth-above overtone
-    buf[hitStart + k] += body * env * 1.05;
+    const env = Math.exp(-tk / 0.22) * (1 - Math.exp(-tk / 0.0015));
+    hitDry[k] += Math.sin(2 * Math.PI * 62 * tk) * env * 1.1;
   }
 }
 
-// (c) bright bell-like shimmer — paired with the light-sweep glint
+// (d) the braam body — several closely detuned tones for a thick, cinematic
+// horn-like chord instead of a single thin sine boom.
 {
-  const len = Math.floor(1.5 * SR);
-  const partials = [1, 2.02, 3.01, 4.16, 5.43];
-  for (let k = 0; k < len && hitStart + k < N; k++) {
+  const len = Math.floor(1.7 * SR);
+  const root = 130;
+  const detunes = [1, 1.005, 0.997, 2.003, 3.002];
+  const gains = [0.85, 0.7, 0.7, 0.4, 0.22];
+  for (let k = 0; k < len; k++) {
     const tk = k / SR;
-    const env = Math.exp(-tk / 0.55) * (1 - Math.exp(-tk / 0.004));
-    let shimmer = 0;
-    for (let p = 0; p < partials.length; p++) {
-      shimmer += Math.sin(2 * Math.PI * 900 * partials[p] * tk) * (1 / (p + 1));
+    const env = Math.exp(-tk / 0.5);
+    let body = 0;
+    for (let p = 0; p < detunes.length; p++) {
+      body += Math.sin(2 * Math.PI * root * detunes[p] * tk) * gains[p];
     }
-    buf[hitStart + k] += shimmer * env * 0.11;
+    hitDry[k] += body * env * 0.5;
   }
 }
 
-// (d) small secondary "tink" as the spring recoil settles
+// (e) bell-like shimmer — real inharmonic partial ratios, each with its own
+// decay (higher partials die faster, as on a struck metal bell), paired
+// with the light-sweep glint.
+{
+  const len = Math.floor(1.9 * SR);
+  const partials = [
+    { ratio: 1, decay: 0.7, gain: 1.0 },
+    { ratio: 2.01, decay: 0.5, gain: 0.6 },
+    { ratio: 2.76, decay: 0.38, gain: 0.42 },
+    { ratio: 3.9, decay: 0.28, gain: 0.3 },
+    { ratio: 5.4, decay: 0.18, gain: 0.2 },
+  ];
+  const base = 880;
+  for (let k = 0; k < len; k++) {
+    const tk = k / SR;
+    const attack = 1 - Math.exp(-tk / 0.003);
+    let shimmer = 0;
+    for (const p of partials) {
+      shimmer += Math.sin(2 * Math.PI * base * p.ratio * tk) * p.gain * Math.exp(-tk / p.decay);
+    }
+    hitDry[k] += shimmer * attack * 0.13;
+  }
+}
+
+// write the dry hit into the main buffer
+for (let k = 0; k < HIT_LEN && hitStart + k < N; k++) {
+  buf[hitStart + k] += hitDry[k];
+}
+
+// (f) a simple decaying multi-tap reverb derived from the dry hit — this is
+// what turns a synthesized blip into something that feels like it's hitting
+// a real, premium space instead of a dry effect sitting on top of the video.
+{
+  const taps = [
+    { delay: 0.045, gain: 0.34, cutoff: 0.26 },
+    { delay: 0.083, gain: 0.24, cutoff: 0.21 },
+    { delay: 0.131, gain: 0.17, cutoff: 0.17 },
+    { delay: 0.189, gain: 0.11, cutoff: 0.13 },
+    { delay: 0.257, gain: 0.07, cutoff: 0.1 },
+    { delay: 0.34, gain: 0.045, cutoff: 0.08 },
+  ];
+  for (const tap of taps) {
+    let lp = 0;
+    const offset = Math.floor(tap.delay * SR);
+    for (let k = 0; k < HIT_LEN && hitStart + offset + k < N; k++) {
+      lp += tap.cutoff * (hitDry[k] - lp);
+      buf[hitStart + offset + k] += lp * tap.gain;
+    }
+  }
+}
+
+// (g) small secondary "tink" as the spring recoil settles
 {
   const settleStart = Math.floor(SETTLE_TIME * SR);
   const len = Math.floor(0.18 * SR);
