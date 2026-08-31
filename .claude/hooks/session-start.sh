@@ -72,3 +72,68 @@ fi
 # Non-fatal: on a network hiccup the renderer still falls back to an on-demand
 # download, so a failed pre-fetch shouldn't abort the whole session.
 hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
+
+# Optional local-fallback tooling for hyperframes' transcription/TTS/BGM
+# features (surfaced by `hyperframes doctor`) and the Docker daemon (for
+# `hyperframes render --docker`'s bit-deterministic mode). None of this is
+# required by any video project's default render path -- installed here so
+# it's ready session to session instead of installing on first use. Every
+# check is idempotent (skip if already satisfied) and non-fatal.
+
+# whisper-cpp: hyperframes looks for a `whisper-cli` binary on PATH. No apt
+# package ships it; build from source (needs cmake + a C/C++ compiler).
+if ! command -v whisper-cli >/dev/null 2>&1; then
+  if ! command -v cmake >/dev/null 2>&1 || ! command -v gcc >/dev/null 2>&1; then
+    apt-get update -qq
+    apt-get install -y -qq cmake build-essential || true
+  fi
+  if command -v cmake >/dev/null 2>&1 && command -v gcc >/dev/null 2>&1; then
+    WHISPER_SRC="$(mktemp -d)"
+    if git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git "$WHISPER_SRC" >/dev/null 2>&1 \
+      && cmake -B "$WHISPER_SRC/build" -DCMAKE_BUILD_TYPE=Release "$WHISPER_SRC" >/dev/null 2>&1 \
+      && cmake --build "$WHISPER_SRC/build" --config Release -j"$(nproc)" >/dev/null 2>&1 \
+      && [ -f "$WHISPER_SRC/build/bin/whisper-cli" ]; then
+      cp "$WHISPER_SRC/build/bin/whisper-cli" /usr/local/bin/whisper-cli
+      cp "$WHISPER_SRC"/build/bin/libwhisper.so* /usr/local/lib/ 2>/dev/null || true
+      chmod +x /usr/local/bin/whisper-cli
+      ldconfig 2>/dev/null || true
+    else
+      echo "warning: whisper-cpp build failed; hyperframes' local transcription/captions won't be available this session"
+    fi
+    rm -rf "$WHISPER_SRC"
+  else
+    echo "warning: cmake/build-essential unavailable; skipping whisper-cpp build"
+  fi
+fi
+
+# Kokoro TTS (hyperframes' local voice-over fallback)
+python3 -c "import kokoro_onnx" >/dev/null 2>&1 || python3 -m pip install --quiet kokoro-onnx soundfile
+
+# MusicGen (hyperframes' local background-music fallback). Try the smaller
+# CPU-only torch wheel first; some egress policies block download.pytorch.org,
+# so fall back to the default PyPI index (a larger CUDA-inclusive wheel that
+# still runs fine on CPU) if that host is unreachable.
+python3 -c "import torch" >/dev/null 2>&1 || \
+  python3 -m pip install --quiet --index-url https://download.pytorch.org/whl/cpu torch 2>/dev/null || \
+  python3 -m pip install --quiet torch
+python3 -c "import transformers" >/dev/null 2>&1 || python3 -m pip install --quiet transformers
+python3 -c "import soundfile" >/dev/null 2>&1 || python3 -m pip install --quiet soundfile
+python3 -c "import numpy" >/dev/null 2>&1 || python3 -m pip install --quiet numpy
+
+# Docker daemon (only needed for `hyperframes render --docker`'s
+# bit-deterministic mode; no project's default render path uses it). This
+# sandbox has no systemd, so the usual init script (which tries to raise
+# ulimits the container doesn't permit) fails -- start dockerd directly.
+if ! docker ps >/dev/null 2>&1; then
+  service docker start >/dev/null 2>&1 || true
+  sleep 1
+  if ! docker ps >/dev/null 2>&1; then
+    mkdir -p /var/run/docker /var/lib/docker
+    nohup dockerd >/var/log/dockerd.log 2>&1 < /dev/null &
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      docker ps >/dev/null 2>&1 && break
+      sleep 1
+    done
+  fi
+  docker ps >/dev/null 2>&1 || echo "warning: Docker daemon failed to start; hyperframes render --docker won't be available this session"
+fi
