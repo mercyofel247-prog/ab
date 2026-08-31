@@ -428,6 +428,7 @@ const Scene: React.FC<{ font: Font; frame: number; fps: number }> = ({ font, fra
         angle={0.55}
         penumbra={0.32}
         intensity={13}
+        decay={0}
         color="#fff2e6"
         castShadow
         shadow-mapSize={[1024, 1024]}
