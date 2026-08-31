@@ -13,10 +13,13 @@
       }
 
       :root {
-        --bg: #0a0b0d;
-        --ink: #f6f7f9;
-        --ink-dim: #6b7280;
-        --roller: rgba(255, 255, 255, 0.028);
+        --bg: #101113;
+        --bg-2: #17181b;
+        --ink: #f3f1ec;
+        --ink-dim: #85817a;
+        --gold: #d9a247;
+        --gold-hi: #ffd28f;
+        --roller: rgba(255, 255, 255, 0.03);
         --cell: 290px;
         --digit-w: 168px;
       }
@@ -39,7 +42,47 @@
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: var(--bg);
+        background: radial-gradient(60% 55% at 50% 46%, var(--bg-2) 0%, var(--bg) 70%);
+      }
+
+      /* ---- Background parallax layer: soft-focus drifting light particles --- */
+      .camera-bg {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      .particles {
+        position: absolute;
+        inset: 0;
+        filter: blur(3px);
+      }
+
+      .particle {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 226, 176, 0.9) 0%, rgba(255, 226, 176, 0) 72%);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      /* ---- Foreground: eyebrow + odometer, sharp, camera push-in target ---- */
+      .camera-fg {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 46%;
+      }
+
+      .gold-light {
+        position: absolute;
+        top: 46%;
+        left: 50%;
+        width: 1400px;
+        height: 1000px;
+        margin: -500px 0 0 -700px;
+        background: radial-gradient(closest-side, rgba(217, 162, 71, 0.55) 0%, rgba(217, 162, 71, 0) 72%);
+        opacity: 0.12;
+        pointer-events: none;
       }
 
       .center {
@@ -60,8 +103,14 @@
         color: var(--ink-dim);
       }
 
+      .odometer-wrap {
+        position: relative;
+        display: inline-block;
+      }
+
       /* The odometer readout: $ [wheel][wheel][wheel] B */
       .odometer {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -71,7 +120,6 @@
         font-size: 250px;
         line-height: 1;
         font-variant-numeric: tabular-nums;
-        filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
       }
 
       .affix {
@@ -101,20 +149,8 @@
           inset 0 1px 0 rgba(255, 255, 255, 0.05),
           inset 0 -1px 0 rgba(0, 0, 0, 0.55);
         /* Cylinder illusion: digits fade as they roll past the top/bottom lip */
-        -webkit-mask-image: linear-gradient(
-          to bottom,
-          transparent 0%,
-          #000 20%,
-          #000 80%,
-          transparent 100%
-        );
-        mask-image: linear-gradient(
-          to bottom,
-          transparent 0%,
-          #000 20%,
-          #000 80%,
-          transparent 100%
-        );
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
       }
 
       .strip {
@@ -146,9 +182,72 @@
           rgba(0, 0, 0, 0.28) 100%
         );
       }
+
+      /* Brushed-metal streaks across the whole readout, for the sweep to catch */
+      .brushed {
+        position: absolute;
+        inset: -6% -3%;
+        background: repeating-linear-gradient(
+          100deg,
+          rgba(255, 255, 255, 0.05) 0px,
+          rgba(255, 255, 255, 0.05) 1px,
+          rgba(255, 255, 255, 0) 2px,
+          rgba(255, 255, 255, 0) 6px
+        );
+        mix-blend-mode: overlay;
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      /* The diagonal light sweep — crosses once, timed to the digit lock */
+      .sweep {
+        position: absolute;
+        top: -60%;
+        bottom: -60%;
+        width: 300px;
+        left: 0;
+        background: linear-gradient(
+          100deg,
+          rgba(255, 226, 176, 0) 0%,
+          rgba(255, 226, 176, 0.16) 42%,
+          rgba(255, 214, 140, 0.75) 50%,
+          rgba(255, 226, 176, 0.16) 58%,
+          rgba(255, 226, 176, 0) 100%
+        );
+        transform: skewX(-18deg);
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* ---- Film grain — fixed noise, unaffected by the camera push ---- */
+      .grain {
+        position: absolute;
+        inset: 0;
+        background: #808080;
+        filter: url(#grainFilter);
+        opacity: 0.045;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+      }
+
+      .fadeout {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        opacity: 0;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
+    <svg width="0" height="0" style="position: absolute">
+      <filter id="grainFilter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="11" stitchTiles="stitch" result="noise" />
+        <feColorMatrix in="noise" type="saturate" values="0" />
+      </filter>
+    </svg>
+
     <div
       id="root"
       data-composition-id="main"
@@ -158,23 +257,38 @@
       data-height="1080"
     >
       <section id="stage" class="clip" data-start="0" data-duration="6.2" data-track-index="1">
-        <div class="center">
-          <div id="eyebrow" class="eyebrow">Total Value</div>
+        <div id="cameraBg" class="camera-bg" data-layout-allow-overflow>
+          <div id="particles" class="particles"></div>
+        </div>
 
-          <div id="odometer" class="odometer">
-            <span id="dollar" class="affix">$</span>
-            <div class="wheel" data-layout-allow-overflow>
-              <div class="strip" data-wheel="hund" data-layout-allow-overflow></div>
+        <div id="cameraFg" class="camera-fg" data-layout-allow-overflow>
+          <div class="gold-light" id="goldLight"></div>
+
+          <div class="center">
+            <div id="eyebrow" class="eyebrow">Total Value</div>
+
+            <div class="odometer-wrap">
+              <div id="odometer" class="odometer">
+                <span id="dollar" class="affix">$</span>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="hund" data-layout-allow-overflow></div>
+                </div>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="tens" data-layout-allow-overflow></div>
+                </div>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="ones" data-layout-allow-overflow></div>
+                </div>
+                <span id="suffix" class="affix">B</span>
+              </div>
+              <div class="brushed" data-layout-ignore></div>
+              <div id="sweep" class="sweep" data-layout-ignore></div>
             </div>
-            <div class="wheel" data-layout-allow-overflow>
-              <div class="strip" data-wheel="tens" data-layout-allow-overflow></div>
-            </div>
-            <div class="wheel" data-layout-allow-overflow>
-              <div class="strip" data-wheel="ones" data-layout-allow-overflow></div>
-            </div>
-            <span id="suffix" class="affix">B</span>
           </div>
         </div>
+
+        <div class="grain"></div>
+        <div id="fadeout" class="fadeout"></div>
       </section>
     </div>
 
@@ -185,15 +299,11 @@
       const CELL = 290;
 
       // ---- Build the digit strips: 11 cells [0,1,…,9,0] ----------------------
-      // The trailing 0 makes the 9→0 wrap seamless: both wrap-boundary cells
-      // read "0", so resetting translateY by one full turn is invisible.
       document.querySelectorAll(".strip").forEach((strip) => {
         for (let i = 0; i <= 10; i++) {
           const cell = document.createElement("div");
           cell.className = "cell";
           cell.textContent = String(i % 10);
-          // The window clips the strip via overflow:hidden, but the linter reads
-          // unclipped rects; exempt the rolling cells from the text-overlap check.
           cell.setAttribute("data-layout-allow-overlap", "");
           strip.appendChild(cell);
         }
@@ -205,21 +315,21 @@
         ones: document.querySelector('.strip[data-wheel="ones"]'),
       };
 
-      // ---- Per-wheel motion model -------------------------------------------
-      // Each wheel rolls a "continuous position" from 0 to its final count.
-      //   ones → 200  (spins 20 full turns — the fastest, rightmost wheel)
-      //   tens →  20  (2 turns)
-      //   hund →   2  (rolls 0→1→2 — the slowest, leftmost wheel)
-      // Staggered end times make them settle rightmost-first, leftmost-last.
-      // The hundreds wheel gets an overshoot ease for the final mechanical snap.
-      const START = 0.3;
+      // ---- Timeline landmarks --------------------------------------------------
+      const START = 0.2;
+      // Cascade right-to-left: ones (fastest, most turns) locks first, hund last.
       const wheels = [
-        { key: "ones", el: strips.ones, final: 200, start: START, dur: 4.4, ease: gsap.parseEase("expo.out") },
-        { key: "tens", el: strips.tens, final: 20, start: START, dur: 4.75, ease: gsap.parseEase("expo.out") },
-        { key: "hund", el: strips.hund, final: 2, start: START, dur: 5.0, ease: gsap.parseEase("back.out(2.4)") },
+        { key: "ones", el: strips.ones, final: 200, start: START, dur: 3.9, ease: gsap.parseEase("expo.out") },
+        { key: "tens", el: strips.tens, final: 20, start: START, dur: 4.25, ease: gsap.parseEase("expo.out") },
+        { key: "hund", el: strips.hund, final: 2, start: START, dur: 4.6, ease: gsap.parseEase("expo.out") },
       ];
-
-      const SETTLE_TIME = START + 5.0; // hundreds locks here → ~5.3s
+      const LOCK_TIME = START + 4.6; // 4.8s — all three digits show the correct value
+      const WOBBLE_PEAK = 0.09;
+      const WOBBLE_TOTAL = 0.34;
+      const SETTLE_TIME = LOCK_TIME + WOBBLE_TOTAL; // 5.14s — spring recoil fully at rest
+      const B_FADE_DUR = 0.32;
+      const FADE_START = 5.68;
+      const FADE_DUR = 0.32; // → full black at 6.0s
 
       const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -229,65 +339,128 @@
         return w.final * w.ease(local);
       }
 
-      const MAX_BLUR = 18; // px — cap so fast digits stay legible as motion
-      const BLUR_K = 0.06; // px per (cell/second)
-      const EPS = 1 / 120; // derivative step for velocity → blur
+      // A slight overshoot-and-snap-back "spring" bump, additive to posAt, that
+      // plays once each wheel's main roll finishes — decoupled from roll speed
+      // so the fast spin (expo.out) and the mechanical settle read as two
+      // distinct, deliberate motions instead of one blended curve.
+      const nudgeEase = gsap.parseEase("power2.out");
+      const springEase = gsap.parseEase("back.out(1.25)");
+      function wobbleAt(w, t) {
+        const dt = t - (w.start + w.dur);
+        if (dt <= 0 || dt >= WOBBLE_TOTAL) return 0;
+        const OVER_AMOUNT = 0.22; // fraction of a cell — a slight peek, not a full digit
+        if (dt <= WOBBLE_PEAK) {
+          return OVER_AMOUNT * nudgeEase(dt / WOBBLE_PEAK);
+        }
+        const localB = (dt - WOBBLE_PEAK) / (WOBBLE_TOTAL - WOBBLE_PEAK);
+        return OVER_AMOUNT * (1 - springEase(localB));
+      }
 
-      function renderAt(t) {
+      const MAX_BLUR = 20; // px — cap so fast digits stay legible as directional blur
+      const BLUR_K = 0.06;
+      const EPS = 1 / 120;
+
+      function combinedPos(w, t) {
+        return posAt(w, t) + wobbleAt(w, t);
+      }
+
+      function renderWheels(t) {
         for (const w of wheels) {
-          const pos = posAt(w, t);
-          // Seamless wrap: the strip is 11 cells, so only the fractional turn
-          // matters. Both wrap boundaries show "0", so this never jumps visibly.
+          const pos = combinedPos(w, t);
           const y = -((pos % 10) * CELL);
-
-          // Velocity → directional-feeling motion blur that sharpens on settle.
-          const vel = Math.abs(posAt(w, t + EPS) - pos) / EPS; // cells / second
+          const vel = Math.abs(combinedPos(w, t + EPS) - pos) / EPS;
           const blur = Math.min(MAX_BLUR, vel * BLUR_K);
-
           w.el.style.transform = "translate3d(0," + y + "px,0)";
           w.el.style.filter = blur > 0.15 ? "blur(" + blur.toFixed(2) + "px)" : "none";
         }
       }
 
+      // ---- Gold accent light: grows with the count, peaks exactly at lock -----
+      const odometerEl = document.querySelector("#odometer");
+      const goldLightEl = document.querySelector("#goldLight");
+      function renderGlow(t) {
+        const raw = clamp01((t - START) / (LOCK_TIME - START));
+        const p = Math.pow(raw, 1.25); // subtle acceleration into the peak
+        odometerEl.style.filter =
+          "drop-shadow(0 18px 40px rgba(0,0,0,0.55)) drop-shadow(0 0 " +
+          (6 + 22 * p).toFixed(1) +
+          "px rgba(217,162,71," +
+          (0.15 + 0.5 * p).toFixed(3) +
+          "))";
+        goldLightEl.style.opacity = (0.12 + 0.46 * p).toFixed(3);
+      }
+
+      function renderAt(t) {
+        renderWheels(t);
+        renderGlow(t);
+      }
+
       renderAt(0);
+
+      // ---- Particles: deterministic positions/sizes, slow upward drift -------
+      const particlesLayer = document.querySelector("#particles");
+      const PARTICLE_COUNT = 26;
+      const particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "particle";
+        const x = (i * 173 + 37) % 1920;
+        const y = (i * 97 + 610) % 1080;
+        const size = 4 + (i % 4) * 2.1;
+        const baseOpacity = 0.24 + (i % 5) * 0.05;
+        const drift = 70 + (i % 6) * 14;
+        const delay = (i % 7) * 0.05;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        particlesLayer.appendChild(el);
+        particles.push({ el, baseOpacity, drift, delay });
+      }
 
       // ---- Timeline ----------------------------------------------------------
       const tl = gsap.timeline({ paused: true });
 
-      // Initial states (set via GSAP so no CSS transform is left to conflict).
       gsap.set("#odometer", { opacity: 0, scale: 0.96 });
       gsap.set("#eyebrow", { opacity: 0, y: 10 });
       gsap.set("#suffix", { opacity: 0, y: 26, scale: 0.7 });
+      gsap.set("#sweep", { x: -600, opacity: 0 });
+      gsap.set(["#cameraFg", "#cameraBg"], { scale: 1 });
 
       // Reveal the odometer.
       tl.to("#odometer", { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 0);
       tl.to("#eyebrow", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.15);
 
+      // Particles: fade in, then a slow independent upward drift — deliberately
+      // much slower than the foreground counter's own motion.
+      for (const p of particles) {
+        tl.to(p.el, { opacity: p.baseOpacity, duration: 0.6, ease: "power1.out" }, p.delay);
+        tl.to(p.el, { y: -p.drift, duration: 6, ease: "none" }, 0);
+      }
+
       // Driver: a linear proxy whose value maps 1:1 to timeline time, so every
-      // wheel position is a pure, seek-safe function of time (no frame deltas).
+      // wheel position + glow value is a pure, seek-safe function of time.
       const driver = { t: 0 };
-      tl.to(
-        driver,
-        {
-          t: 6,
-          duration: 6,
-          ease: "none",
-          onUpdate: () => renderAt(driver.t),
-        },
-        0,
-      );
+      tl.to(driver, { t: 6, duration: 6, ease: "none", onUpdate: () => renderAt(driver.t) }, 0);
 
-      // The "B" suffix locks in only once the final value has settled.
-      tl.to(
-        "#suffix",
-        { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: "back.out(2.6)" },
-        SETTLE_TIME + 0.02,
-      );
+      // Camera push-in: two depths of the same push, foreground moves more than
+      // background — real dolly-in parallax — both settling to a dead stop
+      // exactly when the final digit's spring snap completes.
+      tl.to("#cameraFg", { scale: 1.055, duration: SETTLE_TIME, ease: "power2.out" }, 0);
+      tl.to("#cameraBg", { scale: 1.018, duration: SETTLE_TIME, ease: "power2.out" }, 0);
 
-      // Soft mechanical "tick": a tiny overshoot + snap-back on the whole
-      // readout as the last wheel locks — the satisfying stop.
-      tl.to("#odometer", { scale: 1.028, duration: 0.12, ease: "power2.out", overwrite: "auto" }, SETTLE_TIME - 0.06);
-      tl.to("#odometer", { scale: 1, duration: 0.3, ease: "back.out(2.2)", overwrite: "auto" }, SETTLE_TIME + 0.08);
+      // Diagonal light sweep — crosses once, centered on the moment the digits
+      // read the correct value, catching a specular glint on the brushed metal.
+      tl.to("#sweep", { opacity: 1, duration: 0.1, ease: "power1.out" }, LOCK_TIME - 0.24);
+      tl.to("#sweep", { x: 2300, duration: 0.52, ease: "power1.inOut" }, LOCK_TIME - 0.24);
+      tl.to("#sweep", { opacity: 0, duration: 0.16, ease: "power2.out" }, LOCK_TIME + 0.1);
+
+      // The "B" suffix fades in only once the spring has fully settled.
+      tl.to("#suffix", { opacity: 1, y: 0, scale: 1, duration: B_FADE_DUR, ease: "power2.out" }, SETTLE_TIME);
+
+      // Final beat: brief stillness on the locked number, then fade to black —
+      // the camera has already come to a complete stop by SETTLE_TIME.
+      tl.to("#fadeout", { opacity: 1, duration: FADE_DUR, ease: "power1.in" }, FADE_START);
 
       window.__timelines["main"] = tl;
     </script>
