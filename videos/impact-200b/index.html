@@ -206,7 +206,7 @@
         const e = entries[key];
         gsap.set(glyphEls[key], { x: e.x, y: e.y, rotation: e.rot, filter: "blur(20px)" });
       }
-      gsap.set("#rotator", { rotationX: 0, transformPerspective: 1900 });
+      gsap.set("#rotator", { rotationY: 0, transformPerspective: 1900 });
       gsap.set(".glyphs", { filter: "brightness(1) drop-shadow(0 0 0 rgba(255,209,102,0))" });
 
       const IMPACT = 0.98;
@@ -256,11 +256,11 @@
       );
 
       // ---- Phase 3: hold, readable, glow settled
-      const HOLD_END = 1.95;
+      const HOLD_END = 1.7;
 
-      // ---- Phase 4: full 3D rotation on the X axis
+      // ---- Phase 4: a gentle, full 3D rotation on the Y axis (a slow turntable turn)
       const ROT_START = HOLD_END;
-      const ROT_DUR = 1.85;
+      const ROT_DUR = 2.3;
       const ROT_END = ROT_START + ROT_DUR;
 
       const rotDriver = { deg: 0 };
@@ -269,19 +269,19 @@
         {
           deg: 360,
           duration: ROT_DUR,
-          ease: "power1.inOut",
+          ease: "sine.inOut",
           onUpdate: () => {
             const rad = (rotDriver.deg * Math.PI) / 180;
-            gsap.set("#rotator", { rotationX: rotDriver.deg });
-            // specular light sweeps + brightness dips as the plane turns edge-on
+            gsap.set("#rotator", { rotationY: rotDriver.deg });
+            // gentle specular sheen + soft brightness dip as the plane turns edge-on
             const facing = Math.abs(Math.cos(rad));
-            const brightness = 0.5 + 0.55 * facing;
-            const glow = 0.3 + 0.6 * facing;
+            const brightness = 0.68 + 0.38 * facing;
+            const glow = 0.45 + 0.45 * facing;
             gsap.set(".glyphs", {
               filter: `brightness(${brightness.toFixed(3)}) drop-shadow(0 0 ${(10 + 14 * facing).toFixed(1)}px rgba(255,209,102,${(0.5 * glow).toFixed(3)})) drop-shadow(0 0 ${(30 + 30 * facing).toFixed(1)}px rgba(255,209,102,${(0.5 * glow).toFixed(3)})) drop-shadow(0 14px 30px rgba(0,0,0,0.6))`,
             });
             gsap.set("#sheen", {
-              opacity: 1 - facing,
+              opacity: 0.7 * (1 - facing),
               x: (rotDriver.deg / 360) * 900 - 450,
             });
           },
@@ -289,9 +289,9 @@
         ROT_START,
       );
 
-      // settle overshoot + snap on the final stop — the "mechanical" landing
-      tl.to("#rotator", { rotationX: 372, duration: 0.12, ease: "power2.out", overwrite: "auto" }, ROT_END - 0.02);
-      tl.to("#rotator", { rotationX: 360, duration: 0.32, ease: "back.out(2.4)", overwrite: "auto" }, ROT_END + 0.1);
+      // a soft settle on the final stop — no hard overshoot, just an easing whisper
+      tl.to("#rotator", { rotationY: 364, duration: 0.16, ease: "sine.out", overwrite: "auto" }, ROT_END - 0.02);
+      tl.to("#rotator", { rotationY: 360, duration: 0.34, ease: "sine.inOut", overwrite: "auto" }, ROT_END + 0.14);
       tl.to(
         ".glyphs",
         {
