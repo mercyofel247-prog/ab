@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Sleep Recharge — battery metaphor</title>
+    <!--
+      One visual metaphor carries the whole explanation: sleep is the body's
+      nightly recharge. A battery fills from empty to full while a tiny figure
+      sleeps under the moon inside it -- the rising gold charge visually
+      overtakes the night scene as it climbs. At full charge the battery pops,
+      a bright sun glyph blooms on top of it, and warm pulses radiate outward:
+      "you wake up recharged." Pure SVG/CSS + GSAP, no WebGL -- fast to render.
+      1920x1080 @24fps, 8s, silent.
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #060811; }
+      #stage {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background: radial-gradient(60% 55% at 50% 46%, #10142a 0%, #0a0c1c 55%, #060811 100%);
+        font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      svg { position: absolute; inset: 0; display: block; }
+
+      .fillbox { transform-box: fill-box; transform-origin: 50% 100%; }
+      .scalebox { transform-box: fill-box; transform-origin: 50% 50%; }
+
+      #title, #closing {
+        position: absolute; left: 0; width: 1920px; text-align: center;
+        color: #f3eee3; font-weight: 800; letter-spacing: 0.01em;
+        opacity: 0; will-change: transform, opacity;
+      }
+      #title { top: 108px; font-size: 58px; }
+      #closing { top: 918px; font-size: 40px; color: #ffd873; letter-spacing: 0.08em; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="8"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="8" data-track-index="1">
+        <div id="title">SLEEP RECHARGES YOUR BODY</div>
+
+        <svg viewBox="0 0 1920 1080" width="1920" height="1080">
+          <defs>
+            <clipPath id="innerClip">
+              <rect x="791" y="211" width="338" height="628" rx="44" />
+            </clipPath>
+            <linearGradient id="chargeGrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#c97a22" />
+              <stop offset="55%" stop-color="#f0ac3a" />
+              <stop offset="100%" stop-color="#ffe9a8" />
+            </linearGradient>
+            <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fffaf0" />
+              <stop offset="55%" stop-color="#ffe08a" />
+              <stop offset="100%" stop-color="#ffc94a" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+
+          <!-- clipped battery interior: night sky -> rising charge -->
+          <g clip-path="url(#innerClip)">
+            <rect x="791" y="211" width="338" height="628" fill="#141a33" />
+
+            <g id="stars" fill="#f3eee3"></g>
+
+            <!-- crescent moon -->
+            <g id="moon" transform="translate(960,330)">
+              <circle cx="0" cy="0" r="46" fill="#f3ecd8" />
+              <circle cx="20" cy="-14" r="40" fill="#141a33" />
+            </g>
+
+            <!-- sleeping figure + zzz -->
+            <g id="sleeper" transform="translate(960,700)" fill="#8890b5">
+              <ellipse cx="0" cy="18" rx="86" ry="26" opacity="0.9" />
+              <circle cx="-70" cy="4" r="22" />
+              <g id="zzz" font-family="Inter, Arial, sans-serif" font-weight="800" fill="#aab1d6">
+                <text id="z1" x="-30" y="-24" font-size="26" opacity="0">Z</text>
+                <text id="z2" x="-8" y="-52" font-size="34" opacity="0">Z</text>
+                <text id="z3" x="20" y="-86" font-size="42" opacity="0">Z</text>
+              </g>
+            </g>
+
+            <!-- the rising charge -->
+            <rect id="fill" class="fillbox" x="791" y="211" width="338" height="628" fill="url(#chargeGrad)" />
+          </g>
+
+          <!-- sun payoff glyph, blooms on top of the full charge -->
+          <!-- outer group: static position only (an SVG transform attribute,
+               left untouched); inner group: the only thing GSAP scales, via a
+               real CSS transform -- CSS transform fully overrides an SVG
+               transform ATTRIBUTE on the same element, so position and scale
+               must live on two different elements or the position is lost -->
+          <g id="sun" transform="translate(960,525)" opacity="0">
+            <g id="sunScale" class="scalebox">
+              <circle r="150" fill="url(#sunGrad)" />
+              <circle r="44" fill="#fffaf0" />
+              <g stroke="#ffe08a" stroke-width="8" stroke-linecap="round">
+                <line x1="0" y1="-78" x2="0" y2="-100" />
+                <line x1="0" y1="78" x2="0" y2="100" />
+                <line x1="-78" y1="0" x2="-100" y2="0" />
+                <line x1="78" y1="0" x2="100" y2="0" />
+                <line x1="-55" y1="-55" x2="-70" y2="-70" />
+                <line x1="55" y1="-55" x2="70" y2="-70" />
+                <line x1="-55" y1="55" x2="-70" y2="70" />
+                <line x1="55" y1="55" x2="70" y2="70" />
+              </g>
+            </g>
+          </g>
+
+          <!-- battery outline, on top of the charge/sun so it always reads crisp --
+               (same static-position-outer / scaled-inner split as #sun above) -->
+          <g id="batteryFrame" transform="translate(960,525)">
+            <g id="batteryFrameScale" class="scalebox" fill="none" stroke="#f3eee3" stroke-width="10" stroke-linejoin="round">
+              <rect x="-180" y="-325" width="360" height="650" rx="52" />
+              <rect x="-60" y="-367" width="120" height="46" rx="12" fill="#f3eee3" stroke="none" />
+            </g>
+          </g>
+
+          <!-- outward pulse rings, fire once at full charge -- drawn LAST so
+               they read as a clean unclipped shockwave over the battery,
+               not a ring sliced off by its silhouette -->
+          <g id="pulses" stroke="#ffd873" fill="none" stroke-width="4">
+            <circle id="pulse1" class="scalebox" cx="960" cy="525" r="210" opacity="0" />
+            <circle id="pulse2" class="scalebox" cx="960" cy="525" r="210" opacity="0" />
+            <circle id="pulse3" class="scalebox" cx="960" cy="525" r="210" opacity="0" />
+          </g>
+        </svg>
+
+        <div id="closing">WAKE UP RECHARGED</div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const gsap = window.gsap;
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+      // deterministic PRNG -- no Math.random / Date.now anywhere in this file
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // ---- deterministic star field, inside the battery's night sky ----
+      const starsGroup = document.getElementById("stars");
+      const STAR_N = 22;
+      const stars = [];
+      (function seedStars() {
+        const r = mulberry32(0x51eeb);
+        for (let i = 0; i < STAR_N; i++) {
+          const x = 810 + r() * 300;
+          const y = 236 + r() * 130;
+          const rad = 1.6 + r() * 2.2;
+          const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          el.setAttribute("cx", x.toFixed(1));
+          el.setAttribute("cy", y.toFixed(1));
+          el.setAttribute("r", rad.toFixed(2));
+          el.setAttribute("opacity", "0.5");
+          starsGroup.appendChild(el);
+          stars.push({ el, phase: i * 0.9137 });
+        }
+      })();
+
+      const moonEl = document.getElementById("moon");
+      const fillEl = document.getElementById("fill");
+      const sunEl = document.getElementById("sun"); // opacity only -- position lives on the attribute transform
+      const sunScaleEl = document.getElementById("sunScale"); // the CSS-transform scale target
+      const batteryFrameScaleEl = document.getElementById("batteryFrameScale"); // the CSS-transform scale target
+      const pulses = [
+        document.getElementById("pulse1"),
+        document.getElementById("pulse2"),
+        document.getElementById("pulse3"),
+      ];
+      const zEls = [
+        document.getElementById("z1"),
+        document.getElementById("z2"),
+        document.getElementById("z3"),
+      ];
+
+      let mainTL = null;
+
+      // ---- continuous, deterministic ambient life: read off the shared clock ----
+      function applyAmbient() {
+        const now = mainTL ? mainTL.time() : 0;
+        const ambientT = clamp01(now / 6.4); // fades out as the payoff approaches
+
+        // moon drifts gently
+        const mx = Math.sin(now * 0.6) * 6;
+        const my = Math.cos(now * 0.5) * 4;
+        moonEl.setAttribute("transform", `translate(${(960 + mx).toFixed(2)},${(330 + my).toFixed(2)})`);
+
+        // stars twinkle, each on its own phase
+        stars.forEach((s) => {
+          const tw = 0.32 + 0.28 * (0.5 + 0.5 * Math.sin(now * 1.3 + s.phase));
+          s.el.setAttribute("opacity", (tw * ambientT).toFixed(3));
+        });
+
+        // "Zzz" float upward and fade, looping, staggered
+        zEls.forEach((z, i) => {
+          const period = 2.2;
+          const local = ((now - i * 0.55) % period + period) % period;
+          const p = local / period;
+          const rise = -26 * p;
+          const op = Math.sin(Math.PI * clamp01(p)) * 0.85 * ambientT;
+          z.setAttribute("transform", `translate(0,${rise.toFixed(2)})`);
+          z.setAttribute("opacity", op.toFixed(3));
+        });
+      }
+
+      const tl = gsap.timeline({ paused: true, onUpdate: applyAmbient });
+      mainTL = tl;
+
+      // title
+      gsap.set("#title", { y: 20 });
+      tl.to("#title", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0);
+
+      // the charge itself -- one continuous, unhurried rise (never linear)
+      gsap.set(fillEl, { scaleY: 0.045 });
+      tl.to(fillEl, { scaleY: 1, duration: 6.4, ease: "power1.inOut" }, 0);
+
+      // full charge: a small decisive pop on the frame
+      tl.to(batteryFrameScaleEl, { scale: 1.045, duration: 0.08, ease: "power3.out" }, 6.4);
+      tl.to(batteryFrameScaleEl, { scale: 1.0, duration: 0.22, ease: "power2.out" }, 6.48);
+
+      // the sun blooms on top of the full charge (opacity on the outer,
+      // positioned element; scale on the inner element -- see the markup note)
+      gsap.set(sunScaleEl, { scale: 0.55 });
+      tl.to(sunEl, { opacity: 1, duration: 0.5, ease: "power2.out" }, 6.42);
+      tl.to(sunScaleEl, { scale: 1, duration: 0.5, ease: "back.out(1.6)" }, 6.42);
+
+      // warm pulses radiate outward, staggered, once
+      pulses.forEach((p, i) => {
+        gsap.set(p, { scale: 1 });
+        const startAt = 6.4 + i * 0.14;
+        tl.set(p, { opacity: 0.85 }, startAt);
+        tl.to(p, { scale: 2.35, opacity: 0, duration: 0.85, ease: "power2.out" }, startAt);
+      });
+
+      // closing line
+      gsap.set("#closing", { y: 16 });
+      tl.to("#closing", { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 6.7);
+
+      // gentle glow-breathing on the sun through the final hold -- the shot
+      // still reads as alive, not a dead freeze, in its closing second.
+      // (opacity on the outer #sun element, which already ended its own
+      // fade-in tween above; these two beats land exactly at the 8s mark)
+      tl.to(sunEl, { opacity: 0.88, duration: 0.4, ease: "sine.inOut" }, 7.1);
+      tl.to(sunEl, { opacity: 1.0, duration: 0.5, ease: "sine.inOut" }, 7.5);
+
+      applyAmbient();
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
