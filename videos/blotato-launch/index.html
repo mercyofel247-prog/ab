@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Blotato — Product Launch (placeholder brand)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/Inter-Variable.ttf") format("truetype-variations");
+        font-weight: 100 900;
+        font-style: normal;
+      }
+
+      :root {
+        --bg: #0a0b0d;
+        --bg-hi: #12151a;
+        --accent: #00e5a0;
+        --accent-deep: #00a876;
+        --accent-hi: #6bffce;
+        --text: #f5f6f7;
+        --text-muted: #9aa0a6;
+        --card-bg: rgba(255, 255, 255, 0.04);
+        --card-border: rgba(255, 255, 255, 0.1);
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      /* ---------- persistent background: gradient, particles, grain, vignette ---------- */
+      #bg {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(120% 90% at 50% 30%, #0f1512 0%, #0b0d0e 45%, var(--bg) 100%);
+      }
+      #bgGlow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(38% 32% at 50% 18%, rgba(0, 229, 160, 0.14) 0%, rgba(0, 229, 160, 0) 70%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+      #particles {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .particle {
+        position: absolute;
+        border-radius: 50%;
+        mix-blend-mode: screen;
+        background: radial-gradient(circle, rgba(107, 255, 206, 0.9) 0%, rgba(0, 229, 160, 0.5) 45%, rgba(0, 229, 160, 0) 75%);
+        will-change: transform, opacity;
+      }
+      #grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+        background-size: 64px 64px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.78) 100%);
+        pointer-events: none;
+      }
+      #blackout {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        pointer-events: none;
+      }
+
+      /* ---------- wordmark (cold open + persistent corner brand mark) ---------- */
+      #openScene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #wordmarkWrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity, filter;
+      }
+      #wordmark {
+        font-family: "Inter", sans-serif;
+        font-weight: 900;
+        font-size: 148px;
+        letter-spacing: -0.03em;
+        color: var(--text);
+        line-height: 1;
+        white-space: nowrap;
+        filter: drop-shadow(0 0 30px rgba(0, 229, 160, 0.35)) drop-shadow(0 0 70px rgba(0, 229, 160, 0.18));
+      }
+      #wordmark .dot {
+        color: var(--accent);
+      }
+      #tagline {
+        margin-top: 22px;
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        color: var(--text-muted);
+        opacity: 0;
+      }
+
+      /* small persistent brand mark, top-left, active once the open scene hands off */
+      #brandMark {
+        position: absolute;
+        top: 64px;
+        left: 74px;
+        font-family: "Inter", sans-serif;
+        font-weight: 800;
+        font-size: 34px;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        opacity: 0;
+      }
+      #brandMark .dot {
+        color: var(--accent);
+      }
+
+      /* ---------- benefit scenes ---------- */
+      .benefitScene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        padding: 0 160px;
+        opacity: 0;
+      }
+      .mockupPane {
+        position: relative;
+        justify-self: center;
+        transform-origin: 50% 50%;
+      }
+      .cardPane {
+        justify-self: start;
+      }
+      .benefitEyebrow {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 18px;
+      }
+      .benefitHeadline {
+        font-size: 58px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--text);
+        line-height: 1.08;
+        max-width: 620px;
+      }
+      .benefitSub {
+        margin-top: 20px;
+        font-size: 26px;
+        font-weight: 400;
+        color: var(--text-muted);
+        max-width: 560px;
+        line-height: 1.5;
+      }
+
+      /* mockup: shared "device frame" card look */
+      .mockCard {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 22px;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+      }
+
+      /* --- benefit 1 mockup: one source -> many platform chips --- */
+      #mock1 {
+        width: 620px;
+        height: 460px;
+        padding: 40px;
+      }
+      #mock1 .source {
+        width: 190px;
+        height: 260px;
+        border-radius: 16px;
+        background: linear-gradient(160deg, #151a1d 0%, #0d1012 100%);
+        border: 1px solid var(--card-border);
+        display: grid;
+        place-items: center;
+        position: absolute;
+        left: 40px;
+        top: 100px;
+      }
+      #mock1 .source .play {
+        width: 0;
+        height: 0;
+        border-top: 18px solid transparent;
+        border-bottom: 18px solid transparent;
+        border-left: 26px solid var(--accent);
+        filter: drop-shadow(0 0 14px rgba(0, 229, 160, 0.6));
+      }
+      #mock1 svg.lines {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+      }
+      #mock1 .lines path {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        opacity: 0.55;
+      }
+      .chip {
+        position: absolute;
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        background: var(--bg-hi);
+        border: 1px solid var(--card-border);
+        display: grid;
+        place-items: center;
+        opacity: 0;
+      }
+      .chip .glyph {
+        width: 26px;
+        height: 26px;
+      }
+
+      /* --- benefit 2 mockup: scanning/adapting card + variant chips --- */
+      #mock2 {
+        width: 620px;
+        height: 460px;
+        padding: 40px;
+        position: relative;
+        overflow: hidden;
+      }
+      #mock2 .scanCard {
+        width: 100%;
+        height: 220px;
+        border-radius: 16px;
+        background: linear-gradient(160deg, #151a1d 0%, #0d1012 100%);
+        border: 1px solid var(--card-border);
+        position: relative;
+        overflow: hidden;
+      }
+      #mock2 .scanBar {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 90px;
+        background: linear-gradient(90deg, rgba(0, 229, 160, 0) 0%, rgba(0, 229, 160, 0.28) 50%, rgba(0, 229, 160, 0) 100%);
+        /* initial x position established by the GSAP fromTo() tween, not here */
+      }
+      #mock2 .variants {
+        margin-top: 26px;
+        display: flex;
+        gap: 16px;
+      }
+      #mock2 .variant {
+        flex: 1;
+        height: 96px;
+        border-radius: 12px;
+        background: var(--bg-hi);
+        border: 1px solid var(--card-border);
+        opacity: 0;
+        /* initial y offset set via gsap.set() in JS, not here -- GSAP owns this element's transform */
+      }
+      #mock2 .variant.v1 {
+        border-top: 3px solid var(--accent);
+      }
+      #mock2 .variant.v2 {
+        border-top: 3px solid #6bffce;
+      }
+      #mock2 .variant.v3 {
+        border-top: 3px solid #00a876;
+      }
+
+      /* --- benefit 3 mockup: rising bars, growth motif --- */
+      #mock3 {
+        width: 620px;
+        height: 460px;
+        padding: 50px;
+        display: flex;
+        align-items: flex-end;
+        gap: 26px;
+      }
+      #mock3 .bar {
+        flex: 1;
+        border-radius: 8px 8px 0 0;
+        background: linear-gradient(180deg, var(--accent-hi) 0%, var(--accent) 60%, var(--accent-deep) 100%);
+        transform-origin: bottom;
+        box-shadow: 0 0 24px rgba(0, 229, 160, 0.25);
+        /* initial scaleY(0) set via gsap.set() in JS, not here -- GSAP owns this element's transform */
+      }
+
+      /* ---------- CTA scene ---------- */
+      #ctaScene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+      }
+      #ctaStack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #ctaTagline {
+        margin-top: 26px;
+        font-size: 28px;
+        color: var(--text-muted);
+        letter-spacing: 0.01em;
+      }
+      #ctaButton {
+        margin-top: 48px;
+        padding: 22px 52px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-hi) 0%, var(--accent) 100%);
+        color: #06110c;
+        font-weight: 800;
+        font-size: 26px;
+        letter-spacing: -0.01em;
+        box-shadow: 0 0 0 rgba(0, 229, 160, 0.5);
+        opacity: 0;
+        /* initial scale(0.9) set via gsap.set() in JS, not here -- GSAP owns this element's transform */
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="25"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="25" data-track-index="1">
+        <div id="bg"></div>
+        <div id="bgGlow"></div>
+        <div id="particles" data-layout-allow-overflow data-layout-ignore></div>
+
+        <div id="brandMark" data-layout-allow-occlusion>BLOTATO<span class="dot">.</span></div>
+
+        <div id="openScene">
+          <div id="wordmarkWrap">
+            <div id="wordmark" data-layout-allow-occlusion>BLOTATO<span class="dot">.</span></div>
+            <div id="tagline" data-layout-allow-occlusion>One video. Every platform.</div>
+          </div>
+        </div>
+
+        <!-- Benefit 1: AI repurposing -->
+        <section id="scene1" class="benefitScene">
+          <div class="mockupPane">
+            <div id="mock1" class="mockCard">
+              <div class="source"><div class="play"></div></div>
+              <svg class="lines" viewBox="0 0 620 460">
+                <path d="M 230 150 C 340 100 420 90 470 90" />
+                <path d="M 230 190 C 340 190 420 190 470 190" />
+                <path d="M 230 230 C 340 260 420 290 470 290" />
+                <path d="M 230 270 C 340 320 420 360 470 370" />
+              </svg>
+              <div class="chip chip1" style="left: 484px; top: 58px;"><div class="glyph" style="border-radius:50%;background:var(--accent)"></div></div>
+              <div class="chip chip2" style="left: 484px; top: 154px;"><div class="glyph" style="border-radius:6px;background:var(--accent-hi)"></div></div>
+              <div class="chip chip3" style="left: 484px; top: 250px;"><div class="glyph" style="border-radius:50% 6px 50% 6px;background:var(--accent)"></div></div>
+              <div class="chip chip4" style="left: 484px; top: 332px;"><div class="glyph" style="border-radius:6px 50% 6px 50%;background:var(--accent-hi)"></div></div>
+            </div>
+          </div>
+          <div class="cardPane">
+            <div class="benefitEyebrow" data-layout-allow-occlusion>AI Repurposing</div>
+            <div class="benefitHeadline" data-layout-allow-occlusion>One upload becomes content for every platform.</div>
+            <div class="benefitSub" data-layout-allow-occlusion>Turn a single video into dozens of platform-native posts, automatically.</div>
+          </div>
+        </section>
+
+        <!-- Benefit 2: smart automation -->
+        <section id="scene2" class="benefitScene">
+          <div class="mockupPane">
+            <div id="mock2" class="mockCard">
+              <div class="scanCard"><div class="scanBar" data-layout-allow-overflow></div></div>
+              <div class="variants">
+                <div class="variant v1"></div>
+                <div class="variant v2"></div>
+                <div class="variant v3"></div>
+              </div>
+            </div>
+          </div>
+          <div class="cardPane">
+            <div class="benefitEyebrow" data-layout-allow-occlusion>Smart Automation</div>
+            <div class="benefitHeadline" data-layout-allow-occlusion>AI that adapts to every platform's style.</div>
+            <div class="benefitSub" data-layout-allow-occlusion>Publish everywhere, tuned for each audience, without lifting a finger.</div>
+          </div>
+        </section>
+
+        <!-- Benefit 3: built for creators -->
+        <section id="scene3" class="benefitScene">
+          <div class="mockupPane">
+            <div id="mock3" class="mockCard">
+              <div class="bar" style="height: 38%;"></div>
+              <div class="bar" style="height: 58%;"></div>
+              <div class="bar" style="height: 78%;"></div>
+              <div class="bar" style="height: 100%;"></div>
+            </div>
+          </div>
+          <div class="cardPane">
+            <div class="benefitEyebrow" data-layout-allow-occlusion>Built For Creators</div>
+            <div class="benefitHeadline" data-layout-allow-occlusion>Scale your content, not your workload.</div>
+            <div class="benefitSub" data-layout-allow-occlusion>Built for creators who move at the speed of culture.</div>
+          </div>
+        </section>
+
+        <!-- CTA -->
+        <div id="ctaScene">
+          <div id="ctaStack">
+            <div id="ctaWordmark" data-layout-allow-occlusion style="font-family:'Inter',sans-serif; font-weight:900; font-size:104px; letter-spacing:-0.03em; color:var(--text); filter: drop-shadow(0 0 26px rgba(0,229,160,0.3));">BLOTATO<span class="dot" data-layout-allow-occlusion style="color:var(--accent)">.</span></div>
+            <div id="ctaTagline" data-layout-allow-occlusion>The future of content, automated.</div>
+            <div id="ctaButton" data-layout-allow-occlusion>Get Started Free</div>
+          </div>
+        </div>
+
+        <div id="grain" data-layout-allow-occlusion></div>
+        <div id="vignette" data-layout-allow-occlusion></div>
+        <div id="blackout" data-layout-allow-occlusion></div>
+      </section>
+
+      <audio id="voReveal" data-start="2.5" data-duration="1.365" data-track-index="2" src="assets/vo/reveal.wav" data-volume="1"></audio>
+      <audio id="voB1" data-start="4.3" data-duration="3.755" data-track-index="3" src="assets/vo/benefit1.wav" data-volume="1"></audio>
+      <audio id="voB2" data-start="8.6" data-duration="3.691" data-track-index="4" src="assets/vo/benefit2.wav" data-volume="1"></audio>
+      <audio id="voB3" data-start="12.8" data-duration="3.072" data-track-index="5" src="assets/vo/benefit3.wav" data-volume="1"></audio>
+      <audio id="voCta" data-start="16.6" data-duration="3.157" data-track-index="6" src="assets/vo/cta.wav" data-volume="1"></audio>
+      <audio id="sfx" data-start="0" data-duration="25" data-track-index="7" src="assets/sfx.wav" data-volume="1"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Deterministic: no Math.random()/Date.now() anywhere -- every value
+      // below is a fixed constant (including particle placement), so the
+      // render is identical every run. Scene timings are keyed off the
+      // ACTUAL synthesized VO clip durations (hyperframes tts JSON output),
+      // not estimates.
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ---- timing constants (must match generate-audio.mjs exactly) ----
+      const OPEN_SETTLE = 1.8;
+      const REVEAL_VO = 2.5, REVEAL_DUR = 1.365;
+      const T1 = REVEAL_VO + REVEAL_DUR + 0.435; // 4.3 -- benefit 1 begins
+      const B1_VO = T1, B1_DUR = 3.755;
+      const T2 = B1_VO + B1_DUR + 0.545; // 8.6 -- benefit 2 begins
+      const B2_VO = T2, B2_DUR = 3.691;
+      const T3 = B2_VO + B2_DUR + 0.509; // 12.8 -- benefit 3 begins
+      const B3_VO = T3, B3_DUR = 3.072;
+      const T4 = B3_VO + B3_DUR + 0.728; // 16.6 -- CTA begins
+      const CTA_VO = T4, CTA_DUR = 3.157;
+      const HOLD_END = 23.8;
+      const TOTAL = 25.0;
+
+      gsap.set("#bg", { opacity: 1 });
+      gsap.set("#wordmarkWrap", { opacity: 0, scale: 0.8, filter: "blur(18px)" });
+      gsap.set("#tagline", { opacity: 0 });
+      gsap.set("#brandMark", { opacity: 0 });
+      gsap.set(["#scene1", "#scene2", "#scene3"], { opacity: 0 });
+      gsap.set(".mockupPane", { scale: 1 });
+      gsap.set(["#mock1 .chip"], { opacity: 0, scale: 0.4 });
+      gsap.set("#mock1 .lines path", { opacity: 0 });
+      gsap.set("#mock2 .variant", { opacity: 0, y: 16 });
+      gsap.set("#mock3 .bar", { scaleY: 0 });
+      gsap.set(".cardPane", { opacity: 0, x: -30 });
+      gsap.set("#ctaScene", { opacity: 0 });
+      gsap.set("#ctaWordmark", { opacity: 0, y: 20 });
+      gsap.set("#ctaTagline", { opacity: 0 });
+      gsap.set("#ctaButton", { opacity: 0, scale: 0.9 });
+      gsap.set("#blackout", { opacity: 0 });
+
+      // (1) cold open -- wordmark focus-pulls into view
+      tl.to("#wordmarkWrap", { opacity: 1, scale: 1, filter: "blur(0px)", duration: OPEN_SETTLE, ease: "power2.out" }, 0.3);
+      tl.to("#tagline", { opacity: 1, duration: 0.8, ease: "power2.out" }, REVEAL_VO);
+
+      // (2) wordmark hands off to the small persistent corner brand mark
+      tl.to("#wordmarkWrap", { opacity: 0, scale: 0.7, duration: 0.5, ease: "power2.in" }, T1 - 0.5);
+      tl.to("#brandMark", { opacity: 0.9, duration: 0.5, ease: "power2.out" }, T1 - 0.3);
+
+      // ---- particles: continuous, deterministic, throughout the whole runtime ----
+      const PARTICLE_COUNT = 18;
+      const GOLDEN_PCT = 61.803398875;
+      const particlesEl = document.querySelector("#particles");
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const size = 3 + (i % 4) * 2;
+        const xPct = (i * GOLDEN_PCT) % 100;
+        const startBottomPct = 4 + (i % 6) * 14;
+        const duration = 6 + (i % 7) * 1.3;
+        const delay = (i * 0.6) % 6;
+        const peakOpacity = 0.16 + (i % 3) * 0.08;
+        const el = document.createElement("div");
+        el.className = "particle";
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.left = `${xPct}%`;
+        el.style.bottom = `${startBottomPct}%`;
+        particlesEl.appendChild(el);
+        gsap.set(el, { y: 0, opacity: 0 });
+        for (let cycle = 0; cycle < 4; cycle++) {
+          const cycleStart = delay + cycle * duration;
+          if (cycleStart > TOTAL) break;
+          tl.to(el, { opacity: peakOpacity, duration: duration * 0.15, ease: "sine.out" }, cycleStart);
+          tl.to(el, { y: -420, duration, ease: "none" }, cycleStart);
+          tl.to(el, { opacity: 0, duration: duration * 0.25, ease: "sine.in" }, cycleStart + duration * 0.75);
+        }
+      }
+
+      // (3) benefit scene 1 -- source card + fanning platform chips
+      tl.to("#scene1", { opacity: 1, duration: 0.5, ease: "power2.out" }, T1);
+      tl.to("#scene1 .cardPane", { opacity: 1, x: 0, duration: 0.7, ease: "power2.out" }, T1 + 0.1);
+      tl.to("#scene1 .mockupPane", { scale: 1.06, duration: B1_DUR, ease: "sine.inOut" }, T1);
+      ["a", "b", "c", "d"].forEach((_, i) => {
+        const at = T1 + 0.6 + i * 0.3;
+        tl.to(`#mock1 .lines path:nth-child(${i + 1})`, { opacity: 0.55, duration: 0.3, ease: "power1.out" }, at);
+        tl.to(`#mock1 .chip${i + 1}`, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, at + 0.2);
+      });
+      tl.to("#scene1", { opacity: 0, duration: 0.4, ease: "power2.in" }, T2 - 0.45);
+      tl.set("#scene1", { visibility: "hidden" }, T2 - 0.05);
+
+      // (4) benefit scene 2 -- scanning card + variant chips
+      tl.to("#scene2", { opacity: 1, duration: 0.5, ease: "power2.out" }, T2);
+      tl.to("#scene2 .cardPane", { opacity: 1, x: 0, duration: 0.7, ease: "power2.out" }, T2 + 0.1);
+      tl.to("#scene2 .mockupPane", { scale: 1.06, duration: B2_DUR, ease: "sine.inOut" }, T2);
+      tl.fromTo("#mock2 .scanBar", { x: -120 }, { x: 620, duration: 1.4, ease: "power1.inOut", repeat: 1, repeatDelay: 0.3 }, T2 + 0.3);
+      tl.to("#mock2 .variant.v1", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, T2 + 1.3);
+      tl.to("#mock2 .variant.v2", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, T2 + 1.55);
+      tl.to("#mock2 .variant.v3", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, T2 + 1.8);
+      tl.to("#scene2", { opacity: 0, duration: 0.4, ease: "power2.in" }, T3 - 0.45);
+      tl.set("#scene2", { visibility: "hidden" }, T3 - 0.05);
+
+      // (5) benefit scene 3 -- rising bars (growth motif)
+      tl.to("#scene3", { opacity: 1, duration: 0.5, ease: "power2.out" }, T3);
+      tl.to("#scene3 .cardPane", { opacity: 1, x: 0, duration: 0.7, ease: "power2.out" }, T3 + 0.1);
+      tl.to("#scene3 .mockupPane", { scale: 1.06, duration: B3_DUR, ease: "sine.inOut" }, T3);
+      [0, 1, 2, 3].forEach((i) => {
+        tl.to(`#mock3 .bar:nth-child(${i + 1})`, { scaleY: 1, duration: 0.6, ease: "power2.out" }, T3 + 0.3 + i * 0.15);
+      });
+      tl.to("#scene3", { opacity: 0, duration: 0.4, ease: "power2.in" }, T4 - 0.6);
+      tl.set("#scene3", { visibility: "hidden" }, T4 - 0.2);
+
+      // (6) CTA -- wordmark returns, tagline, button assembles with a
+      // continuous pulse so the closing hold never sits idle
+      tl.to("#ctaScene", { opacity: 1, duration: 0.6, ease: "power2.out" }, T4);
+      tl.to("#ctaWordmark", { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, T4 + 0.1);
+      tl.to("#ctaTagline", { opacity: 0.85, duration: 0.6, ease: "power2.out" }, T4 + 0.6);
+      tl.to("#ctaButton", { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, CTA_VO + CTA_DUR - 0.5);
+      tl.to("#ctaButton", {
+        boxShadow: "0 0 46px rgba(0,229,160,0.55)",
+        duration: 1.1,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: 3,
+      }, CTA_VO + CTA_DUR - 0.1);
+
+      // (7) fade to black -- ends fully black exactly at the composition's end (25.0s)
+      tl.to("#blackout", { opacity: 1, duration: TOTAL - HOLD_END, ease: "power1.in" }, HOLD_END);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
