@@ -102,10 +102,25 @@
         letter-spacing: -0.01em;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
+        transform-style: preserve-3d;
       }
 
+      /* Each glyph is an extruded solid: a grid-stacked deck of identical
+         character layers, each pushed back along Z, so it has real depth —
+         not just a flat plane — and shows a shaded side face on rotation. */
       .glyph {
-        display: inline-block;
+        position: relative;
+        display: grid;
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+
+      .glyph-layer {
+        grid-area: 1 / 1;
+        white-space: nowrap;
+      }
+
+      .glyph-layer.face {
         background: linear-gradient(
           180deg,
           var(--lemon-top) 0%,
@@ -117,7 +132,6 @@
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
-        will-change: transform, filter;
       }
 
       .glyph[data-glyph="dollar"] {
@@ -201,13 +215,53 @@
         b: { x: 1180, y: -720, rot: -20 }, // from top-right diagonal
       };
 
+      // ---- Build real extruded depth for each glyph: a deck of identical
+      // character layers stacked along Z (grid-area 1/1 so they perfectly
+      // overlap in X/Y), darkening from the bright front face to a near-black
+      // back — a true solid with length, width, AND depth, not a flat plane.
+      const DEPTH_LAYERS = 22;
+      const DEPTH_STEP = 2.1; // px between layers → ~44px total extrusion
+      const SIDE_FRONT = [22, 190, 220]; // cyan, just behind the face
+      const SIDE_BACK = [2, 9, 11]; // near-black, the deepest layer
+      const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+
+      for (const key in glyphEls) {
+        const el = glyphEls[key];
+        const ch = el.textContent;
+        el.textContent = "";
+        // back-most first, front-most (the gradient face) appended last so
+        // DOM paint order and Z order agree.
+        for (let i = DEPTH_LAYERS - 1; i >= 0; i--) {
+          const layer = document.createElement("span");
+          layer.className = "glyph-layer" + (i === 0 ? " face" : "");
+          layer.textContent = ch;
+          layer.style.transform = "translateZ(" + -i * DEPTH_STEP + "px)";
+          if (i > 0) {
+            const t = (i - 1) / (DEPTH_LAYERS - 2);
+            const r = lerp(SIDE_FRONT[0], SIDE_BACK[0], t);
+            const g = lerp(SIDE_FRONT[1], SIDE_BACK[1], t);
+            const b = lerp(SIDE_FRONT[2], SIDE_BACK[2], t);
+            layer.style.color = "rgb(" + r + "," + g + "," + b + ")";
+            // Shaded extrusion side, not standalone readable copy — the face
+            // layer (i === 0) is the actual text the contrast audit should judge.
+            layer.setAttribute("data-layout-ignore", "");
+          }
+          el.appendChild(layer);
+        }
+      }
+
       gsap.set(Object.values(glyphEls), { opacity: 0 });
       for (const key in entries) {
         const e = entries[key];
         gsap.set(glyphEls[key], { x: e.x, y: e.y, rotation: e.rot, filter: "blur(20px)" });
       }
       gsap.set("#rotator", { rotationY: 0, transformPerspective: 1900 });
-      gsap.set(".glyphs", { filter: "brightness(1) drop-shadow(0 0 0 rgba(255,209,102,0))" });
+      // The golden-glow filter lives on .perspective-wrap — OUTSIDE the
+      // preserve-3d chain. A CSS filter forces the element it's applied to
+      // (and everything inside it) to flatten for compositing, which would
+      // collapse the Z-extrusion; applying it one level above #rotator lets
+      // the 3D scene render first, then glows the flattened 2D result.
+      gsap.set(".perspective-wrap", { filter: "brightness(1) drop-shadow(0 0 0 rgba(255,209,102,0))" });
 
       const IMPACT = 0.98;
 
@@ -219,6 +273,10 @@
         tl.set(el, { opacity: 1 }, 0);
         tl.to(el, { x: 0, y: 0, rotation: 0, duration: IMPACT, ease: "power3.out" }, 0);
         tl.to(el, { filter: "blur(0px)", duration: IMPACT * 0.82, ease: "power1.in" }, 0);
+        // Fully drop the filter (not just blur(0px)) once it resolves — any
+        // non-"none" filter on a glyph would keep flattening its own Z-stacked
+        // depth layers for the rest of the timeline, including the 3D turn.
+        tl.set(el, { clearProps: "filter" }, IMPACT * 0.82);
       }
 
       // ---- Phase 2: IMPACT — flash, shockwave rings, camera shake, punch scale
@@ -245,7 +303,7 @@
 
       // golden glow ignites on impact and holds
       tl.to(
-        ".glyphs",
+        ".perspective-wrap",
         {
           filter:
             "brightness(1.06) drop-shadow(0 0 14px rgba(255,209,102,0.85)) drop-shadow(0 0 46px rgba(255,209,102,0.55)) drop-shadow(0 14px 30px rgba(0,0,0,0.6))",
@@ -277,7 +335,7 @@
             const facing = Math.abs(Math.cos(rad));
             const brightness = 0.68 + 0.38 * facing;
             const glow = 0.45 + 0.45 * facing;
-            gsap.set(".glyphs", {
+            gsap.set(".perspective-wrap", {
               filter: `brightness(${brightness.toFixed(3)}) drop-shadow(0 0 ${(10 + 14 * facing).toFixed(1)}px rgba(255,209,102,${(0.5 * glow).toFixed(3)})) drop-shadow(0 0 ${(30 + 30 * facing).toFixed(1)}px rgba(255,209,102,${(0.5 * glow).toFixed(3)})) drop-shadow(0 14px 30px rgba(0,0,0,0.6))`,
             });
             gsap.set("#sheen", {
@@ -293,7 +351,7 @@
       tl.to("#rotator", { rotationY: 364, duration: 0.16, ease: "sine.out", overwrite: "auto" }, ROT_END - 0.02);
       tl.to("#rotator", { rotationY: 360, duration: 0.34, ease: "sine.inOut", overwrite: "auto" }, ROT_END + 0.14);
       tl.to(
-        ".glyphs",
+        ".perspective-wrap",
         {
           filter:
             "brightness(1.06) drop-shadow(0 0 14px rgba(255,209,102,0.85)) drop-shadow(0 0 46px rgba(255,209,102,0.55)) drop-shadow(0 14px 30px rgba(0,0,0,0.6))",
@@ -308,7 +366,7 @@
       // ---- Phase 5: final hold with a slow ambient glow breathe
       const FINAL_START = ROT_END + 0.5;
       tl.to(
-        ".glyphs",
+        ".perspective-wrap",
         {
           filter:
             "brightness(1.14) drop-shadow(0 0 20px rgba(255,209,102,1)) drop-shadow(0 0 62px rgba(255,209,102,0.75)) drop-shadow(0 14px 30px rgba(0,0,0,0.6))",
@@ -318,7 +376,7 @@
         FINAL_START,
       );
       tl.to(
-        ".glyphs",
+        ".perspective-wrap",
         {
           filter:
             "brightness(1.04) drop-shadow(0 0 12px rgba(255,209,102,0.7)) drop-shadow(0 0 42px rgba(255,209,102,0.5)) drop-shadow(0 14px 30px rgba(0,0,0,0.6))",
