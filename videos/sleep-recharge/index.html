@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Sleep Recharge — The Nightly Battery</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --night-deep: #060a1a;
+        --night: #0c1330;
+        --night-hi: #182253;
+        --charge-cold: #4fb8ff;
+        --charge-mid: #8b7bff;
+        --charge-warm: #ffb84f;
+        --charge-hot: #ffd76a;
+        --ink: #eaf0ff;
+        --dim: #5a6690;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--night-deep);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        color: var(--ink);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 38%, var(--night-hi) 0%, var(--night) 46%, var(--night-deep) 100%);
+      }
+
+      .stars {
+        position: absolute;
+        inset: 0;
+      }
+
+      .star {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #ffffff;
+        opacity: 0;
+        box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.6);
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 75% at 50% 46%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.55) 100%);
+        pointer-events: none;
+      }
+
+      #title {
+        position: absolute;
+        top: 92px;
+        left: 0;
+        width: 1920px;
+        text-align: center;
+        font-size: 42px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--ink);
+        opacity: 0;
+        text-shadow: 0 0 24px rgba(120, 160, 255, 0.5);
+      }
+
+      #battery-wrap {
+        position: absolute;
+        left: 960px;
+        top: 150px;
+        width: 320px;
+        height: 620px;
+        opacity: 0;
+      }
+
+      #battery-wrap svg {
+        overflow: visible;
+      }
+
+      .fill-glow {
+        filter: drop-shadow(0 0 26px rgba(140, 170, 255, 0.55));
+      }
+
+      #pct {
+        position: absolute;
+        left: 960px;
+        top: 800px;
+        width: 400px;
+        transform: translate(-50%, 0);
+        text-align: center;
+        font-size: 76px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        opacity: 0;
+        text-shadow: 0 0 30px rgba(255, 200, 120, 0.0);
+      }
+
+      .icon-row {
+        position: absolute;
+        top: 900px;
+        left: 0;
+        width: 1920px;
+        height: 180px;
+      }
+
+      .icon-chip {
+        position: absolute;
+        top: 0;
+        width: 220px;
+        text-align: center;
+        transform: translate(-50%, 0) scale(0.82);
+        opacity: 0.22;
+        filter: grayscale(1);
+      }
+
+      .icon-chip svg {
+        overflow: visible;
+      }
+
+      .icon-chip .label {
+        margin-top: 14px;
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        color: var(--dim);
+      }
+
+      .icon-chip.brain { left: 660px; }
+      .icon-chip.heart { left: 960px; }
+      .icon-chip.shield { left: 1260px; }
+
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(46% 40% at 50% 32%, rgba(255, 226, 170, 0.65) 0%, rgba(255, 190, 120, 0.18) 42%, rgba(255, 200, 120, 0) 72%);
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="8" data-track-index="1">
+        <div class="stars" id="stars" data-layout-allow-overflow></div>
+        <div class="vignette"></div>
+
+        <div id="title">SLEEP RECHARGES YOUR BODY</div>
+
+        <div id="battery-wrap" data-layout-allow-overflow>
+          <svg width="320" height="620" viewBox="0 0 320 620">
+            <defs>
+              <clipPath id="cellClip">
+                <rect x="26" y="70" width="268" height="524" rx="26" />
+              </clipPath>
+              <linearGradient id="chargeGradient" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stop-color="var(--charge-cold)" />
+                <stop offset="45%" stop-color="var(--charge-mid)" />
+                <stop offset="80%" stop-color="var(--charge-warm)" />
+                <stop offset="100%" stop-color="var(--charge-hot)" />
+              </linearGradient>
+            </defs>
+
+            <!-- battery interior (dark, empty) -->
+            <rect x="26" y="70" width="268" height="524" rx="26" fill="#0a1024" />
+
+            <!-- charge fill, clipped to interior, grows bottom-up -->
+            <g clip-path="url(#cellClip)">
+              <rect id="fillRect" class="fill-glow" x="26" y="594" width="268" height="0" fill="url(#chargeGradient)" />
+            </g>
+
+            <!-- crescent moon glyph sitting inside the cell -->
+            <g id="moonGlyph" transform="translate(160,190)" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="6" stroke-linejoin="round">
+              <path d="M 34,-64 A 66,66 0 1 0 34,64 A 50,50 0 1 1 34,-64 Z" fill="rgba(10,16,36,0.001)" />
+            </g>
+
+            <!-- outer battery casing -->
+            <rect x="10" y="54" width="300" height="556" rx="42" fill="none" stroke="var(--ink)" stroke-width="10" />
+            <rect x="120" y="0" width="80" height="40" rx="14" fill="none" stroke="var(--ink)" stroke-width="10" />
+          </svg>
+        </div>
+
+        <div id="pct">0%</div>
+
+        <div class="icon-row">
+          <div class="icon-chip brain" id="chip-brain">
+            <svg width="88" height="88" viewBox="-44 -44 88 88">
+              <g fill="var(--charge-mid)">
+                <circle cx="-16" cy="-6" r="15" />
+                <circle cx="0" cy="-16" r="17" />
+                <circle cx="16" cy="-6" r="15" />
+                <circle cx="-9" cy="10" r="14" />
+                <circle cx="9" cy="10" r="14" />
+                <rect x="-20" y="-6" width="40" height="20" rx="10" />
+              </g>
+              <line x1="0" y1="-18" x2="0" y2="18" stroke="#0a1024" stroke-width="3" stroke-dasharray="4 5" stroke-linecap="round" />
+            </svg>
+            <div class="label">BRAIN</div>
+          </div>
+
+          <div class="icon-chip heart" id="chip-heart">
+            <svg width="88" height="88" viewBox="-54 -44 108 108">
+              <g fill="var(--charge-warm)">
+                <circle cx="-25" cy="-8" r="28" />
+                <circle cx="25" cy="-8" r="28" />
+                <path d="M -52,6 L 0,64 L 52,6 Z" />
+              </g>
+            </svg>
+            <div class="label">HEART</div>
+          </div>
+
+          <div class="icon-chip shield" id="chip-shield">
+            <svg width="88" height="88" viewBox="-40 -44 80 96">
+              <path d="M0,-40 L34,-24 L34,10 C34,42 16,60 0,72 C-16,60 -34,42 -34,10 L-34,-24 Z" fill="var(--charge-hot)" />
+              <path d="M -14,10 L -4,22 L 16,-6" fill="none" stroke="#0a1024" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <div class="label">IMMUNITY</div>
+          </div>
+        </div>
+
+        <div id="flash"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic star field ----
+      const starsEl = document.querySelector("#stars");
+      const STAR_POS = [
+        [140, 120], [320, 260], [220, 480], [90, 700], [260, 860],
+        [1780, 140], [1600, 300], [1740, 520], [1560, 720], [1820, 900],
+        [500, 160], [1420, 180], [620, 940], [1300, 960], [960, 940],
+      ];
+      STAR_POS.forEach(([x, y], i) => {
+        const s = document.createElement("div");
+        s.className = "star";
+        s.style.left = x + "px";
+        s.style.top = y + "px";
+        s.style.transform = `scale(${0.6 + (i % 3) * 0.25})`;
+        starsEl.appendChild(s);
+      });
+      const starEls = starsEl.querySelectorAll(".star");
+
+      const CELL_TOP = 70;
+      const CELL_BOTTOM = 594;
+      const CELL_HEIGHT = CELL_BOTTOM - CELL_TOP; // 524
+      const FILL_START = 0.5;
+      const FILL_DURATION = 6.0;
+      const FILL_END = FILL_START + FILL_DURATION; // 6.5
+
+      const fillRect = document.querySelector("#fillRect");
+      const pctEl = document.querySelector("#pct");
+      const chips = {
+        brain: document.querySelector("#chip-brain"),
+        heart: document.querySelector("#chip-heart"),
+        shield: document.querySelector("#chip-shield"),
+      };
+
+      const charge = { v: 0 };
+      function renderCharge(v) {
+        const h = (v / 100) * CELL_HEIGHT;
+        fillRect.setAttribute("height", h.toFixed(2));
+        fillRect.setAttribute("y", (CELL_BOTTOM - h).toFixed(2));
+        pctEl.textContent = Math.round(v) + "%";
+      }
+      renderCharge(0);
+
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#title", { y: -20 });
+      gsap.set("#battery-wrap", { xPercent: -50, scale: 0.9 });
+      gsap.set("#pct", { textShadow: "0 0 30px rgba(255,200,120,0)" });
+
+      // stars twinkle in, staggered
+      tl.to(starEls, { opacity: 1, duration: 0.6, stagger: 0.05, ease: "power1.out" }, 0);
+
+      // title + battery frame arrive
+      tl.to("#title", { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.1);
+      tl.to("#battery-wrap", { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.6)" }, 0.15);
+      tl.to("#pct", { opacity: 1, duration: 0.4, ease: "power1.out" }, 0.35);
+
+      // charge rises 0 -> 100 across the cell
+      tl.to(
+        charge,
+        {
+          v: 100,
+          duration: FILL_DURATION,
+          ease: "power1.inOut",
+          onUpdate: () => renderCharge(charge.v),
+        },
+        FILL_START,
+      );
+
+      // benefit chips light up as the charge passes their threshold
+      const THRESH = { brain: 0.3, heart: 0.62, shield: 0.95 };
+      function chipTime(t) {
+        return FILL_START + FILL_DURATION * t;
+      }
+      ["brain", "heart", "shield"].forEach((key) => {
+        const t = chipTime(THRESH[key]);
+        tl.set(chips[key], { filter: "grayscale(0)" }, t);
+        tl.to(chips[key], { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, t);
+        tl.to(chips[key].querySelector(".label"), { color: "#eaf0ff", duration: 0.35, ease: "power1.out" }, t);
+      });
+
+      // full-charge flash + settle
+      tl.to("#flash", { opacity: 1, duration: 0.08, ease: "none" }, FILL_END);
+      tl.to("#flash", { opacity: 0, duration: 0.55, ease: "power2.out" }, FILL_END + 0.08);
+      tl.to("#battery-wrap", { scale: 1.045, duration: 0.1, ease: "power2.out" }, FILL_END);
+      tl.to("#battery-wrap", { scale: 1, duration: 0.4, ease: "power2.out" }, FILL_END + 0.1);
+      tl.to(
+        "#pct",
+        { textShadow: "0 0 30px rgba(255,210,130,0.85)", duration: 0.3, ease: "power1.out" },
+        FILL_END,
+      );
+
+      // title crossfades into the closing tagline, holds to the end
+      const titleEl = document.querySelector("#title");
+      tl.to(titleEl, {
+        opacity: 0,
+        y: -14,
+        duration: 0.3,
+        ease: "power1.in",
+        onComplete: () => {
+          titleEl.textContent = "WAKE UP RECHARGED";
+        },
+      }, FILL_END + 0.2);
+      tl.fromTo(
+        titleEl,
+        { y: 14 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" },
+        FILL_END + 0.5,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
