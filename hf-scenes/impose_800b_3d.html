@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Impose — $800,000,000,000 (TRUE 3D, oxblood verdict stamp)</title>
+    <!--
+      Real Three.js + GSAP: $800,000,000,000 IMPOSED onto the frame like a verdict --
+      no count-up, one decisive impact at ms0. z2 = the numeral itself: bone extruded
+      metal, tabular/extra-condensed, single studio key light, contact shadow, with an
+      oxblood emissive underglow bleeding from behind its strokes (edge-only halo, not
+      a flat fill). z1 = dust/debris blown outward from the impact point. z3 = a
+      graphite structural plane with a faint fractured texture. z4 = a static
+      near-black/graphite atmosphere. The whole frame absorbs the impact with one
+      1.05->1.00 container settle; one 80ms chromatic-split shimmer fires once at
+      ms700. 1920x1080 @24fps, 3.5s, silent (SFX/music land later in Resolve).
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/loaders/FontLoader.js": "./vendor/three/FontLoader.js",
+          "three/addons/geometries/TextGeometry.js": "./vendor/three/TextGeometry.js"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+
+      /* CAMERA LAYER -- the whole frame absorbs the impact as one unit */
+      #camWrap {
+        position: absolute; inset: 0; width: 1920px; height: 1080px;
+        transform-origin: 50% 50%; will-change: transform;
+      }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(64% 60% at 50% 50%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.76) 100%);
+        opacity: 0.92; /* breathes slightly -- see JS */
+      }
+      #grain {
+        position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        opacity: 0.08; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+        background-size: 320px 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="3.5"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.5" data-track-index="1">
+        <div id="camWrap" data-layout-allow-overflow>
+          <canvas id="scene" width="1920" height="1080"></canvas>
+        </div>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </section>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      // deterministic PRNG -- no Math.random / Date.now anywhere in this file
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+      // explicit cubic-bezier evaluator -- registered as a NAMED ease (not a bare
+      // default), used for the single impact-settle curve every "camera absorb"
+      // layer shares. Shape: a fast, hard deceleration into rest.
+      function cubicBezier(x1, y1, x2, y2) {
+        const A = (a1, a2) => 1 - 3 * a2 + 3 * a1;
+        const B = (a1, a2) => 3 * a2 - 6 * a1;
+        const C = (a1) => 3 * a1;
+        const sampleX = (t) => ((A(x1, x2) * t + B(x1, x2)) * t + C(x1)) * t;
+        const sampleY = (t) => ((A(y1, y2) * t + B(y1, y2)) * t + C(y1)) * t;
+        const sampleDX = (t) => (3 * A(x1, x2) * t + 2 * B(x1, x2)) * t + C(x1);
+        return function (x) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+          let t = x;
+          for (let i = 0; i < 6; i++) {
+            const dx = sampleDX(t);
+            if (Math.abs(dx) < 1e-6) break;
+            t -= (sampleX(t) - x) / dx;
+          }
+          return sampleY(clamp01(t));
+        };
+      }
+      gsap.registerEase("impactSettle", cubicBezier(0.16, 1.0, 0.3, 1.0));
+
+      const W = 1920, H = 1080, FPS = 24, DURATION = 3.5;
+      const canvas = document.getElementById("scene");
+      const camWrap = document.getElementById("camWrap");
+      const vignetteEl = document.getElementById("vignette");
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x0b0b0c, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      // A narrow, long-lens FOV keeps a 16-glyph horizontal string from keystoning
+      // at the frame edges (a wide FOV visibly warps the outer "O"s into ellipses) --
+      // flat, frontal, "imposed like a verdict", not a wide-angle dynamic angle.
+      const FOV = 13;
+      const CAM_Z = 13.1;
+      const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
+      camera.position.set(0, 0, CAM_Z);
+      camera.lookAt(0, 0, 0);
+
+      // world-space frustum width at a given z depth (camera fixed, looking at z=0)
+      function frustumWidthAt(z) {
+        const dist = CAM_Z - z;
+        const vFov = (FOV * Math.PI) / 180;
+        const height = 2 * Math.tan(vFov / 2) * dist;
+        return height * (W / H);
+      }
+
+      // ---- environment (dim graphite/warm mix) for the metal's sheen ----
+      function makeEnvTexture() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0.0, "#8f8781"); g.addColorStop(0.4, "#4a3532"); g.addColorStop(0.66, "#1c0f0d"); g.addColorStop(1.0, "#0a0706");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+        const s = ctx.createLinearGradient(150, 0, 370, 0);
+        s.addColorStop(0, "rgba(230,220,210,0)"); s.addColorStop(0.5, "rgba(230,220,210,0.85)"); s.addColorStop(1, "rgba(230,220,210,0)");
+        ctx.fillStyle = s; ctx.fillRect(150, 0, 220, 165);
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnvTexture()).texture;
+
+      // ---- single studio key light + low fill (ONE hard key, per spec) ----
+      const key = new THREE.SpotLight(0xfff2e6, 13.0, 0, 0.55, 0.3, 0.0);
+      key.position.set(-3.4, 4.6, 4.2);
+      key.target.position.set(0, 0, 0);
+      key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.bias = -0.0015;
+      scene.add(key, key.target);
+      const fill = new THREE.DirectionalLight(0x8892a0, 0.28);
+      fill.position.set(3.6, 1.0, 2.6);
+      scene.add(fill);
+      scene.add(new THREE.HemisphereLight(0x24211f, 0x050505, 0.22));
+
+      // ---- z4 (far): static near-black atmosphere, graphite vignette gradient ----
+      (function farAtmosphere() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 288;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#0b0b0c"; ctx.fillRect(0, 0, 512, 288);
+        const g = ctx.createRadialGradient(256, 144, 30, 256, 144, 320);
+        g.addColorStop(0, "#242427"); g.addColorStop(0.45, "#131315"); g.addColorStop(1, "#08080a");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 288);
+        ctx.filter = "blur(10px)"; ctx.drawImage(c, 0, 0); ctx.filter = "none"; // shallow-DoF bake
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const zDepth = -8.6;
+        const w = frustumWidthAt(zDepth) * 1.1, h = w * (H / W);
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: true }));
+        m.position.set(0, 0, zDepth);
+        scene.add(m); // static -- never touched again
+      })();
+
+      // ---- z3 (back): graphite structural plane, faint cracked/fractured texture ----
+      const z3Plane = new THREE.Mesh();
+      (function structuralPlane() {
+        const c = document.createElement("canvas"); c.width = 768; c.height = 432;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 432);
+        g.addColorStop(0, "#333338"); g.addColorStop(0.55, "#232327"); g.addColorStop(1, "#131315");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 768, 432);
+        // deterministic faint fracture lines -- something breaking under the weight
+        const r = mulberry32(0x800ba1);
+        for (const pass of [
+          { stroke: "rgba(12,12,14,0.5)", off: 0 },
+          { stroke: "rgba(72,70,66,0.16)", off: -1 },
+        ]) {
+          ctx.strokeStyle = pass.stroke;
+          ctx.lineWidth = 1.4;
+          const r2 = mulberry32(0x800ba1);
+          for (let i = 0; i < 5; i++) {
+            let x = 384 + (r2() - 0.5) * 260, y = 216 + (r2() - 0.5) * 160;
+            ctx.beginPath(); ctx.moveTo(x + pass.off, y + pass.off);
+            const segs = 4 + Math.floor(r2() * 3);
+            for (let s = 0; s < segs; s++) {
+              x += (r2() - 0.5) * 130; y += (r2() - 0.5) * 90;
+              ctx.lineTo(x + pass.off, y + pass.off);
+            }
+            ctx.stroke();
+          }
+        }
+        ctx.filter = "blur(4px)"; ctx.drawImage(c, 0, 0); ctx.filter = "none"; // shallow-DoF bake
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const zDepth = -3.4;
+        const w = frustumWidthAt(zDepth) * 1.05, h = w * (H / W);
+        z3Plane.geometry = new THREE.PlaneGeometry(w, h);
+        z3Plane.material = new THREE.MeshBasicMaterial({ map: t, toneMapped: true });
+        z3Plane.position.set(0, 0, zDepth);
+        scene.add(z3Plane);
+      })();
+
+      // ---- haze (z-front of z3): faint graphite atmosphere that only breathes ----
+      const hazePlane = (function haze() {
+        const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+        g.addColorStop(0, "rgba(90,90,96,0.55)"); g.addColorStop(0.5, "rgba(70,70,76,0.22)"); g.addColorStop(1, "rgba(70,70,76,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const zDepth = -1.6;
+        const w = frustumWidthAt(zDepth) * 1.2, h = w * (H / W);
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, h),
+          new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }),
+        );
+        m.position.set(0, 0, zDepth);
+        scene.add(m);
+        return m;
+      })();
+
+      // ---- z1 (front): dust/debris, thrown outward from the impact point ----
+      const DUST_N = 140;
+      const DUST_Z = 2.1;
+      const dustBase = new Float32Array(DUST_N * 3);
+      const dustDir = new Float32Array(DUST_N * 3);
+      const dustPos = new Float32Array(DUST_N * 3);
+      (function seedDust() {
+        const r = mulberry32(0x8b0d057);
+        const spreadW = frustumWidthAt(DUST_Z);
+        for (let i = 0; i < DUST_N; i++) {
+          const ang = i * 2.399963; // golden-angle deterministic spread
+          const rad = 0.06 + (i % 7) * 0.012;
+          const x = Math.cos(ang) * rad * spreadW * 0.5;
+          const y = Math.sin(ang) * rad * spreadW * 0.32 + (r() - 0.5) * 0.15;
+          const z = DUST_Z + (r() - 0.5) * 1.4;
+          dustBase[i * 3] = x; dustBase[i * 3 + 1] = y; dustBase[i * 3 + 2] = z;
+          dustDir[i * 3] = Math.cos(ang); dustDir[i * 3 + 1] = Math.sin(ang) * 0.6; dustDir[i * 3 + 2] = (r() - 0.5) * 0.3;
+          dustPos[i * 3] = x; dustPos[i * 3 + 1] = y; dustPos[i * 3 + 2] = z;
+        }
+      })();
+      const dustGeo = new THREE.BufferGeometry();
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      const dustGroup = new THREE.Group();
+      dustGroup.add(
+        new THREE.Points(
+          dustGeo,
+          new THREE.PointsMaterial({ color: 0xc9c2b4, size: 0.026, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false }),
+        ),
+      );
+      scene.add(dustGroup);
+      const DUST_AMPLITUDE_WORLD = 0.08 * frustumWidthAt(DUST_Z); // 8% of frame width, at dust depth
+
+      // ---- z2 (mid): the numeral -- tabular, extra-condensed, bone metal ----
+      const TEXT = "$800,000,000,000";
+      const SIZE = 0.62;      // cap size
+      const DEPTH = 0.24;     // real extrusion depth
+      const CONDENSE_X = 0.6; // static bake -- heavy extra-condensed proportion, never animated
+      const TRACK = 0.028;
+
+      const numeralGroup = new THREE.Group();
+      const fringeR = new THREE.Group(); // chromatic-split fringe, warm channel
+      const fringeC = new THREE.Group(); // chromatic-split fringe, cool channel
+      scene.add(numeralGroup, fringeR, fringeC);
+
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xede8dd, metalness: 0.42, roughness: 0.34, envMapIntensity: 1.6 });
+      const fringeRMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      const fringeCMat = new THREE.MeshBasicMaterial({ color: 0x2fd0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+
+      // shadow-catcher ground plane -- a real contact shadow under the numeral
+      const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(24, 14), new THREE.ShadowMaterial({ opacity: 0.55 }));
+      shadowCatcher.rotation.x = -Math.PI / 2;
+      shadowCatcher.position.y = -0.62;
+      shadowCatcher.receiveShadow = true;
+      scene.add(shadowCatcher);
+
+      const underglowLayers = []; // oxblood emissive edge-bleed, built after fit-scale is known
+
+      // ---- state driving the whole shot ----
+      const S = {
+        camScale: 1.05,
+        z1ScaleExtra: 1.08, // dust group extra internal settle (parallax rate 1.6x)
+        z3ScaleExtra: 1.03, // structural-plane extra internal settle (parallax rate 0.6x)
+        burstT: 0,          // 0..1 dust outward burst, power4.out, settles by 900ms
+        driftT: 0,           // continuous ambient dust drift -- exempt from the final freeze
+        hazeOpacity: 0,
+        underglow: 0,        // 0..1, mapped through each halo layer's own target opacity
+        fringe: 0,           // 0..1 chromatic-split intensity, single 80ms pulse
+        vignetteBreath: 0,
+      };
+
+      let mainTL = null; // set once the timeline is built; read for the ambient dust wiggle
+
+      function updateDust() {
+        const burst = 1 - Math.pow(1 - clamp01(S.burstT), 4); // power4.out
+        const now = mainTL ? mainTL.time() : 0;
+        // continuing ambient drift: a bounded, deterministic, per-particle sine
+        // wiggle (never a linear ramp) -- reads as organic float, never resolves
+        for (let i = 0; i < DUST_N; i++) {
+          const bx = dustBase[i * 3], by = dustBase[i * 3 + 1], bz = dustBase[i * 3 + 2];
+          const dx = dustDir[i * 3], dy = dustDir[i * 3 + 1], dz = dustDir[i * 3 + 2];
+          const phase = i * 0.61803399; // deterministic per-particle phase offset
+          const wiggle = S.driftT * 0.035 * Math.sin(now * 1.65 + phase);
+          dustPos[i * 3] = bx + dx * DUST_AMPLITUDE_WORLD * burst + dx * wiggle;
+          dustPos[i * 3 + 1] = by + dy * DUST_AMPLITUDE_WORLD * burst + dy * wiggle;
+          dustPos[i * 3 + 2] = bz + dz * DUST_AMPLITUDE_WORLD * 0.4 * burst;
+        }
+        dustGeo.attributes.position.needsUpdate = true;
+      }
+
+      let fringeOffsetWorld = 0.012; // tiny, edge-only chromatic displacement (set after fit-scale)
+
+      function apply() {
+        // CAMERA LAYER -- the whole frame absorbs the impact, one decelerating settle
+        camWrap.style.transform = `scale(${S.camScale})`;
+
+        // DEPTH PARALLAX -- differential internal settle layered on the shared camera punch
+        // (z1 1.6x / z2 rides the camera layer at 1.0x / z3 0.6x / z4 static)
+        dustGroup.scale.setScalar(S.z1ScaleExtra);
+        z3Plane.scale.setScalar(S.z3ScaleExtra);
+
+        updateDust();
+
+        hazePlane.material.opacity = S.hazeOpacity;
+
+        underglowLayers.forEach((L) => {
+          const op = L.targetOpacity * S.underglow;
+          L.group.children.forEach((m) => { m.material.opacity = op; });
+        });
+
+        fringeRMat.opacity = S.fringe * 0.85;
+        fringeCMat.opacity = S.fringe * 0.85;
+        fringeR.position.x = fringeOffsetWorld * S.fringe;
+        fringeC.position.x = -fringeOffsetWorld * S.fringe;
+
+        // vignette breathes gently (opacity only), settles well before the final freeze
+        vignetteEl.style.opacity = String(0.92 + 0.06 * S.vignetteBreath);
+
+        renderer.render(scene, camera);
+      }
+
+      new FontLoader().load("vendor/three/helvetiker_bold.typeface.json", (font) => {
+        // measure a uniform tabular advance from the widest digit (post-condense),
+        // and a single shared baseline/depth center from a digit reference -- so
+        // punctuation (which has a much smaller own bounding box, e.g. the comma's
+        // descender-only mark) sits on the SAME baseline instead of being centered
+        // on its own tiny box and floating mid-height like a stray apostrophe.
+        let digitAdvance = 0;
+        let refCenterY = 0, refCenterZ = 0;
+        for (const d of "0123456789") {
+          const g = new TextGeometry(d, { font, size: SIZE, height: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 2 });
+          g.computeBoundingBox();
+          const bb = g.boundingBox;
+          const w = (bb.max.x - bb.min.x) * CONDENSE_X;
+          if (w > digitAdvance) digitAdvance = w;
+          if (d === "0") {
+            refCenterY = (bb.max.y + bb.min.y) / 2;
+            refCenterZ = (bb.max.z + bb.min.z) / 2;
+          }
+          g.dispose();
+        }
+
+        const chars = TEXT.split("");
+        const metrics = [];
+        let cursor = 0;
+        for (const ch of chars) {
+          const geo = new TextGeometry(ch, { font, size: SIZE, height: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelOffset: 0, bevelSegments: 2 });
+          geo.computeBoundingBox();
+          const rawW = geo.boundingBox.max.x - geo.boundingBox.min.x || SIZE * 0.2;
+          geo.scale(CONDENSE_X, 1, 1); // static extra-condense bake -- never animated
+          geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          geo.translate(-bb.min.x, -refCenterY, -refCenterZ); // shared baseline, not a per-glyph re-center
+          geo.computeVertexNormals();
+          const isDigit = ch >= "0" && ch <= "9";
+          const adv = (isDigit ? digitAdvance : rawW * CONDENSE_X) + TRACK;
+          metrics.push({ geo, x: cursor });
+          cursor += adv;
+        }
+        const total = cursor - TRACK;
+        const shift = -total / 2;
+
+        metrics.forEach((m) => {
+          const x = m.x + shift;
+
+          const face = new THREE.Mesh(m.geo, metalMat);
+          face.position.x = x;
+          face.castShadow = true;
+          face.receiveShadow = true;
+          numeralGroup.add(face);
+
+          const fr = new THREE.Mesh(m.geo, fringeRMat);
+          fr.position.x = x;
+          fringeR.add(fr);
+
+          const fc = new THREE.Mesh(m.geo, fringeCMat);
+          fc.position.x = x;
+          fringeC.add(fc);
+        });
+
+        // ---- fit the (already condensed) numeral to exactly 70% of frame width ----
+        const box = new THREE.Box3().setFromObject(numeralGroup);
+        const rawWidth = box.max.x - box.min.x;
+        const targetWorldWidth = 0.7 * frustumWidthAt(0);
+        const fitScale = targetWorldWidth / rawWidth;
+        numeralGroup.scale.setScalar(fitScale);
+        fringeR.scale.setScalar(fitScale);
+        fringeC.scale.setScalar(fitScale);
+        fringeOffsetWorld = (4 / W) * frustumWidthAt(0); // ~4px displacement, in world units at z=0
+
+        // ---- oxblood underglow: concentric silhouette halo bleeding from the edges ----
+        const HALO_LAYERS = [
+          { s: 1.025, o: 0.55 },
+          { s: 1.06, o: 0.34 },
+          { s: 1.11, o: 0.2 },
+          { s: 1.18, o: 0.1 },
+        ];
+        HALO_LAYERS.forEach((h) => {
+          const grp = new THREE.Group();
+          metrics.forEach((m) => {
+            const mesh = new THREE.Mesh(
+              m.geo,
+              new THREE.MeshBasicMaterial({ color: 0x7a160e, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+            );
+            mesh.position.x = m.x + shift;
+            grp.add(mesh);
+          });
+          grp.scale.setScalar(fitScale * h.s);
+          grp.position.z = -0.05;
+          scene.add(grp);
+          underglowLayers.push({ group: grp, targetOpacity: h.o });
+        });
+
+        buildTimeline();
+      });
+
+      function buildTimeline() {
+        const tl = gsap.timeline({ paused: true });
+        mainTL = tl;
+
+        // CAMERA LAYER: 0-900ms container scale 1.05 -> 1.00, single decelerating settle
+        // (as if the camera itself absorbed the impact) -- ONE trajectory, not staged
+        tl.to(S, { camScale: 1.0, z1ScaleExtra: 1.0, z3ScaleExtra: 1.0, duration: 0.9, ease: "impactSettle" }, 0);
+
+        // ENVIRONMENTAL REACTION: 0-260ms dust burst outward, power4.out, settling by
+        // 900ms into a low continuing ambient wiggle (see updateDust's sine term --
+        // never a linear ramp) that runs the whole shot, exempt from the final freeze
+        tl.to(S, { burstT: 1, duration: 0.26, ease: "power4.out" }, 0);
+        tl.to(S, { driftT: 1, duration: 0.9, ease: "impactSettle" }, 0);
+
+        // COLOUR/LIGHT LAYER: oxblood underglow blooms 0->full on the numeral's edges,
+        // 0-500ms, expo.out -- the accent IGNITES on the land, synced to the impact frame
+        tl.to(S, { underglow: 1, duration: 0.5, ease: "expo.out" }, 0);
+
+        // ATMOSPHERIC LAYER: 200-2200ms faint graphite haze breathes, sine.inOut,
+        // max 15% opacity -- continuous, doesn't resolve, just breathes; holds at rest
+        // after 2.2s (well before the final freeze window)
+        tl.to(S, { hazeOpacity: 0.15, duration: 0.5, ease: "sine.inOut" }, 0.2);
+        tl.to(S, { hazeOpacity: 0.05, duration: 0.5, ease: "sine.inOut" }, 0.7);
+        tl.to(S, { hazeOpacity: 0.15, duration: 0.5, ease: "sine.inOut" }, 1.2);
+        tl.to(S, { hazeOpacity: 0.06, duration: 0.5, ease: "sine.inOut" }, 1.7);
+        tl.to(S, { vignetteBreath: 1, duration: 1.0, ease: "sine.inOut" }, 0.2);
+        tl.to(S, { vignetteBreath: 0.3, duration: 1.0, ease: "sine.inOut" }, 1.2);
+
+        // ONE shader moment: an 80ms chromatic-split shimmer at ms700, then settle --
+        // used ONCE, not looped
+        tl.to(S, { fringe: 1, duration: 0.04, ease: "power2.out" }, 0.66);
+        tl.to(S, { fringe: 0, duration: 0.04, ease: "power2.in" }, 0.7);
+
+        // Nothing above still moves after ~2.2s except the continuous dust drift, so
+        // the final 8 frames (8/24 = 0.333s, from t~=3.167s) land static by
+        // construction -- no explicit "hold" tween needed here.
+
+        tl.eventCallback("onUpdate", apply);
+        apply();
+        window.__timelines["main-video"] = tl;
+      }
+    </script>
+  </body>
+</html>
