@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Empire — Cinematic Title Sequence</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      @font-face {
+        font-family: "Cinzel";
+        src: url("assets/fonts/Cinzel-Variable.ttf") format("truetype-variations");
+        font-weight: 400 900;
+        font-style: normal;
+      }
+
+      :root {
+        --near-black: #0a0a0c;
+        --warm-black: #12100c;
+        --gold-hi: #f5dfa0;
+        --gold: #d4af37;
+        --gold-deep: #8b6914;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--near-black);
+      }
+
+      body {
+        font-family: "Cinzel", serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--near-black);
+      }
+
+      /* dark, moody backdrop — fades in from black at the open */
+      #bg {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(120% 90% at 50% 38%, var(--warm-black) 0%, #0d0b09 45%, var(--near-black) 100%);
+      }
+
+      /* light leaks — warm streaks entering from the frame edges, screen-blended */
+      .leak {
+        position: absolute;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+      #leak1 {
+        left: -320px;
+        top: -260px;
+        width: 1500px;
+        height: 820px;
+        transform: rotate(-22deg);
+        background: radial-gradient(
+          ellipse 50% 50% at 30% 40%,
+          rgba(255, 205, 130, 0.95) 0%,
+          rgba(255, 170, 90, 0.5) 35%,
+          rgba(255, 170, 90, 0) 68%
+        );
+      }
+      #leak2 {
+        right: -280px;
+        bottom: -300px;
+        width: 1300px;
+        height: 760px;
+        transform: rotate(16deg);
+        background: radial-gradient(
+          ellipse 50% 50% at 65% 55%,
+          rgba(255, 140, 80, 0.9) 0%,
+          rgba(212, 120, 60, 0.4) 38%,
+          rgba(212, 120, 60, 0) 70%
+        );
+      }
+
+      #grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+        background-size: 68px 68px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.82) 100%);
+        pointer-events: none;
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      #stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #titleWrap {
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
+      }
+
+      #title {
+        font-family: "Cinzel", serif;
+        font-weight: 800;
+        font-size: 168px;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        text-align: center;
+        padding-right: 0.14em; /* compensate trailing letter-spacing so centering reads true */
+        background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 45%, var(--gold-deep) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(1px 1px 0 #8b6914) drop-shadow(2px 2px 0 #6b4f10) drop-shadow(3px 4px 10px rgba(0, 0, 0, 0.55))
+          drop-shadow(0 0 22px rgba(212, 175, 55, 0.4)) drop-shadow(0 0 48px rgba(212, 175, 55, 0.2));
+      }
+
+      #rule {
+        margin-top: 34px;
+        width: 340px;
+        height: 3px;
+        transform-origin: 50% 50%;
+        background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-hi) 50%, var(--gold) 80%, transparent);
+      }
+
+      /* fade-to-black outro */
+      #blackout {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="15"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="15" data-track-index="1">
+        <div id="bg"></div>
+        <div id="leak1" class="leak" data-layout-allow-overflow></div>
+        <div id="leak2" class="leak" data-layout-allow-overflow></div>
+
+        <div id="scene">
+          <div id="stack">
+            <div id="titleWrap">
+              <div id="title" data-layout-allow-overflow data-layout-allow-occlusion>EMPIRE</div>
+            </div>
+            <div id="rule"></div>
+          </div>
+        </div>
+
+        <div id="grain" data-layout-allow-occlusion></div>
+        <div id="vignette" data-layout-allow-occlusion></div>
+        <div id="blackout" data-layout-allow-occlusion></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Deterministic: no Math.random()/Date.now() anywhere — every value
+      // below is a fixed constant, so the render is identical every run.
+
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#bg", { opacity: 0 });
+      gsap.set(["#leak1", "#leak2"], { opacity: 0 });
+      gsap.set("#titleWrap", { opacity: 0, scale: 0.72 });
+      gsap.set("#rule", { scaleX: 0 });
+      gsap.set("#blackout", { opacity: 0 });
+
+      // (1) the world fades in out of black
+      tl.to("#bg", { opacity: 1, duration: 0.7, ease: "power1.out" }, 0);
+
+      // (2) light leaks sweep in across the dark backdrop
+      tl.to("#leak1", { opacity: 0.55, duration: 1.9, ease: "power2.out" }, 0.3);
+      tl.to("#leak2", { opacity: 0.4, duration: 2.0, ease: "power2.out" }, 0.6);
+
+      // (3) the dramatic, decelerating zoom-in on the title
+      tl.to("#titleWrap", { opacity: 1, scale: 1, duration: 7.1, ease: "power3.out" }, 0.9);
+
+      // (4) a thin gold rule draws in as the title settles
+      tl.to("#rule", { scaleX: 1, duration: 1.1, ease: "power2.out" }, 7.0);
+
+      // (5) the leaks breathe gently through the hold (fixed, finite oscillation)
+      tl.to("#leak1", { opacity: 0.32, duration: 2.5, ease: "sine.inOut", yoyo: true, repeat: 2 }, 2.5);
+      tl.to("#leak2", { opacity: 0.22, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: 2 }, 3.0);
+
+      // (6) fade to black outro — ends fully black exactly at the composition's end (15.0s)
+      tl.to("#blackout", { opacity: 1, duration: 4.0, ease: "power1.in" }, 11.0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
