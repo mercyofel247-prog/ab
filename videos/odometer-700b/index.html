@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Odometer Reveal — $700B</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0e1013;
+        --bg-2: #161a1f;
+        --ink: #f2f2f0;
+        --ink-dim: #7c828c;
+        --accent: #5b9fe6;
+        --accent-hi: #a7d4ff;
+        --roller: rgba(255, 255, 255, 0.03);
+        --cell: 290px;
+        --digit-w: 168px;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      body {
+        font-family: "Helvetica Neue", "Inter", system-ui, -apple-system, Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(60% 55% at 50% 46%, var(--bg-2) 0%, var(--bg) 70%);
+      }
+
+      /* ---- Background parallax layer: soft-focus drifting light particles --- */
+      .camera-bg {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      .particles {
+        position: absolute;
+        inset: 0;
+        filter: blur(3px);
+      }
+
+      .particle {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(196, 222, 255, 0.9) 0%, rgba(196, 222, 255, 0) 72%);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      /* ---- Foreground: eyebrow + odometer, sharp, camera push-in target ---- */
+      .camera-fg {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 46%;
+      }
+
+      .accent-light {
+        position: absolute;
+        top: 46%;
+        left: 50%;
+        width: 1400px;
+        height: 1000px;
+        margin: -500px 0 0 -700px;
+        background: radial-gradient(closest-side, rgba(91, 159, 230, 0.55) 0%, rgba(91, 159, 230, 0) 72%);
+        opacity: 0.12;
+        pointer-events: none;
+      }
+
+      .center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 44px;
+      }
+
+      .eyebrow {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.46em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+      }
+
+      .odometer-wrap {
+        position: relative;
+        display: inline-block;
+      }
+
+      /* The odometer readout: $ [wheel][wheel][wheel] B */
+      .odometer {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--ink);
+        font-weight: 800;
+        font-size: 250px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .affix {
+        display: inline-flex;
+        align-items: center;
+        height: var(--cell);
+        letter-spacing: -0.01em;
+      }
+
+      #dollar {
+        margin-right: 4px;
+      }
+
+      #suffix {
+        margin-left: 10px;
+      }
+
+      /* A single digit roller — a window onto a vertically sliding strip */
+      .wheel {
+        position: relative;
+        width: var(--digit-w);
+        height: var(--cell);
+        overflow: hidden;
+        background: var(--roller);
+        border-radius: 12px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.55);
+        /* Cylinder illusion: digits fade as they roll past the top/bottom lip */
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+        mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+      }
+
+      .strip {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        will-change: transform, filter;
+      }
+
+      .strip .cell {
+        height: var(--cell);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Faint cylinder-shading overlay to seat the digits into the roller */
+      .wheel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.28) 0%,
+          rgba(0, 0, 0, 0) 26%,
+          rgba(0, 0, 0, 0) 74%,
+          rgba(0, 0, 0, 0.28) 100%
+        );
+      }
+
+      /* Brushed-metal streaks across the whole readout, for the sweep to catch */
+      .brushed {
+        position: absolute;
+        inset: -6% -3%;
+        background: repeating-linear-gradient(
+          100deg,
+          rgba(255, 255, 255, 0.05) 0px,
+          rgba(255, 255, 255, 0.05) 1px,
+          rgba(255, 255, 255, 0) 2px,
+          rgba(255, 255, 255, 0) 6px
+        );
+        mix-blend-mode: overlay;
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      /* The diagonal light sweep — crosses once, timed to the digit lock */
+      .sweep {
+        position: absolute;
+        top: -60%;
+        bottom: -60%;
+        width: 300px;
+        left: 0;
+        background: linear-gradient(
+          100deg,
+          rgba(196, 222, 255, 0) 0%,
+          rgba(196, 222, 255, 0.16) 42%,
+          rgba(170, 212, 255, 0.85) 50%,
+          rgba(196, 222, 255, 0.16) 58%,
+          rgba(196, 222, 255, 0) 100%
+        );
+        transform: skewX(-18deg);
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* ---- Film grain — fixed noise, unaffected by the camera push ---- */
+      .grain {
+        position: absolute;
+        inset: 0;
+        background: #808080;
+        filter: url(#grainFilter);
+        opacity: 0.045;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+      }
+
+      .fadeout {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <filter id="grainFilter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="11" stitchTiles="stitch" result="noise" />
+        <feColorMatrix in="noise" type="saturate" values="0" />
+      </filter>
+    </svg>
+
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6.2" data-track-index="1">
+        <div id="cameraBg" class="camera-bg" data-layout-allow-overflow>
+          <div id="particles" class="particles"></div>
+        </div>
+
+        <div id="cameraFg" class="camera-fg" data-layout-allow-overflow>
+          <div class="accent-light" id="accentLight"></div>
+
+          <div class="center">
+            <div id="eyebrow" class="eyebrow">Total Value</div>
+
+            <div class="odometer-wrap">
+              <div id="odometer" class="odometer">
+                <span id="dollar" class="affix">$</span>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="hund" data-layout-allow-overflow></div>
+                </div>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="tens" data-layout-allow-overflow></div>
+                </div>
+                <div class="wheel" data-layout-allow-overflow>
+                  <div class="strip" data-wheel="ones" data-layout-allow-overflow></div>
+                </div>
+                <span id="suffix" class="affix">B</span>
+              </div>
+              <div class="brushed" data-layout-ignore></div>
+              <div id="sweep" class="sweep" data-layout-ignore></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grain"></div>
+        <div id="fadeout" class="fadeout"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- Geometry (must match the --cell CSS custom property) --------------
+      const CELL = 290;
+
+      // ---- Build the digit strips: 11 cells [0,1,…,9,0] ----------------------
+      document.querySelectorAll(".strip").forEach((strip) => {
+        for (let i = 0; i <= 10; i++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.textContent = String(i % 10);
+          cell.setAttribute("data-layout-allow-overlap", "");
+          strip.appendChild(cell);
+        }
+      });
+
+      const strips = {
+        hund: document.querySelector('.strip[data-wheel="hund"]'),
+        tens: document.querySelector('.strip[data-wheel="tens"]'),
+        ones: document.querySelector('.strip[data-wheel="ones"]'),
+      };
+
+      // ---- Timeline landmarks --------------------------------------------------
+      const START = 0.2;
+      // Cascade right-to-left: ones (fastest, most turns) locks first, hund last.
+      const wheels = [
+        { key: "ones", el: strips.ones, final: 200, start: START, dur: 3.9, ease: gsap.parseEase("expo.out") },
+        { key: "tens", el: strips.tens, final: 20, start: START, dur: 4.25, ease: gsap.parseEase("expo.out") },
+        { key: "hund", el: strips.hund, final: 7, start: START, dur: 4.6, ease: gsap.parseEase("expo.out") },
+      ];
+      const LOCK_TIME = START + 4.6; // 4.8s — all three digits show the correct value
+      const WOBBLE_PEAK = 0.09;
+      const WOBBLE_TOTAL = 0.34;
+      const SETTLE_TIME = LOCK_TIME + WOBBLE_TOTAL; // 5.14s — spring recoil fully at rest
+      const B_FADE_DUR = 0.32;
+      const FADE_START = 5.68;
+      const FADE_DUR = 0.32; // → full black at 6.0s
+
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+      // Continuous roll position of a wheel at absolute timeline time t.
+      function posAt(w, t) {
+        const local = clamp01((t - w.start) / w.dur);
+        return w.final * w.ease(local);
+      }
+
+      // A slight overshoot-and-snap-back "spring" bump, additive to posAt, that
+      // plays once each wheel's main roll finishes — decoupled from roll speed
+      // so the fast spin (expo.out) and the mechanical settle read as two
+      // distinct, deliberate motions instead of one blended curve.
+      const nudgeEase = gsap.parseEase("power2.out");
+      const springEase = gsap.parseEase("back.out(1.25)");
+      function wobbleAt(w, t) {
+        const dt = t - (w.start + w.dur);
+        if (dt <= 0 || dt >= WOBBLE_TOTAL) return 0;
+        const OVER_AMOUNT = 0.22; // fraction of a cell — a slight peek, not a full digit
+        if (dt <= WOBBLE_PEAK) {
+          return OVER_AMOUNT * nudgeEase(dt / WOBBLE_PEAK);
+        }
+        const localB = (dt - WOBBLE_PEAK) / (WOBBLE_TOTAL - WOBBLE_PEAK);
+        return OVER_AMOUNT * (1 - springEase(localB));
+      }
+
+      const MAX_BLUR = 20; // px — cap so fast digits stay legible as directional blur
+      const BLUR_K = 0.06;
+      const EPS = 1 / 120;
+
+      function combinedPos(w, t) {
+        return posAt(w, t) + wobbleAt(w, t);
+      }
+
+      function renderWheels(t) {
+        for (const w of wheels) {
+          const pos = combinedPos(w, t);
+          const y = -((pos % 10) * CELL);
+          const vel = Math.abs(combinedPos(w, t + EPS) - pos) / EPS;
+          const blur = Math.min(MAX_BLUR, vel * BLUR_K);
+          w.el.style.transform = "translate3d(0," + y + "px,0)";
+          w.el.style.filter = blur > 0.15 ? "blur(" + blur.toFixed(2) + "px)" : "none";
+        }
+      }
+
+      // ---- Gold accent light: grows with the count, peaks exactly at lock -----
+      const odometerEl = document.querySelector("#odometer");
+      const accentLightEl = document.querySelector("#accentLight");
+      function renderGlow(t) {
+        const raw = clamp01((t - START) / (LOCK_TIME - START));
+        const p = Math.pow(raw, 1.25); // subtle acceleration into the peak
+        odometerEl.style.filter =
+          "drop-shadow(0 18px 40px rgba(0,0,0,0.55)) drop-shadow(0 0 " +
+          (6 + 22 * p).toFixed(1) +
+          "px rgba(91,159,230," +
+          (0.15 + 0.5 * p).toFixed(3) +
+          "))";
+        accentLightEl.style.opacity = (0.12 + 0.46 * p).toFixed(3);
+      }
+
+      function renderAt(t) {
+        renderWheels(t);
+        renderGlow(t);
+      }
+
+      renderAt(0);
+
+      // ---- Particles: deterministic positions/sizes, slow upward drift -------
+      const particlesLayer = document.querySelector("#particles");
+      const PARTICLE_COUNT = 26;
+      const particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "particle";
+        const x = (i * 173 + 37) % 1920;
+        const y = (i * 97 + 610) % 1080;
+        const size = 4 + (i % 4) * 2.1;
+        const baseOpacity = 0.24 + (i % 5) * 0.05;
+        const drift = 70 + (i % 6) * 14;
+        const delay = (i % 7) * 0.05;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        particlesLayer.appendChild(el);
+        particles.push({ el, baseOpacity, drift, delay });
+      }
+
+      // ---- Timeline ----------------------------------------------------------
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#odometer", { opacity: 0, scale: 0.96 });
+      gsap.set("#eyebrow", { opacity: 0, y: 10 });
+      gsap.set("#suffix", { opacity: 0, y: 26, scale: 0.7 });
+      gsap.set("#sweep", { x: -600, opacity: 0 });
+      gsap.set(["#cameraFg", "#cameraBg"], { scale: 1 });
+
+      // Reveal the odometer.
+      tl.to("#odometer", { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 0);
+      tl.to("#eyebrow", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.15);
+
+      // Particles: fade in, then a slow independent upward drift — deliberately
+      // much slower than the foreground counter's own motion.
+      for (const p of particles) {
+        tl.to(p.el, { opacity: p.baseOpacity, duration: 0.6, ease: "power1.out" }, p.delay);
+        tl.to(p.el, { y: -p.drift, duration: 6, ease: "none" }, 0);
+      }
+
+      // Driver: a linear proxy whose value maps 1:1 to timeline time, so every
+      // wheel position + glow value is a pure, seek-safe function of time.
+      const driver = { t: 0 };
+      tl.to(driver, { t: 6, duration: 6, ease: "none", onUpdate: () => renderAt(driver.t) }, 0);
+
+      // Camera push-in: two depths of the same push, foreground moves more than
+      // background — real dolly-in parallax — both settling to a dead stop
+      // exactly when the final digit's spring snap completes.
+      tl.to("#cameraFg", { scale: 1.055, duration: SETTLE_TIME, ease: "power2.out" }, 0);
+      tl.to("#cameraBg", { scale: 1.018, duration: SETTLE_TIME, ease: "power2.out" }, 0);
+
+      // Diagonal light sweep — crosses once, centered on the moment the digits
+      // read the correct value, catching a specular glint on the brushed metal.
+      tl.to("#sweep", { opacity: 1, duration: 0.1, ease: "power1.out" }, LOCK_TIME - 0.24);
+      tl.to("#sweep", { x: 2300, duration: 0.52, ease: "power1.inOut" }, LOCK_TIME - 0.24);
+      tl.to("#sweep", { opacity: 0, duration: 0.16, ease: "power2.out" }, LOCK_TIME + 0.1);
+
+      // The "B" suffix fades in only once the spring has fully settled.
+      tl.to("#suffix", { opacity: 1, y: 0, scale: 1, duration: B_FADE_DUR, ease: "power2.out" }, SETTLE_TIME);
+
+      // Final beat: brief stillness on the locked number, then fade to black —
+      // the camera has already come to a complete stop by SETTLE_TIME.
+      tl.to("#fadeout", { opacity: 1, duration: FADE_DUR, ease: "power1.in" }, FADE_START);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
