@@ -295,8 +295,10 @@
       scene.add(numeralGroup, fringeR, fringeC);
 
       const metalMat = new THREE.MeshStandardMaterial({ color: 0xede8dd, metalness: 0.42, roughness: 0.34, envMapIntensity: 1.6 });
-      const fringeRMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-      const fringeCMat = new THREE.MeshBasicMaterial({ color: 0x2fd0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      // chromatic-split fringe -- kept strictly inside the 4-tone palette (no cyan/blue):
+      // one channel in the same dark blood-red as the underglow, the other in bone/cream
+      const fringeRMat = new THREE.MeshBasicMaterial({ color: 0x9c1f11, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      const fringeCMat = new THREE.MeshBasicMaterial({ color: 0xede8dd, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
 
       // shadow-catcher ground plane -- a real contact shadow under the numeral
       const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(24, 14), new THREE.ShadowMaterial({ opacity: 0.55 }));
@@ -314,7 +316,7 @@
         z3ScaleExtra: 1.03, // structural-plane extra internal settle (parallax rate 0.6x)
         burstT: 0,          // 0..1 dust outward burst, power4.out, settles by 900ms
         driftT: 0,           // continuous ambient dust drift -- exempt from the final freeze
-        hazeOpacity: 0,
+        hazeIn: 0, // envelope only -- the haze's own drift is a continuous sine of time, see apply()
         underglow: 0,        // 0..1, mapped through each halo layer's own target opacity
         fringe: 0,           // 0..1 chromatic-split intensity, single 80ms pulse
         vignetteBreath: 0,
@@ -352,7 +354,11 @@
 
         updateDust();
 
-        hazePlane.material.opacity = S.hazeOpacity;
+        // haze drifts the WHOLE shot, including the final still second -- a slow,
+        // bounded, continuous sine of time (never a tween that resolves and stops)
+        const now = mainTL ? mainTL.time() : 0;
+        const hazeBreath = 0.1 + 0.05 * Math.sin(now * 1.15 + 2.0);
+        hazePlane.material.opacity = S.hazeIn * hazeBreath;
 
         underglowLayers.forEach((L) => {
           const op = L.targetOpacity * S.underglow;
@@ -483,13 +489,10 @@
         // 0-500ms, expo.out -- the accent IGNITES on the land, synced to the impact frame
         tl.to(S, { underglow: 1, duration: 0.5, ease: "expo.out" }, 0);
 
-        // ATMOSPHERIC LAYER: 200-2200ms faint graphite haze breathes, sine.inOut,
-        // max 15% opacity -- continuous, doesn't resolve, just breathes; holds at rest
-        // after 2.2s (well before the final freeze window)
-        tl.to(S, { hazeOpacity: 0.15, duration: 0.5, ease: "sine.inOut" }, 0.2);
-        tl.to(S, { hazeOpacity: 0.05, duration: 0.5, ease: "sine.inOut" }, 0.7);
-        tl.to(S, { hazeOpacity: 0.15, duration: 0.5, ease: "sine.inOut" }, 1.2);
-        tl.to(S, { hazeOpacity: 0.06, duration: 0.5, ease: "sine.inOut" }, 1.7);
+        // ATMOSPHERIC LAYER: the dark-grey haze fades in early, then drifts on a slow
+        // continuous sine (see apply()) for the FULL shot -- including the final still
+        // second, where it's the only thing (besides dust) still quietly moving
+        tl.to(S, { hazeIn: 1, duration: 0.7, ease: "sine.inOut" }, 0.2);
         tl.to(S, { vignetteBreath: 1, duration: 1.0, ease: "sine.inOut" }, 0.2);
         tl.to(S, { vignetteBreath: 0.3, duration: 1.0, ease: "sine.inOut" }, 1.2);
 
