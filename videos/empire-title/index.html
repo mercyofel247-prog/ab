@@ -167,6 +167,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
       }
 
       #titleWrap {
@@ -317,6 +319,7 @@
       gsap.set("#tagline", { opacity: 0 });
       gsap.set("#blackout", { opacity: 0 });
       gsap.set("#goldLine", { x: -700, opacity: 0 });
+      gsap.set("#stack", { scale: 1, opacity: 1 });
 
       // (1) the world fades in out of black, then drifts in a slow parallax
       // push through the whole shot (independent of the title's own zoom)
@@ -396,8 +399,20 @@
       tl.to("#leak1", { opacity: 0.32, duration: 2.5, ease: "sine.inOut", yoyo: true, repeat: 2 }, 2.5);
       tl.to("#leak2", { opacity: 0.22, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: 2 }, 3.0);
 
-      // (11) fade to black outro — ends fully black exactly at the composition's end (15.0s)
-      tl.to("#blackout", { opacity: 1, duration: 4.0, ease: "power1.in" }, 11.0);
+      // (11) after a short hold, the whole assembly (title + rule + tagline,
+      // as one unit) zooms and zooms and zooms -- three escalating,
+      // accelerating bursts of scale rather than one smooth push -- until
+      // it's rushed far past camera size and clipped out of the scene by
+      // #stage's own overflow:hidden, fading the last stretch so it
+      // doesn't hard-cut while still huge on screen.
+      tl.to("#stack", { scale: 1.6, duration: 0.9, ease: "power1.in" }, 7.6);
+      tl.to("#stack", { scale: 3.4, duration: 0.65, ease: "power2.in" }, 8.5);
+      tl.to("#stack", { scale: 13, duration: 0.55, ease: "power3.in" }, 9.15);
+      tl.to("#stack", { opacity: 0, duration: 0.55, ease: "power2.in" }, 9.15);
+
+      // (12) fade to black outro — overlaps the tail of the zoom-out for a
+      // clean handoff, ending fully black exactly at the composition's end (15.0s)
+      tl.to("#blackout", { opacity: 1, duration: 5.8, ease: "power1.in" }, 9.2);
 
       window.__timelines["main"] = tl;
     </script>
