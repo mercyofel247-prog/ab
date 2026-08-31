@@ -310,8 +310,8 @@
       gsap.set("#bg", { opacity: 0, scale: 1 });
       gsap.set(["#leak1", "#leak2"], { opacity: 0, x: 0, y: 0 });
       gsap.set("#titleWrap", { opacity: 0, scale: 0.96, filter: "blur(16px)" });
-      gsap.set(".grp-a", { x: -1400 }); // "EMP" starts off-frame left
-      gsap.set(".grp-b", { x: 1400 }); // "IRE" starts off-frame right
+      gsap.set(".grp-a", { y: -800 }); // "EMP" starts off-frame top
+      gsap.set(".grp-b", { x: 1400 }); // "IRE" starts off-frame side (right)
       gsap.set("#shine .grp", { backgroundPosition: "-160% 0" });
       gsap.set("#rule", { scaleX: 0 });
       gsap.set("#tagline", { opacity: 0 });
@@ -371,12 +371,13 @@
       // focus as the letter groups slide together
       tl.to("#titleWrap", { opacity: 1, filter: "blur(0px)", duration: 2.0, ease: "power2.out" }, 0.9);
 
-      // (6) EMPIRE arrives as two letter-groups sliding in from opposite
-      // edges and meeting at center, then a quick scale snap on impact --
-      // replaces a single uniform zoom with a sharper, more choreographed
+      // (6) EMPIRE arrives as two letter-groups sliding in from different
+      // directions and meeting at center -- "EMP" drops in from the top,
+      // "IRE" slides in from the side -- then a quick scale snap on impact.
+      // Replaces a single uniform zoom with a sharper, more choreographed
       // reveal (both the gold face and its shimmer overlay move together,
       // since .grp-a/.grp-b select both copies at once).
-      tl.to(".grp-a", { x: 0, duration: 2.6, ease: "power3.out" }, 0.9);
+      tl.to(".grp-a", { y: 0, duration: 2.6, ease: "power3.out" }, 0.9);
       tl.to(".grp-b", { x: 0, duration: 2.6, ease: "power3.out" }, 0.9);
       tl.to("#titleWrap", { scale: 1.035, duration: 0.15, ease: "power2.out" }, 3.5);
       tl.to("#titleWrap", { scale: 1, duration: 0.45, ease: "power2.out" }, 3.65);
