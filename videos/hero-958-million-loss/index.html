@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Hero — −$958,000,000 (Path 1 / Mode B / Part 0.5 Track-2)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      @font-face {
+        font-family: "Anton";
+        src: url("assets/fonts/Anton-Regular.ttf") format("truetype");
+        font-weight: 400;
+        font-style: normal;
+      }
+
+      :root {
+        /* Part 0.5 / Track-2 theme, plus the alarm end added for this card */
+        --near-black: #0b0b0c;
+        --oxblood: #7a160e;
+        --alarm: #d62e1f;
+        --bone: #ede8dd;
+        --bone-hi: #f7f3ea;
+        --charcoal: #3a3a3e;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--near-black);
+      }
+
+      body {
+        font-family: "Anton", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--near-black);
+      }
+
+      /* a low, static oxblood ambient wash behind the number -- never
+         animated itself; only the rim/bloom layered on top of it moves */
+      #ambient {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1500px;
+        height: 900px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(122, 22, 14, 0.22) 0%, rgba(122, 22, 14, 0.08) 45%, rgba(122, 22, 14, 0) 72%);
+        pointer-events: none;
+      }
+
+      #grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+        background-size: 68px 68px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 72% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.82) 100%);
+        pointer-events: none;
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      /* the whole assembly (face + rim) rides the single permitted
+         transform: the 4% arrival settle push */
+      #stack {
+        position: relative;
+        display: grid;
+        place-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* shared row settings for the face AND every rim copy, so the rim
+         glow hugs the exact same live digit shapes -- fixed widths only,
+         never letter-spacing or width animated */
+      .numrow {
+        grid-area: 1 / 1;
+        display: inline-flex;
+        align-items: center;
+        font-family: "Anton", sans-serif;
+        font-size: 150px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .odo-prefix {
+        padding-right: 6px;
+      }
+
+      .odo-comma {
+        width: 34px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 0.08em;
+      }
+
+      /* fixed-size viewport per digit -- width/height are constants set
+         once and never animated; only the strip's translateY moves */
+      .odo-col {
+        position: relative;
+        width: 100px;
+        height: 150px;
+        overflow: hidden;
+      }
+
+      .odo-strip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        will-change: transform;
+      }
+
+      .digit {
+        height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* the real foreground face: warm-bone, extruded down-right into
+         near-black, exactly the Track-2 hero treatment */
+      #face .odo-prefix,
+      #face .odo-comma,
+      #face .digit {
+        background: linear-gradient(135deg, var(--bone-hi) 0%, var(--bone) 45%, #ded7c8 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(1px 1px 0 #ded7c8) drop-shadow(2px 2px 0 #cfc6b2) drop-shadow(3px 3px 0 #b0a48c)
+          drop-shadow(4px 4px 0 #8d8272) drop-shadow(5px 5px 0 #675f56) drop-shadow(6px 6px 0 var(--charcoal))
+          drop-shadow(7px 7px 0 #2c2c2f) drop-shadow(8px 8px 0 #1a1a1c) drop-shadow(9px 9px 0 var(--near-black));
+      }
+      #face {
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(11px 14px 26px rgba(0, 0, 0, 0.65));
+      }
+
+      /* dimensional rim: three live copies of the same odometer row --
+         tight/mid/wide -- flat-colored (never gradient) so their color and
+         the wide layer's blur can be tweened directly for the arrival
+         spike/bloom. Only #rim's opacity, the clones' color, and .wide's
+         opacity/blur are animated -- never width or letter-spacing. */
+      #rim {
+        grid-area: 1 / 1;
+        display: grid;
+        place-items: center;
+        z-index: 1;
+        opacity: 0.7;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+      #rim .clone {
+        grid-area: 1 / 1;
+      }
+      #rim .clone .odo-prefix,
+      #rim .clone .odo-comma,
+      #rim .clone .digit {
+        color: var(--oxblood);
+      }
+      #rim .clone.tight {
+        transform: translateX(3px);
+        filter: blur(2px);
+        opacity: 0.9;
+      }
+      #rim .clone.mid {
+        transform: translateX(6px);
+        filter: blur(15px);
+        opacity: 0.55;
+      }
+      #rim .clone.wide {
+        transform: translateX(11px);
+        filter: blur(36px);
+        opacity: 0.32;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="2.4"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="2.4" data-track-index="1">
+        <div id="ambient"></div>
+
+        <div id="scene">
+          <div id="stack">
+            <!-- real DOM text throughout -- every digit is a live text
+                 node, never a rasterized image, so it cannot warp or
+                 mis-render -->
+            <div id="rim" data-layout-allow-overflow data-layout-ignore>
+              <div class="clone tight numrow" id="rimTight"></div>
+              <div class="clone mid numrow" id="rimMid"></div>
+              <div class="clone wide numrow" id="rimWide"></div>
+            </div>
+            <div id="face" class="numrow" data-layout-allow-overflow data-layout-allow-occlusion></div>
+          </div>
+        </div>
+
+        <div id="grain" data-layout-allow-occlusion></div>
+        <div id="vignette" data-layout-allow-occlusion></div>
+      </section>
+
+      <audio
+        id="subboom"
+        data-start="0"
+        data-duration="2.4"
+        data-track-index="2"
+        src="assets/subboom.wav"
+        data-volume="1"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Deterministic: no Math.random()/Date.now() anywhere -- every value
+      // below is a fixed constant, so the render is identical every run.
+
+      // A literally-named ease-out-cubic (t=0..1 -> eased 0..1), used
+      // directly as the odometer roll's easing function.
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      // ---- the target value and its digit groups ----
+      const TARGET = 958000000; // magnitude of the loss; displayed as -$958,000,000
+      const DIGITS = "958000000".split("").map(Number); // [9,5,8,0,0,0,0,0,0]
+      const GROUP_SIZE = 3;
+
+      // ---- build one odometer row (prefix + digit columns + commas) ----
+      // Called once per copy (face + 3 rim clones) -- a pure, deterministic
+      // function, so every copy is pixel-identical and animates in lockstep.
+      function buildNumrow() {
+        const frag = document.createDocumentFragment();
+
+        const prefix = document.createElement("span");
+        prefix.className = "odo-prefix";
+        prefix.textContent = "−$"; // real minus sign + dollar sign, real text
+        frag.appendChild(prefix);
+
+        DIGITS.forEach((finalDigit, i) => {
+          const col = document.createElement("span");
+          col.className = "odo-col";
+
+          const strip = document.createElement("div");
+          strip.className = "odo-strip";
+          strip.dataset.col = String(i);
+
+          // two full 0-9 cycles stacked, so the roll spins through a
+          // complete revolution before landing on the target digit --
+          // genuine odometer motion, not a single-step reveal.
+          for (let k = 0; k < 20; k++) {
+            const d = document.createElement("div");
+            d.className = "digit";
+            d.textContent = String(k % 10);
+            strip.appendChild(d);
+          }
+          col.appendChild(strip);
+          frag.appendChild(col);
+
+          const isLastInGroup = (i + 1) % GROUP_SIZE === 0;
+          const isLastDigit = i === DIGITS.length - 1;
+          if (isLastInGroup && !isLastDigit) {
+            const comma = document.createElement("span");
+            comma.className = "odo-comma";
+            comma.textContent = ",";
+            frag.appendChild(comma);
+          }
+        });
+
+        return frag;
+      }
+
+      document.querySelector("#face").appendChild(buildNumrow());
+      document.querySelector("#rimTight").appendChild(buildNumrow());
+      document.querySelector("#rimMid").appendChild(buildNumrow());
+      document.querySelector("#rimWide").appendChild(buildNumrow());
+
+      // ---- timing ----
+      const ROLL_START = 0;
+      const ROLL_DUR = 1.2; // the odometer count, 0 -> -958,000,000
+      const ARRIVAL = ROLL_START + ROLL_DUR;
+      const DUR = 2.4;
+
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#stack", { scale: 1 });
+      gsap.set("#rim", { opacity: 0.7 });
+      gsap.set("#rim .clone .odo-prefix, #rim .clone .odo-comma, #rim .clone .digit", { color: "#7a160e" });
+      gsap.set("#rimWide", { opacity: 0.32, filter: "blur(36px)" });
+
+      // (1) the odometer roll -- each of the 9 digit columns (across the
+      // face and all 3 rim copies) spins from its rest position to the
+      // digit landing at index 10+finalDigit (one full revolution then the
+      // target), all on the SAME named ease-out, all finishing together at
+      // ARRIVAL. Only translateY moves -- no width, no letter-spacing.
+      DIGITS.forEach((finalDigit, i) => {
+        const strips = document.querySelectorAll('.odo-strip[data-col="' + i + '"]');
+        const landingIndex = 10 + finalDigit;
+        const targetY = -(landingIndex * 150); // 150px = one digit's height
+        tl.to(strips, { y: targetY, duration: ROLL_DUR, ease: easeOutCubic }, ROLL_START);
+      });
+
+      // (2) arrival -- the 4% settle push (the whole stack, face + rim
+      // together; the only scale channel in this scene)
+      tl.to("#stack", { scale: 1.04, duration: 0.1, ease: "power3.out" }, ARRIVAL);
+      tl.to("#stack", { scale: 1, duration: 0.35, ease: "power2.out" }, ARRIVAL + 0.1);
+
+      // (3) arrival -- rim opacity spikes once toward the alarm end, then
+      // decays back to the resting oxblood
+      tl.to("#rim", { opacity: 1, duration: 0.12, ease: "power2.out" }, ARRIVAL);
+      tl.to("#rim", { opacity: 0.7, duration: 0.5, ease: "power2.out" }, ARRIVAL + 0.12);
+      tl.to(
+        "#rim .clone .odo-prefix, #rim .clone .odo-comma, #rim .clone .digit",
+        { color: "#d62e1f", duration: 0.12, ease: "power2.out" },
+        ARRIVAL,
+      );
+      tl.to(
+        "#rim .clone .odo-prefix, #rim .clone .odo-comma, #rim .clone .digit",
+        { color: "#7a160e", duration: 0.55, ease: "power2.out" },
+        ARRIVAL + 0.12,
+      );
+
+      // (4) arrival -- the dimensional bloom: the wide rim layer (already
+      // the widest blur of the same live digits) flares brighter and wider
+      // for a moment, then settles back -- the awe lever
+      tl.to("#rimWide", { opacity: 0.7, filter: "blur(50px)", duration: 0.14, ease: "power2.out" }, ARRIVAL);
+      tl.to("#rimWide", { opacity: 0.32, filter: "blur(36px)", duration: 0.6, ease: "power2.out" }, ARRIVAL + 0.14);
+
+      // hold on the settled, cracked-open loss to the end (nothing else moves)
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
