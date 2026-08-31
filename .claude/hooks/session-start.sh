@@ -49,3 +49,14 @@ fi
 # Non-fatal: on a network hiccup the renderer still falls back to an on-demand
 # download, so a failed pre-fetch shouldn't abort the whole session.
 hyperframes browser ensure || echo "warning: hyperframes browser pre-fetch failed; the first render will download Chrome on demand"
+
+# watch skill (/watch, video Q&A) setup. ffmpeg/ffprobe/yt-dlp are already
+# ensured by the watchutube block above; this just scaffolds
+# ~/.config/watch/.env and reports readiness -- idempotent and safe to run
+# every session. Non-fatal: setup.py exits non-zero when a Whisper API key
+# is still missing (frames-only fallback is fine), so a bare run shouldn't
+# abort the rest of session start.
+WATCH_SETUP="$CLAUDE_PROJECT_DIR/.claude/skills/watch/scripts/setup.py"
+if [ -f "$WATCH_SETUP" ]; then
+  python3 "$WATCH_SETUP" || true
+fi
