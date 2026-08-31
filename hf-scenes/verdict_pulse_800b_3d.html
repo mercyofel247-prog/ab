@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Verdict Pulse — $800,000,000,000 (continuous, TRUE 3D)</title>
+    <!--
+      Real Three.js + GSAP: $800,000,000,000 stamped onto the frame like a verdict at
+      ms0 -- no count-up -- then the shot stays ALIVE: the camera keeps slowly
+      creeping in, the blood-red edge underglow keeps pulsing (not one ignite-and-hold),
+      dust keeps drifting, a thin dark-grey haze keeps breathing -- all of it
+      continuous, all driven off the SAME clamped clock, so it settles into one
+      unified still beat only in the last ~0.25s ("the very last moment"), not before.
+      Near-black background, bone numeral, blood-red glow, dark-grey haze -- no other
+      colors. 1920x1080 @24fps, 3.5s, silent (SFX/music land later in Resolve).
+    -->
+    <script src="vendor/gsap.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/loaders/FontLoader.js": "./vendor/three/FontLoader.js",
+          "three/addons/geometries/TextGeometry.js": "./vendor/three/TextGeometry.js"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0b0b0c; }
+      #scene { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 2;
+        background: radial-gradient(64% 60% at 50% 50%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.76) 100%);
+      }
+      #grain {
+        position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        opacity: 0.08; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch' seed='7'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+        background-size: 320px 320px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="3.5"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.5" data-track-index="1">
+        <canvas id="scene" width="1920" height="1080"></canvas>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </section>
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { FontLoader } from "three/addons/loaders/FontLoader.js";
+      import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+      const gsap = window.gsap;
+      window.__timelines = window.__timelines || {};
+
+      // deterministic PRNG -- no Math.random / Date.now anywhere in this file
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+      // explicit cubic-bezier evaluator -- registered as a NAMED ease (not a bare
+      // default), used for the burst-in envelopes below.
+      function cubicBezier(x1, y1, x2, y2) {
+        const A = (a1, a2) => 1 - 3 * a2 + 3 * a1;
+        const B = (a1, a2) => 3 * a2 - 6 * a1;
+        const C = (a1) => 3 * a1;
+        const sampleX = (t) => ((A(x1, x2) * t + B(x1, x2)) * t + C(x1)) * t;
+        const sampleY = (t) => ((A(y1, y2) * t + B(y1, y2)) * t + C(y1)) * t;
+        const sampleDX = (t) => (3 * A(x1, x2) * t + 2 * B(x1, x2)) * t + C(x1);
+        return function (x) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+          let t = x;
+          for (let i = 0; i < 6; i++) {
+            const dx = sampleDX(t);
+            if (Math.abs(dx) < 1e-6) break;
+            t -= (sampleX(t) - x) / dx;
+          }
+          return sampleY(clamp01(t));
+        };
+      }
+      gsap.registerEase("settleIn", cubicBezier(0.16, 1.0, 0.3, 1.0));
+
+      const W = 1920, H = 1080, FPS = 24, DURATION = 3.5;
+      // everything continuous freezes together at this single clock point, leaving
+      // "the very last moment" (DURATION - FREEZE_T = 0.25s, 6 frames) dead still
+      const FREEZE_T = 3.25;
+
+      const canvas = document.getElementById("scene");
+      const vignetteEl = document.getElementById("vignette");
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x0b0b0c, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      // A narrow, long-lens FOV keeps a 16-glyph horizontal string from keystoning
+      // at the frame edges -- flat, frontal, "imposed like a verdict".
+      const FOV = 13;
+      const CAM_Z = 13.1;
+      const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 100);
+      camera.position.set(0, 0, CAM_Z);
+      camera.lookAt(0, 0, 0);
+
+      // world-space frustum width at a given z depth (camera fixed, looking at z=0)
+      function frustumWidthAt(z) {
+        const dist = CAM_Z - z;
+        const vFov = (FOV * Math.PI) / 180;
+        const height = 2 * Math.tan(vFov / 2) * dist;
+        return height * (W / H);
+      }
+
+      // ---- environment (dim graphite/warm mix) for the metal's sheen ----
+      function makeEnvTexture() {
+        const c = document.createElement("canvas"); c.width = 512; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0.0, "#8f8781"); g.addColorStop(0.4, "#4a3532"); g.addColorStop(0.66, "#1c0f0d"); g.addColorStop(1.0, "#0a0706");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 256);
+        const s = ctx.createLinearGradient(150, 0, 370, 0);
+        s.addColorStop(0, "rgba(230,220,210,0)"); s.addColorStop(0.5, "rgba(230,220,210,0.85)"); s.addColorStop(1, "rgba(230,220,210,0)");
+        ctx.fillStyle = s; ctx.fillRect(150, 0, 220, 165);
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping; tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnvTexture()).texture;
+
+      // ---- single studio key light + low fill (ONE hard key, per spec) ----
+      const key = new THREE.SpotLight(0xfff2e6, 13.0, 0, 0.55, 0.3, 0.0);
+      key.position.set(-3.4, 4.6, 4.2);
+      key.target.position.set(0, 0, 0);
+      key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.bias = -0.0015;
+      scene.add(key, key.target);
+      const fill = new THREE.DirectionalLight(0x8892a0, 0.28);
+      fill.position.set(3.6, 1.0, 2.6);
+      scene.add(fill);
+      scene.add(new THREE.HemisphereLight(0x24211f, 0x050505, 0.22));
+
+      // ---- thin dark-grey haze, drifting/breathing the whole shot ----
+      const hazePlane = (function haze() {
+        const c = document.createElement("canvas"); c.width = 256; c.height = 256;
+        const ctx = c.getContext("2d");
+        const g = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+        g.addColorStop(0, "rgba(90,90,96,0.5)"); g.addColorStop(0.5, "rgba(70,70,76,0.2)"); g.addColorStop(1, "rgba(70,70,76,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+        const zDepth = -2.4;
+        const w = frustumWidthAt(zDepth) * 1.25, h = w * (H / W);
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, h),
+          new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }),
+        );
+        m.position.set(0, 0, zDepth);
+        scene.add(m);
+        return m;
+      })();
+
+      // ---- dust/debris: thrown outward on impact, then a continuous drift ----
+      const DUST_N = 130;
+      const DUST_Z = 2.1;
+      const dustBase = new Float32Array(DUST_N * 3);
+      const dustDir = new Float32Array(DUST_N * 3);
+      const dustPos = new Float32Array(DUST_N * 3);
+      (function seedDust() {
+        const r = mulberry32(0x8b0d057);
+        const spreadW = frustumWidthAt(DUST_Z);
+        for (let i = 0; i < DUST_N; i++) {
+          const ang = i * 2.399963; // golden-angle deterministic spread
+          const rad = 0.06 + (i % 7) * 0.012;
+          const x = Math.cos(ang) * rad * spreadW * 0.5;
+          const y = Math.sin(ang) * rad * spreadW * 0.32 + (r() - 0.5) * 0.15;
+          const z = DUST_Z + (r() - 0.5) * 1.4;
+          dustBase[i * 3] = x; dustBase[i * 3 + 1] = y; dustBase[i * 3 + 2] = z;
+          dustDir[i * 3] = Math.cos(ang); dustDir[i * 3 + 1] = Math.sin(ang) * 0.6; dustDir[i * 3 + 2] = (r() - 0.5) * 0.3;
+          dustPos[i * 3] = x; dustPos[i * 3 + 1] = y; dustPos[i * 3 + 2] = z;
+        }
+      })();
+      const dustGeo = new THREE.BufferGeometry();
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      scene.add(
+        new THREE.Points(
+          dustGeo,
+          new THREE.PointsMaterial({ color: 0xc9c2b4, size: 0.026, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false }),
+        ),
+      );
+      const DUST_AMPLITUDE_WORLD = 0.08 * frustumWidthAt(DUST_Z); // 8% of frame width, at dust depth
+
+      // ---- the numeral -- tabular, extra-condensed, bone metal ----
+      const TEXT = "$800,000,000,000";
+      const SIZE = 0.62;      // cap size
+      const DEPTH = 0.24;     // real extrusion depth
+      const CONDENSE_X = 0.6; // static bake -- heavy extra-condensed proportion, never animated
+      const TRACK = 0.028;
+
+      const numeralGroup = new THREE.Group();
+      scene.add(numeralGroup);
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xede8dd, metalness: 0.42, roughness: 0.34, envMapIntensity: 1.6 });
+
+      // shadow-catcher ground plane -- a real contact shadow under the numeral
+      const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(24, 14), new THREE.ShadowMaterial({ opacity: 0.55 }));
+      shadowCatcher.rotation.x = -Math.PI / 2;
+      shadowCatcher.position.y = -0.62;
+      shadowCatcher.receiveShadow = true;
+      scene.add(shadowCatcher);
+
+      const underglowLayers = []; // blood-red emissive edge-bleed, built after fit-scale is known
+
+      // ---- state driving the whole shot ----
+      const S = {
+        camScale: 1.0,     // the camera creep target -- see buildTimeline
+        burstT: 0,          // 0..1 dust outward burst, power4.out
+        driftEnv: 0,        // 0..1 envelope for the continuing ambient dust wiggle
+        underIgnite: 0,     // 0..1 the initial blood-red ignition on impact
+        hazeIn: 0,          // 0..1 envelope -- the haze's own drift is a continuous sine
+      };
+
+      let mainTL = null; // set once the timeline is built; read for all the continuous motion
+
+      function updateDust(nowClamped) {
+        const burst = 1 - Math.pow(1 - clamp01(S.burstT), 4); // power4.out
+        for (let i = 0; i < DUST_N; i++) {
+          const bx = dustBase[i * 3], by = dustBase[i * 3 + 1], bz = dustBase[i * 3 + 2];
+          const dx = dustDir[i * 3], dy = dustDir[i * 3 + 1], dz = dustDir[i * 3 + 2];
+          const phase = i * 0.61803399; // deterministic per-particle phase offset
+          const wiggle = S.driftEnv * 0.035 * Math.sin(nowClamped * 1.65 + phase);
+          dustPos[i * 3] = bx + dx * DUST_AMPLITUDE_WORLD * burst + dx * wiggle;
+          dustPos[i * 3 + 1] = by + dy * DUST_AMPLITUDE_WORLD * burst + dy * wiggle;
+          dustPos[i * 3 + 2] = bz + dz * DUST_AMPLITUDE_WORLD * 0.4 * burst;
+        }
+        dustGeo.attributes.position.needsUpdate = true;
+      }
+
+      function apply() {
+        // every hand-computed continuous (non-GSAP-tweened) motion below reads off
+        // this SAME clamped clock, so they all settle into "the very last moment"
+        // together instead of drifting out of sync
+        const rawNow = mainTL ? mainTL.time() : 0;
+        const now = Math.min(rawNow, FREEZE_T);
+
+        // CAMERA LAYER -- a real dolly, slowly creeping in (not a one-time settle)
+        camera.position.z = CAM_Z * S.camScale;
+
+        updateDust(now);
+
+        // haze drifts/breathes continuously -- never a tween that resolves and stops
+        const hazeBreath = 0.11 + 0.055 * Math.sin(now * 0.85 + 1.4);
+        hazePlane.material.opacity = S.hazeIn * hazeBreath;
+
+        // blood-red underglow: fast ignite on impact, then a continuous gentle pulse
+        // (never lights once and stays put)
+        const pulse = 0.72 + 0.28 * (0.5 + 0.5 * Math.sin(now * 2.1 + 0.6));
+        underglowLayers.forEach((L) => {
+          const op = L.targetOpacity * S.underIgnite * pulse;
+          L.group.children.forEach((m) => { m.material.opacity = op; });
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      new FontLoader().load("vendor/three/helvetiker_bold.typeface.json", (font) => {
+        // measure a uniform tabular advance from the widest digit (post-condense),
+        // and a single shared baseline/depth center from a digit reference -- so
+        // punctuation (the comma's descender-only mark) sits on the SAME baseline
+        // instead of being centered on its own tiny box.
+        let digitAdvance = 0;
+        let refCenterY = 0, refCenterZ = 0;
+        for (const d of "0123456789") {
+          const g = new TextGeometry(d, { font, size: SIZE, depth: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 2 });
+          g.computeBoundingBox();
+          const bb = g.boundingBox;
+          const w = (bb.max.x - bb.min.x) * CONDENSE_X;
+          if (w > digitAdvance) digitAdvance = w;
+          if (d === "0") {
+            refCenterY = (bb.max.y + bb.min.y) / 2;
+            refCenterZ = (bb.max.z + bb.min.z) / 2;
+          }
+          g.dispose();
+        }
+
+        const chars = TEXT.split("");
+        const metrics = [];
+        let cursor = 0;
+        for (const ch of chars) {
+          const geo = new TextGeometry(ch, { font, size: SIZE, depth: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelOffset: 0, bevelSegments: 2 });
+          geo.computeBoundingBox();
+          const rawW = geo.boundingBox.max.x - geo.boundingBox.min.x || SIZE * 0.2;
+          geo.scale(CONDENSE_X, 1, 1); // static extra-condense bake -- never animated
+          geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          geo.translate(-bb.min.x, -refCenterY, -refCenterZ); // shared baseline, not a per-glyph re-center
+          geo.computeVertexNormals();
+          const isDigit = ch >= "0" && ch <= "9";
+          const adv = (isDigit ? digitAdvance : rawW * CONDENSE_X) + TRACK;
+          metrics.push({ geo, x: cursor });
+          cursor += adv;
+        }
+        const total = cursor - TRACK;
+        const shift = -total / 2;
+
+        metrics.forEach((m) => {
+          const face = new THREE.Mesh(m.geo, metalMat);
+          face.position.x = m.x + shift;
+          face.castShadow = true;
+          face.receiveShadow = true;
+          numeralGroup.add(face);
+        });
+
+        // ---- fit the (already condensed) numeral to exactly 70% of frame width ----
+        const box = new THREE.Box3().setFromObject(numeralGroup);
+        const rawWidth = box.max.x - box.min.x;
+        const targetWorldWidth = 0.7 * frustumWidthAt(0);
+        const fitScale = targetWorldWidth / rawWidth;
+        numeralGroup.scale.setScalar(fitScale);
+
+        // ---- blood-red underglow: concentric silhouette halo bleeding from the edges ----
+        const HALO_LAYERS = [
+          { s: 1.025, o: 0.55 },
+          { s: 1.06, o: 0.34 },
+          { s: 1.11, o: 0.2 },
+          { s: 1.18, o: 0.1 },
+        ];
+        HALO_LAYERS.forEach((h) => {
+          const grp = new THREE.Group();
+          metrics.forEach((m) => {
+            const mesh = new THREE.Mesh(
+              m.geo,
+              new THREE.MeshBasicMaterial({ color: 0x7a160e, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+            );
+            mesh.position.x = m.x + shift;
+            grp.add(mesh);
+          });
+          grp.scale.setScalar(fitScale * h.s);
+          grp.position.z = -0.05;
+          scene.add(grp);
+          underglowLayers.push({ group: grp, targetOpacity: h.o });
+        });
+
+        buildTimeline();
+      });
+
+      function buildTimeline() {
+        const tl = gsap.timeline({ paused: true });
+        mainTL = tl;
+
+        // CAMERA LAYER: a slow continuous creep-in across nearly the whole shot,
+        // easing to rest exactly at FREEZE_T -- "the camera slowly creeping in"
+        tl.to(S, { camScale: 0.965, duration: FREEZE_T, ease: "sine.inOut" }, 0);
+
+        // ENVIRONMENTAL REACTION: dust bursts outward on impact, power4.out, then a
+        // continuing ambient wiggle (driven off the clamped clock in apply()) keeps
+        // it drifting for the rest of the shot
+        tl.to(S, { burstT: 1, duration: 0.26, ease: "power4.out" }, 0);
+        tl.to(S, { driftEnv: 1, duration: 0.9, ease: "settleIn" }, 0);
+
+        // COLOUR/LIGHT LAYER: the blood-red underglow ignites fast on impact, then
+        // pulses continuously (see apply()'s `pulse` term) rather than lighting once
+        // and sitting still
+        tl.to(S, { underIgnite: 1, duration: 0.4, ease: "expo.out" }, 0);
+
+        // ATMOSPHERIC LAYER: the haze fades in early, then breathes continuously
+        // (see apply()) for the rest of the shot
+        tl.to(S, { hazeIn: 1, duration: 0.7, ease: "sine.inOut" }, 0.2);
+
+        // Every continuous term above reads off the SAME clamped clock (see apply()),
+        // so nothing goes still until FREEZE_T -- the final 0.25s (6 frames) then
+        // hold dead static together: "the very last moment".
+
+        tl.eventCallback("onUpdate", apply);
+        apply();
+        window.__timelines["main-video"] = tl;
+      }
+    </script>
+  </body>
+</html>
