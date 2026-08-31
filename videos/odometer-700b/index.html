@@ -443,12 +443,14 @@
       const driver = { t: 0 };
       tl.to(driver, { t: 6, duration: 6, ease: "none", onUpdate: () => renderAt(driver.t) }, 0);
 
-      // Camera pulls back for the whole clip: two depths of the same zoom-out,
-      // foreground recedes more than background — real dolly-out parallax —
-      // running continuously through the count and finishing exactly at the
-      // last frame of the video, rather than settling early.
-      tl.to("#cameraFg", { scale: 0.82, duration: 6, ease: "power1.out" }, 0);
-      tl.to("#cameraBg", { scale: 0.93, duration: 6, ease: "power1.out" }, 0);
+      // Camera pulls back for the whole clip — a real, continuous recession
+      // that keeps shrinking straight through the count-up, not a settle-and-
+      // hold. ease-in back-loads most of the shrink into the final second so
+      // the $700B lock still reads bold, then the digits keep receding until
+      // they're a tiny point near the edge of visibility by the last frame —
+      // "zoomed out of frame." Background particles recede less (parallax).
+      tl.to("#cameraFg", { scale: 0.1, duration: 6, ease: "power3.in" }, 0);
+      tl.to("#cameraBg", { scale: 0.55, duration: 6, ease: "power2.in" }, 0);
 
       // Diagonal light sweep — crosses once, centered on the moment the digits
       // read the correct value, catching a specular glint on the brushed metal.
