@@ -10,6 +10,7 @@
     "cloud:wait": "hyperframes cloud render --fps=30 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/odometer-700b.mp4",
     "cloud:list": "hyperframes cloud list",
     "cloud:get": "hyperframes cloud get",
+    "audio": "node generate-audio.mjs",
     "publish": "hyperframes publish"
   },
   "devDependencies": {
