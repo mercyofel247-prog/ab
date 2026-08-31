@@ -386,6 +386,14 @@
         FINAL_START + 0.7,
       );
 
+      // Zoom out to close the scene — the whole 3D object recedes, shrinking
+      // toward the vanishing point as it holds, like a camera pulling back.
+      tl.to(
+        "#rotator",
+        { scale: 0.56, duration: 1.5, ease: "power2.in" },
+        FINAL_START,
+      );
+
       window.__timelines["main"] = tl;
     </script>
   </body>
