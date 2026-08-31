@@ -296,7 +296,7 @@
         let digitAdvance = 0;
         let refCenterY = 0, refCenterZ = 0;
         for (const d of "0123456789") {
-          const g = new TextGeometry(d, { font, size: SIZE, depth: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 2 });
+          const g = new TextGeometry(d, { font, size: SIZE, height: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelSegments: 2 });
           g.computeBoundingBox();
           const bb = g.boundingBox;
           const w = (bb.max.x - bb.min.x) * CONDENSE_X;
@@ -312,7 +312,7 @@
         const metrics = [];
         let cursor = 0;
         for (const ch of chars) {
-          const geo = new TextGeometry(ch, { font, size: SIZE, depth: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelOffset: 0, bevelSegments: 2 });
+          const geo = new TextGeometry(ch, { font, size: SIZE, height: DEPTH, curveSegments: 5, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.012, bevelOffset: 0, bevelSegments: 2 });
           geo.computeBoundingBox();
           const rawW = geo.boundingBox.max.x - geo.boundingBox.min.x || SIZE * 0.2;
           geo.scale(CONDENSE_X, 1, 1); // static extra-condense bake -- never animated
