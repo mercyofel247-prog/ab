@@ -277,12 +277,12 @@
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="8"
+      data-duration="4.4"
       data-fps="24"
       data-width="1920"
       data-height="1080"
     >
-      <section id="stage" class="clip" data-start="0" data-duration="8" data-track-index="1">
+      <section id="stage" class="clip" data-start="0" data-duration="4.4" data-track-index="1">
         <div id="bg" data-layout-allow-overflow></div>
         <div id="leak1" class="leak" data-layout-allow-overflow></div>
         <div id="leak2" class="leak" data-layout-allow-overflow></div>
@@ -314,7 +314,7 @@
       <audio
         id="impactSound"
         data-start="0"
-        data-duration="8"
+        data-duration="4.4"
         data-track-index="2"
         src="assets/impact.wav"
         data-volume="1"
@@ -327,9 +327,9 @@
       // Deterministic: no Math.random()/Date.now() anywhere — every value
       // below is a fixed constant (including every particle's placement/
       // speed, derived from its index), so the render is identical every run.
-      // Composition is 8.0s total (shortened from an earlier 15.0s cut --
-      // every beat below was retimed, not just linearly scaled, to keep the
-      // snappy beats snappy and the travel beats fast).
+      // Composition is 4.4s total -- trimmed to end exactly when the zoom-out
+      // finishes (no dead hold on black afterward), with every hold/pause
+      // between stages removed so each beat flows straight into the next.
 
       const IMPACT_T = 1.75; // must match generate-audio.mjs's IMPACT_T exactly
 
@@ -351,14 +351,14 @@
       // (1) the world fades in out of black, then drifts in a slow parallax
       // push through the whole shot (independent of the title's own zoom)
       tl.to("#bg", { opacity: 1, duration: 0.35, ease: "power1.out" }, 0);
-      tl.to("#bg", { scale: 1.04, duration: 8, ease: "none" }, 0);
+      tl.to("#bg", { scale: 1.04, duration: 4.4, ease: "none" }, 0);
 
       // (2) light leaks sweep in across the dark backdrop, drifting slowly
       // in opposite directions for a sense of depth
       tl.to("#leak1", { opacity: 0.55, duration: 0.85, ease: "power2.out" }, 0.15);
       tl.to("#leak2", { opacity: 0.4, duration: 0.9, ease: "power2.out" }, 0.3);
-      tl.to("#leak1", { x: 55, y: -40, duration: 8, ease: "none" }, 0);
-      tl.to("#leak2", { x: -45, y: 35, duration: 8, ease: "none" }, 0);
+      tl.to("#leak1", { x: 55, y: -40, duration: 4.4, ease: "none" }, 0);
+      tl.to("#leak2", { x: -45, y: 35, duration: 4.4, ease: "none" }, 0);
 
       // (3) floating embers drifting upward through the negative space --
       // deterministic placement/speed/opacity per index (golden-ratio
@@ -370,8 +370,8 @@
         const size = 4 + (i % 4) * 2; // 4 / 6 / 8 / 10 px
         const xPct = (i * GOLDEN_PCT) % 100;
         const startBottomPct = 6 + (i % 5) * 16; // staggered starting heights
-        const duration = 5 + (i % 6) * 0.7; // 5 - 8.5s drift speeds
-        const delay = (i * 0.2) % 2.2; // staggered starts across the open
+        const duration = 3 + (i % 6) * 0.5; // 3 - 5.5s drift speeds
+        const delay = (i * 0.12) % 1.3; // staggered starts across the open
         const peakOpacity = 0.22 + (i % 3) * 0.1;
 
         const el = document.createElement("div");
@@ -393,9 +393,9 @@
       // Fully off-screen at both ends (clipped by #stage's own
       // overflow:hidden), with a soft opacity fade at the very edges of its
       // travel so it doesn't pop as it crosses the clip boundary.
-      tl.to("#goldLine", { x: 2700, duration: 2.0, ease: "sine.inOut" }, 0.15);
+      tl.to("#goldLine", { x: 2700, duration: 1.6, ease: "sine.inOut" }, 0.15);
       tl.to("#goldLine", { opacity: 1, duration: 0.3, ease: "sine.out" }, 0.15);
-      tl.to("#goldLine", { opacity: 0, duration: 0.3, ease: "sine.in" }, 1.85);
+      tl.to("#goldLine", { opacity: 0, duration: 0.3, ease: "sine.in" }, 1.45);
 
       // (5) a focus pull as the title arrives -- starts soft, sharpens into
       // focus well before the letter groups converge
@@ -425,24 +425,26 @@
       // (10) the tagline fades in beneath the rule for a two-tier reveal
       tl.to("#tagline", { opacity: 0.85, duration: 0.8, ease: "power2.out" }, IMPACT_T + 0.75);
 
-      // (11) the leaks breathe gently through the hold (fixed, finite oscillation)
-      tl.to("#leak1", { opacity: 0.32, duration: 1.15, ease: "sine.inOut", yoyo: true, repeat: 2 }, 1.3);
-      tl.to("#leak2", { opacity: 0.22, duration: 1.2, ease: "sine.inOut", yoyo: true, repeat: 2 }, 1.45);
+      // (11) the leaks breathe gently underneath (fixed, finite oscillation)
+      tl.to("#leak1", { opacity: 0.32, duration: 0.85, ease: "sine.inOut", yoyo: true, repeat: 2 }, 1.0);
+      tl.to("#leak2", { opacity: 0.22, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 2 }, 1.2);
 
-      // (12) after a short hold, the whole assembly (title + rule + tagline,
-      // as one unit) zooms and zooms and zooms -- three escalating,
-      // accelerating bursts of scale rather than one smooth push -- until
-      // it's rushed far past camera size and clipped out of the scene by
-      // #stage's own overflow:hidden, fading the last stretch so it
-      // doesn't hard-cut while still huge on screen.
-      tl.to("#stack", { scale: 1.6, duration: 0.45, ease: "power1.in" }, 4.0);
-      tl.to("#stack", { scale: 3.4, duration: 0.3, ease: "power2.in" }, 4.45);
-      tl.to("#stack", { scale: 13, duration: 0.25, ease: "power3.in" }, 4.75);
-      tl.to("#stack", { opacity: 0, duration: 0.25, ease: "power2.in" }, 4.75);
+      // (12) the whole assembly (title + rule + tagline, as one unit) zooms
+      // and zooms and zooms -- three escalating, accelerating bursts of
+      // scale rather than one smooth push, starting immediately as the
+      // tagline settles (no hold/pause in between) -- until it's rushed far
+      // past camera size and clipped out of the scene by #stage's own
+      // overflow:hidden, fading the last stretch so it doesn't hard-cut
+      // while still huge on screen.
+      tl.to("#stack", { scale: 1.6, duration: 0.4, ease: "power1.in" }, 3.2);
+      tl.to("#stack", { scale: 3.4, duration: 0.28, ease: "power2.in" }, 3.6);
+      tl.to("#stack", { scale: 13, duration: 0.24, ease: "power3.in" }, 3.88);
+      tl.to("#stack", { opacity: 0, duration: 0.24, ease: "power2.in" }, 3.88);
 
       // (13) fade to black outro — overlaps the tail of the zoom-out for a
-      // clean handoff, ending fully black exactly at the composition's end (8.0s)
-      tl.to("#blackout", { opacity: 1, duration: 3.15, ease: "power1.in" }, 4.85);
+      // clean handoff, ending fully black exactly as the zoom-out finishes --
+      // the composition ends here (4.4s), no dead hold on black afterward.
+      tl.to("#blackout", { opacity: 1, duration: 0.55, ease: "power1.in" }, 3.85);
 
       window.__timelines["main"] = tl;
     </script>

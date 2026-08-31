@@ -1,16 +1,16 @@
 // Deterministic WAV synth for the empire-title impact hit.
-// 8.0s, 48kHz, 16-bit mono. No dependencies.
+// 4.4s, 48kHz, 16-bit mono. No dependencies.
 //
 // Sound design:
 //   0.00-1.55s  silence (the reveal is silent build-up until the hit)
 //   1.55-1.75s  a brief rising whoosh as the letter groups close in
 //   1.75s       IMPACT -- the two letter groups slam together
 //   1.75-2.6s   deep boom body + bright metallic ring (gold-on-gold clang)
-//               decaying into silence
+//               decaying into silence, then silent through to the end
 import { writeFileSync } from "node:fs";
 
 const SR = 48000;
-const DUR = 8.0;
+const DUR = 4.4; // must match index.html's composition duration exactly
 const N = Math.floor(SR * DUR);
 const buf = new Float64Array(N);
 
