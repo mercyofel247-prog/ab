@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Odometer Reveal — $200B</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0a0b0d;
+        --ink: #f6f7f9;
+        --ink-dim: #6b7280;
+        --roller: rgba(255, 255, 255, 0.028);
+        --cell: 290px;
+        --digit-w: 168px;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      body {
+        font-family: "Helvetica Neue", "Inter", system-ui, -apple-system, Arial, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 44px;
+      }
+
+      .eyebrow {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.46em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+      }
+
+      /* The odometer readout: $ [wheel][wheel][wheel] B */
+      .odometer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--ink);
+        font-weight: 800;
+        font-size: 250px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+      }
+
+      .affix {
+        display: inline-flex;
+        align-items: center;
+        height: var(--cell);
+        letter-spacing: -0.01em;
+      }
+
+      #dollar {
+        margin-right: 4px;
+      }
+
+      #suffix {
+        margin-left: 10px;
+      }
+
+      /* A single digit roller — a window onto a vertically sliding strip */
+      .wheel {
+        position: relative;
+        width: var(--digit-w);
+        height: var(--cell);
+        overflow: hidden;
+        background: var(--roller);
+        border-radius: 12px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.55);
+        /* Cylinder illusion: digits fade as they roll past the top/bottom lip */
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          transparent 0%,
+          #000 20%,
+          #000 80%,
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          transparent 0%,
+          #000 20%,
+          #000 80%,
+          transparent 100%
+        );
+      }
+
+      .strip {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        will-change: transform, filter;
+      }
+
+      .strip .cell {
+        height: var(--cell);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Faint cylinder-shading overlay to seat the digits into the roller */
+      .wheel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.28) 0%,
+          rgba(0, 0, 0, 0) 26%,
+          rgba(0, 0, 0, 0) 74%,
+          rgba(0, 0, 0, 0.28) 100%
+        );
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6.2" data-track-index="1">
+        <div class="center">
+          <div id="eyebrow" class="eyebrow">Total Value</div>
+
+          <div id="odometer" class="odometer">
+            <span id="dollar" class="affix">$</span>
+            <div class="wheel" data-layout-allow-overflow>
+              <div class="strip" data-wheel="hund" data-layout-allow-overflow></div>
+            </div>
+            <div class="wheel" data-layout-allow-overflow>
+              <div class="strip" data-wheel="tens" data-layout-allow-overflow></div>
+            </div>
+            <div class="wheel" data-layout-allow-overflow>
+              <div class="strip" data-wheel="ones" data-layout-allow-overflow></div>
+            </div>
+            <span id="suffix" class="affix">B</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- Geometry (must match the --cell CSS custom property) --------------
+      const CELL = 290;
+
+      // ---- Build the digit strips: 11 cells [0,1,…,9,0] ----------------------
+      // The trailing 0 makes the 9→0 wrap seamless: both wrap-boundary cells
+      // read "0", so resetting translateY by one full turn is invisible.
+      document.querySelectorAll(".strip").forEach((strip) => {
+        for (let i = 0; i <= 10; i++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.textContent = String(i % 10);
+          // The window clips the strip via overflow:hidden, but the linter reads
+          // unclipped rects; exempt the rolling cells from the text-overlap check.
+          cell.setAttribute("data-layout-allow-overlap", "");
+          strip.appendChild(cell);
+        }
+      });
+
+      const strips = {
+        hund: document.querySelector('.strip[data-wheel="hund"]'),
+        tens: document.querySelector('.strip[data-wheel="tens"]'),
+        ones: document.querySelector('.strip[data-wheel="ones"]'),
+      };
+
+      // ---- Per-wheel motion model -------------------------------------------
+      // Each wheel rolls a "continuous position" from 0 to its final count.
+      //   ones → 200  (spins 20 full turns — the fastest, rightmost wheel)
+      //   tens →  20  (2 turns)
+      //   hund →   2  (rolls 0→1→2 — the slowest, leftmost wheel)
+      // Staggered end times make them settle rightmost-first, leftmost-last.
+      // The hundreds wheel gets an overshoot ease for the final mechanical snap.
+      const START = 0.3;
+      const wheels = [
+        { key: "ones", el: strips.ones, final: 200, start: START, dur: 4.4, ease: gsap.parseEase("expo.out") },
+        { key: "tens", el: strips.tens, final: 20, start: START, dur: 4.75, ease: gsap.parseEase("expo.out") },
+        { key: "hund", el: strips.hund, final: 2, start: START, dur: 5.0, ease: gsap.parseEase("back.out(2.4)") },
+      ];
+
+      const SETTLE_TIME = START + 5.0; // hundreds locks here → ~5.3s
+
+      const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+      // Continuous roll position of a wheel at absolute timeline time t.
+      function posAt(w, t) {
+        const local = clamp01((t - w.start) / w.dur);
+        return w.final * w.ease(local);
+      }
+
+      const MAX_BLUR = 18; // px — cap so fast digits stay legible as motion
+      const BLUR_K = 0.06; // px per (cell/second)
+      const EPS = 1 / 120; // derivative step for velocity → blur
+
+      function renderAt(t) {
+        for (const w of wheels) {
+          const pos = posAt(w, t);
+          // Seamless wrap: the strip is 11 cells, so only the fractional turn
+          // matters. Both wrap boundaries show "0", so this never jumps visibly.
+          const y = -((pos % 10) * CELL);
+
+          // Velocity → directional-feeling motion blur that sharpens on settle.
+          const vel = Math.abs(posAt(w, t + EPS) - pos) / EPS; // cells / second
+          const blur = Math.min(MAX_BLUR, vel * BLUR_K);
+
+          w.el.style.transform = "translate3d(0," + y + "px,0)";
+          w.el.style.filter = blur > 0.15 ? "blur(" + blur.toFixed(2) + "px)" : "none";
+        }
+      }
+
+      renderAt(0);
+
+      // ---- Timeline ----------------------------------------------------------
+      const tl = gsap.timeline({ paused: true });
+
+      // Initial states (set via GSAP so no CSS transform is left to conflict).
+      gsap.set("#odometer", { opacity: 0, scale: 0.96 });
+      gsap.set("#eyebrow", { opacity: 0, y: 10 });
+      gsap.set("#suffix", { opacity: 0, y: 26, scale: 0.7 });
+
+      // Reveal the odometer.
+      tl.to("#odometer", { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 0);
+      tl.to("#eyebrow", { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 0.15);
+
+      // Driver: a linear proxy whose value maps 1:1 to timeline time, so every
+      // wheel position is a pure, seek-safe function of time (no frame deltas).
+      const driver = { t: 0 };
+      tl.to(
+        driver,
+        {
+          t: 6,
+          duration: 6,
+          ease: "none",
+          onUpdate: () => renderAt(driver.t),
+        },
+        0,
+      );
+
+      // The "B" suffix locks in only once the final value has settled.
+      tl.to(
+        "#suffix",
+        { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: "back.out(2.6)" },
+        SETTLE_TIME + 0.02,
+      );
+
+      // Soft mechanical "tick": a tiny overshoot + snap-back on the whole
+      // readout as the last wheel locks — the satisfying stop.
+      tl.to("#odometer", { scale: 1.028, duration: 0.12, ease: "power2.out", overwrite: "auto" }, SETTLE_TIME - 0.06);
+      tl.to("#odometer", { scale: 1, duration: 0.3, ease: "back.out(2.2)", overwrite: "auto" }, SETTLE_TIME + 0.08);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
