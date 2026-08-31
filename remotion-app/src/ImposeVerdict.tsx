@@ -110,7 +110,7 @@ function buildGlyphs(font: Font): { metrics: Metric[]; shift: number } {
     const g = new TextGeometry(d, {
       font,
       size: SIZE,
-      height: DEPTH,
+      depth: DEPTH,
       curveSegments: 5,
       bevelEnabled: true,
       bevelThickness: 0.017,
@@ -134,7 +134,7 @@ function buildGlyphs(font: Font): { metrics: Metric[]; shift: number } {
     const geo = new TextGeometry(ch, {
       font,
       size: SIZE,
-      height: DEPTH,
+      depth: DEPTH,
       curveSegments: 5,
       bevelEnabled: true,
       bevelThickness: 0.017,

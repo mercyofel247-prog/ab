@@ -34,7 +34,7 @@ declare module "three/addons/geometries/TextGeometry.js" {
   export type TextGeometryParameters = {
     font: Font;
     size?: number;
-    height?: number;
+    depth?: number;
     curveSegments?: number;
     bevelEnabled?: boolean;
     bevelThickness?: number;
