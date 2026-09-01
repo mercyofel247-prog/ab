@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$9B — Ink Imprint</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Zilla Slab";
+        font-style: normal;
+        font-weight: 700;
+        font-display: block;
+        src: url("assets/fonts/zillaslab-700.woff2") format("woff2");
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --ground: #14110c;   /* warm parchment-dark archival register */
+        --ink: #5c1a1a;      /* deep oxblood ink */
+        --fiber: 214, 194, 158;
+      }
+
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: var(--ground);
+        font-family: "Zilla Slab", Georgia, serif;
+      }
+
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+
+      #camera { position: absolute; inset: 0; transform-origin: 50% 52%; will-change: transform; }
+
+      .plane { position: absolute; inset: 0; will-change: transform; pointer-events: none; }
+
+      /* ---- z0: aged ledger paper ground ---- */
+      #z0 { transform-origin: 50% 52%; }
+      /* warm mottled parchment + a slightly lighter central register so the
+         oxblood reads, all still dark/archival */
+      #paper {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(46% 52% at 50% 50%, rgba(70,58,40,0.34) 0%, rgba(40,33,22,0.12) 42%, rgba(20,17,12,0) 72%),
+          radial-gradient(30% 24% at 34% 32%, rgba(84,70,48,0.16) 0%, rgba(84,70,48,0) 70%),
+          radial-gradient(28% 22% at 70% 66%, rgba(58,46,30,0.18) 0%, rgba(58,46,30,0) 72%),
+          var(--ground);
+      }
+      /* paper fiber / grain visible on the ground plane (coarse turbulence) */
+      #fiber {
+        position: absolute; inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.42' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        opacity: 0.10; mix-blend-mode: overlay;
+      }
+      /* faint fibrous streaks (paper laid lines) */
+      #laid {
+        position: absolute; inset: 0;
+        background-image:
+          repeating-linear-gradient(92deg, rgba(120,100,70,0.05) 0 1px, rgba(0,0,0,0) 1px 6px);
+        opacity: 0.5; mix-blend-mode: soft-light;
+      }
+      #z0vig {
+        position: absolute; inset: 0;
+        background: radial-gradient(80% 78% at 50% 48%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.5) 100%);
+      }
+
+      /* ---- z1 / z3 fiber-dust motes ---- */
+      .mote { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+      #z1 .mote { background: radial-gradient(circle, rgba(var(--fiber),0.8) 0%, rgba(var(--fiber),0) 72%); }
+      #z3 .mote {
+        background: radial-gradient(circle, rgba(var(--fiber),0.7) 0%, rgba(var(--fiber),0) 70%);
+        filter: blur(1.4px);
+      }
+
+      /* ---- z2 impression ---- */
+      #z2plane { display: grid; place-items: center; transform-origin: 50% 52%; will-change: transform; }
+      #impression {
+        position: relative; transform-origin: 50% 52%; will-change: transform;
+        display: grid; place-items: center;
+      }
+      #impressionBlur { position: relative; will-change: filter; display: grid; place-items: center; }
+      /* the roughen filter gives the imprint its uneven, pressed ink edge */
+      #impressionInner { position: relative; filter: url(#roughen); display: grid; place-items: center; }
+
+      .glyphs {
+        grid-area: 1 / 1;
+        font-family: "Zilla Slab", Georgia, serif;
+        font-weight: 700;
+        font-size: 712px;
+        line-height: 0.9;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* the ink itself — oxblood, pressed IN (debossed): a thin warm light lip
+         on the lower edge + a dark inner shade above sell the depression */
+      #ink {
+        color: var(--ink);
+        text-shadow:
+          0 2px 0 rgba(0,0,0,0.55),
+          0 3px 2px rgba(0,0,0,0.4),
+          0 -1px 1px rgba(150,120,92,0.35);
+      }
+      /* ink-bleed halo (blurred oxblood copy beneath) — its opacity pulses at contact */
+      #inkbleed {
+        color: var(--ink);
+        filter: blur(3px);
+        opacity: 0;
+      }
+      /* fresh-ink catch-light (a lighter, desaturated copy) — flashes then settles matte */
+      #catchlight {
+        color: #b7a892;
+        opacity: 0;
+        mix-blend-mode: soft-light;
+      }
+
+      /* ---- z4 grade ---- */
+      #grain {
+        position: absolute; left: -50%; top: -50%; width: 200%; height: 200%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        opacity: 0.10; mix-blend-mode: overlay; will-change: transform; pointer-events: none;
+      }
+      /* warm sepia-leaning grade wash */
+      #sepia {
+        position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(180deg, rgba(78,58,32,0.14) 0%, rgba(48,34,18,0.10) 100%);
+        mix-blend-mode: soft-light;
+      }
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.08) 16%, rgba(0,0,0,0) 34%),
+          radial-gradient(118% 106% at 50% 46%, rgba(0,0,0,0) 48%, rgba(0,0,0,0.55) 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- roughen filter: fractal displacement chews the clean vector edge into an
+         uneven, hand-pressed ink edge (deterministic seed) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <filter id="roughen" x="-8%" y="-8%" width="116%" height="116%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.045 0.06" numOctaves="2" seed="9" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </defs>
+    </svg>
+
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6" data-track-index="1">
+        <div id="camera">
+          <div class="plane" id="z0">
+            <div id="paper"></div>
+            <div id="laid"></div>
+            <div id="fiber"></div>
+            <div id="z0vig"></div>
+          </div>
+
+          <div class="plane" id="z1"></div>
+
+          <div class="plane" id="z2plane" data-layout-allow-overflow>
+            <div id="impression" data-layout-allow-overflow>
+              <div id="impressionBlur">
+                <div id="impressionInner" data-layout-allow-overflow>
+                  <div class="glyphs" id="inkbleed" data-layout-ignore aria-hidden="true">$9B</div>
+                  <!-- intentional archival low-contrast oxblood-on-parchment art
+                       element; excluded from the WCAG contrast lint -->
+                  <div class="glyphs" id="ink" data-layout-ignore>$9B</div>
+                  <div class="glyphs" id="catchlight" data-layout-ignore aria-hidden="true">$9B</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="plane" id="z3"></div>
+        </div>
+
+        <div id="grain"></div>
+        <div id="sepia"></div>
+        <div id="vignette"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---------- deterministic PRNG (mulberry32) ----------
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x9b0);
+
+      const W = 1920, H = 1080, CX = W / 2, CY = H * 0.52;
+      const MX = W * 0.06, MY = H * 0.07, IW = W - MX * 2, IH = H - MY * 2;
+
+      function buildPlane(id, count, sizeMin, sizeMax, opMin, opMax, burstScale) {
+        const plane = document.getElementById(id);
+        const items = [];
+        for (let i = 0; i < count; i++) {
+          const d = sizeMin + rand() * (sizeMax - sizeMin);
+          const el = document.createElement("div");
+          el.className = "mote";
+          el.style.width = d + "px"; el.style.height = d + "px";
+          const x = MX + rand() * IW, y = MY + rand() * IH;
+          const op = opMin + rand() * (opMax - opMin);
+          gsap.set(el, { x, y, xPercent: -50, yPercent: -50, opacity: op });
+          let dx = x - CX, dy = y - CY;
+          const len = Math.hypot(dx, dy) || 1;
+          const push = (22 + rand() * 40) * burstScale;
+          plane.appendChild(el);
+          items.push({ el, x, y, op, bx: (dx / len) * push, by: (dy / len) * push, ph: rand() });
+        }
+        return items;
+      }
+      // z1 fiber dust ~30% opacity; z3 foreground motes
+      const dust = buildPlane("z1", 60, 1.6, 3.4, 0.12, 0.30, 1.0);
+      const fg = buildPlane("z3", 9, 8, 18, 0.10, 0.24, 2.0);
+
+      // ---------- initial states ----------
+      gsap.set("#camera", { scaleX: 1, scaleY: 1, y: 0 });
+      gsap.set("#z2plane", { scale: 1.0 });
+      gsap.set("#impression", { scale: 1.3 });
+      gsap.set("#impressionBlur", { filter: "blur(8px)" });
+      gsap.set("#ink", { opacity: 0 });
+      gsap.set("#inkbleed", { opacity: 0 });
+      gsap.set("#catchlight", { opacity: 0 });
+      gsap.set("#z0", { scale: 1.0 });
+      gsap.set("#z1", { x: 0, scale: 1.0 });
+      gsap.set("#z3", { x: 0, scale: 1.0 });
+      gsap.set("#grain", { x: 0, y: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ---- 0–400ms: scale-pop 1.3 → 1.0 (back.out, 220ms), opacity 0→1 (120ms) ----
+      tl.to("#impression", { scale: 1.0, duration: 0.22, ease: "back.out(2.4)" }, 0);
+      tl.to("#ink", { opacity: 1, duration: 0.12, ease: "power2.out" }, 0);
+
+      // ---- 400ms CONTACT (one impression, one impact) ----
+      // (a) 6px downward micro-press: the stage compresses then releases
+      tl.to("#camera", { scaleY: 0.985, y: 6, duration: 0.05, ease: "power2.out" }, 0.4);
+      tl.to("#camera", { scaleY: 1.0, y: 0, duration: 0.15, ease: "power2.out" }, 0.45);
+      // (b) ink-bleed opacity pulse at the glyph edges → settle
+      tl.to("#inkbleed", { opacity: 0.5, duration: 0.06, ease: "expo.out" }, 0.4);
+      tl.to("#inkbleed", { opacity: 0.22, duration: 0.4, ease: "expo.out" }, 0.46);
+      // (c) 120ms desaturation flash (fresh-ink catch-light) then matte
+      tl.to("#catchlight", { opacity: 0.42, duration: 0.05, ease: "power2.out" }, 0.4);
+      tl.to("#catchlight", { opacity: 0, duration: 0.28, ease: "power2.in" }, 0.45);
+      // (d) paper-fiber dust-puff kicking outward from the impression edges
+      [...dust, ...fg].forEach((p) => {
+        tl.to(p.el, { x: p.x + p.bx, y: p.y + p.by, duration: 0.3, ease: "power2.out" }, 0.4);
+      });
+
+      // ---- 400–1200ms rack focus 8px → sharp (power2.out) ----
+      tl.to("#impressionBlur", { filter: "blur(0px)", duration: 0.8, ease: "power2.out" }, 0.4);
+
+      // ---- 600–5670ms restrained push-in 1.00 → 1.08, gentle differential parallax ----
+      tl.to("#z2plane", { scale: 1.08, duration: 5.07, ease: "sine.inOut" }, 0.6);
+      tl.to("#z0", { scale: 1.035, duration: 5.07, ease: "sine.inOut" }, 0.6);
+      tl.to("#z1", { scale: 1.055, duration: 5.07, ease: "sine.inOut" }, 0.6);
+      tl.to("#z3", { scale: 1.11, duration: 5.07, ease: "sine.inOut" }, 0.6);
+
+      // ---- 0–6000ms continuous fiber/dust drift (one trajectory per plane) ----
+      tl.to("#z1", { x: 12, duration: 4.4, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+      // z3 foreground drifts at ~2× the z1 rate
+      tl.to("#z3", { x: -20, duration: 2.2, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      // gentle per-mote twinkle (opacity only)
+      [...dust, ...fg].forEach((p) => {
+        tl.to(p.el, {
+          opacity: Math.max(0.05, p.op * 0.5),
+          duration: 1.5 + p.ph * 2.0, ease: "sine.inOut", repeat: -1, yoyo: true,
+        }, 1.0 + p.ph * 1.8);
+      });
+
+      // ---- coarse, moving paper grain (transform wander, no strobe) ----
+      tl.to("#grain", { x: -110, y: -70, duration: 1.3, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
