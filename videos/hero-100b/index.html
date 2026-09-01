@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=854, height=480" />
+    <title>$100B — Cinematic Hero Number</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      /* Anton — heavy, extra-condensed display sans. Bundled locally so the
+         numeral renders deterministically with no external font dependency. */
+      @font-face {
+        font-family: "Anton";
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url("assets/fonts/anton-latin.woff2") format("woff2");
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0a0a0c;
+        --bone: #ede8dd;
+        --gold: #c9a24b;
+        --hero-size: 236px; /* tuned so "$100B" ≈ 68% of the 854px frame */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background: var(--ground);
+        font-family: "Anton", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      /* ---- the parallax camera stage (push-in lives here) ---- */
+      #stageInner {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 52%;
+        will-change: transform;
+      }
+
+      /* faint warm-gold radial glow on near-black */
+      #bgGlow {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(44% 58% at 50% 52%, rgba(201, 162, 75, 0.22) 0%, rgba(201, 162, 75, 0.07) 42%, rgba(201, 162, 75, 0) 72%);
+        pointer-events: none;
+      }
+
+      /* ---- depth planes ---- */
+      .plane {
+        position: absolute;
+        inset: 0;
+        will-change: transform;
+        pointer-events: none;
+      }
+
+      .mote {
+        position: absolute;
+        border-radius: 50%;
+        will-change: transform, opacity;
+      }
+
+      /* mid-depth dust — small, faint */
+      #planeDust .mote {
+        background: radial-gradient(circle, rgba(237, 232, 221, 0.9) 0%, rgba(237, 232, 221, 0) 72%);
+      }
+      /* mid-depth soft specks — slightly warmer */
+      #planeSpecks .mote {
+        background: radial-gradient(circle, rgba(224, 205, 158, 0.85) 0%, rgba(224, 205, 158, 0) 70%);
+        filter: blur(0.6px);
+      }
+      /* foreground bokeh — large, soft, gold-bone */
+      #planeBokeh .mote {
+        background: radial-gradient(circle, rgba(232, 220, 190, 0.5) 0%, rgba(201, 162, 75, 0.14) 45%, rgba(201, 162, 75, 0) 72%);
+        filter: blur(2.4px);
+      }
+
+      /* ---- hero group ---- */
+      #heroStage {
+        position: absolute;
+        left: 50%;
+        top: 52%;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+        display: grid;
+        place-items: center;
+        will-change: transform;
+      }
+
+      /* gold underglow bloom (soft, not rack-focused) */
+      #underglow {
+        position: absolute;
+        left: 50%;
+        top: 56%;
+        width: 620px;
+        height: 300px;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+        background:
+          radial-gradient(52% 52% at 50% 50%, rgba(201, 162, 75, 0.62) 0%, rgba(201, 162, 75, 0.22) 38%, rgba(201, 162, 75, 0) 70%);
+        filter: blur(20px);
+        will-change: transform, opacity;
+        pointer-events: none;
+      }
+
+      /* rack-focus wrapper — the crisp numeral + chromatic copies */
+      #heroWrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: filter;
+      }
+
+      .numeral {
+        grid-area: 1 / 1;
+        font-family: "Anton", sans-serif;
+        font-weight: 400; /* Anton is a single heavy, extra-condensed weight */
+        font-size: var(--hero-size);
+        line-height: 0.9;
+        letter-spacing: 0.005em;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+      }
+
+      /* brushed-metal warm-bone fill with extrusion + gold rim-light */
+      #hero {
+        position: relative;
+        z-index: 3;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        background:
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.05) 0px,
+            rgba(255, 255, 255, 0.05) 1px,
+            rgba(0, 0, 0, 0.05) 1px,
+            rgba(0, 0, 0, 0.05) 2px
+          ),
+          linear-gradient(
+            176deg,
+            #fffdf7 0%,
+            #ede8dd 34%,
+            #cec6b2 52%,
+            #f1ecE1 68%,
+            #d6cdb9 100%
+          );
+        -webkit-background-clip: text;
+        background-clip: text;
+        /* extruded body (down-right darkening bone) + emissive gold rim + underbloom */
+        text-shadow:
+          1px 1px 0 #bcb096,
+          2px 2px 0 #ab9f85,
+          3px 3px 0 #998d74,
+          4px 4px 0 #877c65,
+          5px 5px 0 #746a56,
+          6px 5px 0 #5f5647,
+          0 0 2px rgba(201, 162, 75, 0.9),
+          0 0 10px rgba(201, 162, 75, 0.55),
+          0 0 22px rgba(201, 162, 75, 0.32);
+      }
+
+      /* chromatic-split channel copies (subtle, edge-suggesting) */
+      #caR {
+        z-index: 2;
+        color: rgba(255, 42, 62, 0.42);
+        -webkit-text-fill-color: rgba(255, 42, 62, 0.42);
+        mix-blend-mode: screen;
+        will-change: transform;
+      }
+      #caB {
+        z-index: 2;
+        color: rgba(40, 190, 255, 0.42);
+        -webkit-text-fill-color: rgba(40, 190, 255, 0.42);
+        mix-blend-mode: screen;
+        will-change: transform;
+      }
+
+      /* ---- grade overlays (fixed to frame, above the camera stage) ---- */
+      #grain {
+        position: absolute;
+        left: -50%;
+        top: -50%;
+        width: 200%;
+        height: 200%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        opacity: 0.08;
+        mix-blend-mode: overlay;
+        will-change: transform;
+        pointer-events: none;
+      }
+
+      /* top vignette + overall edge darkening */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.14) 18%, rgba(0, 0, 0, 0) 34%),
+          radial-gradient(118% 104% at 50% 44%, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, 0.58) 100%);
+        pointer-events: none;
+      }
+
+      /* edge-only chromatic aberration (subtle red↔cyan channel split at the frame edges) */
+      #edgeCA {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(255, 0, 40, 0.12) 0%, rgba(255, 0, 40, 0) 11%, rgba(255, 0, 40, 0) 89%, rgba(0, 170, 255, 0.12) 100%),
+          linear-gradient(270deg, rgba(0, 170, 255, 0.08) 0%, rgba(0, 170, 255, 0) 11%, rgba(0, 170, 255, 0) 89%, rgba(255, 0, 40, 0.08) 100%);
+        mix-blend-mode: screen;
+        opacity: 0.6;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-fps="24"
+      data-width="854"
+      data-height="480"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6" data-track-index="1">
+        <div id="stageInner" data-layout-allow-overflow>
+          <div id="bgGlow"></div>
+
+          <div class="plane" id="planeDust" data-layout-allow-overlap></div>
+          <div class="plane" id="planeSpecks" data-layout-allow-overlap></div>
+
+          <div id="heroStage" data-layout-allow-overflow>
+            <div id="underglow"></div>
+            <div id="heroWrap" data-layout-allow-overflow>
+              <div class="numeral" id="caR" data-layout-ignore aria-hidden="true">$0B</div>
+              <div class="numeral" id="caB" data-layout-ignore aria-hidden="true">$0B</div>
+              <div class="numeral" id="hero" data-layout-allow-occlusion>$0B</div>
+            </div>
+          </div>
+
+          <div class="plane" id="planeBokeh" data-layout-allow-overlap></div>
+        </div>
+
+        <div id="grain"></div>
+        <div id="vignette"></div>
+        <div id="edgeCA"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---------- deterministic particle scatter (within the inner 90%) ----------
+      // A tiny seeded PRNG keeps the layout identical across renders.
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x100b);
+
+      const MARGIN_X = 854 * 0.06;
+      const MARGIN_Y = 480 * 0.07;
+      const INNER_W = 854 - MARGIN_X * 2;
+      const INNER_H = 480 - MARGIN_Y * 2;
+
+      function scatter(plane, count, sizeMin, sizeMax, opMin, opMax) {
+        const els = [];
+        for (let i = 0; i < count; i++) {
+          const d = sizeMin + rand() * (sizeMax - sizeMin);
+          const el = document.createElement("div");
+          el.className = "mote";
+          el.style.width = d + "px";
+          el.style.height = d + "px";
+          const x = MARGIN_X + rand() * INNER_W;
+          const y = MARGIN_Y + rand() * INNER_H;
+          // position via transform (motion is transforms only)
+          gsap.set(el, {
+            x: x,
+            y: y,
+            xPercent: -50,
+            yPercent: -50,
+            opacity: opMin + rand() * (opMax - opMin),
+          });
+          plane.appendChild(el);
+          els.push(el);
+        }
+        return els;
+      }
+
+      const dust = scatter(document.getElementById("planeDust"), 30, 1.2, 2.6, 0.18, 0.42);
+      const specks = scatter(document.getElementById("planeSpecks"), 18, 2.4, 4.6, 0.16, 0.4);
+      const bokeh = scatter(document.getElementById("planeBokeh"), 7, 9, 20, 0.1, 0.24);
+
+      // ---------- hero count-up ----------
+      const heroEl = document.getElementById("hero");
+      const caREl = document.getElementById("caR");
+      const caBEl = document.getElementById("caB");
+      const counter = { v: 0 };
+      function renderCount() {
+        const s = "$" + Math.round(counter.v) + "B";
+        heroEl.textContent = s;
+        caREl.textContent = s;
+        caBEl.textContent = s;
+      }
+      renderCount();
+
+      // ---------- initial (frame-0) states ----------
+      gsap.set("#stageInner", { scale: 1.0 });
+      gsap.set("#heroStage", { scale: 1.06 });
+      gsap.set("#heroWrap", { filter: "blur(6px)" });
+      gsap.set("#underglow", { opacity: 0, scale: 0.9 });
+      gsap.set("#caR", { x: -1 });
+      gsap.set("#caB", { x: 1 });
+      gsap.set("#planeDust", { x: 0, y: 0, scale: 1.0 });
+      gsap.set("#planeSpecks", { x: 0, y: 0, scale: 1.0 });
+      gsap.set("#planeBokeh", { x: 0, y: 0, scale: 1.0 });
+      gsap.set("#grain", { x: 0, y: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // (1) count $0B → $100B, power4.out (0–800ms)
+      tl.to(
+        counter,
+        {
+          v: 100,
+          duration: 0.8,
+          ease: "power4.out",
+          onUpdate: renderCount,
+          onComplete: () => {
+            counter.v = 100;
+            renderCount();
+          },
+        },
+        0,
+      );
+
+      // numeral scale-punch 1.06 → 1.00, expo.out (0–800ms)
+      tl.to("#heroStage", { scale: 1.0, duration: 0.8, ease: "expo.out" }, 0);
+
+      // (2) gold underglow bloom 0 → full, expo.out (300–900ms)
+      tl.to("#underglow", { opacity: 1, scale: 1.0, duration: 0.6, ease: "expo.out" }, 0.3);
+
+      // (3) 180ms chromatic-split shimmer at the land (800ms), then settle
+      tl.to("#caR", { x: -5.5, duration: 0.09, ease: "power2.out" }, 0.8);
+      tl.to("#caB", { x: 5.5, duration: 0.09, ease: "power2.out" }, 0.8);
+      tl.to("#caR", { x: -1, duration: 0.09, ease: "power2.in" }, 0.89);
+      tl.to("#caB", { x: 1, duration: 0.09, ease: "power2.in" }, 0.89);
+
+      // (4) rack focus 6px → sharp, power2.out (900–1600ms)
+      tl.fromTo(
+        "#heroWrap",
+        { filter: "blur(6px)" },
+        { filter: "blur(0px)", duration: 0.7, ease: "power2.out" },
+        0.9,
+      );
+
+      // (5) slow stage push-in 1.00 → 1.04, sine.inOut (1000–5200ms)
+      tl.to("#stageInner", { scale: 1.04, duration: 4.2, ease: "sine.inOut" }, 1.0);
+      // differential parallax on the push (background scales less, foreground more)
+      tl.to("#planeDust", { scale: 1.015, y: -3, duration: 4.2, ease: "sine.inOut" }, 1.0);
+      tl.to("#planeBokeh", { scale: 1.05, y: -9, duration: 4.2, ease: "sine.inOut" }, 1.0);
+
+      // ---------- lateral drift throughout (one coherent trajectory per plane) ----------
+      // mid-depth planes drift at the base rate…
+      tl.to("#planeDust", { x: 11, duration: 4.0, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+      tl.to("#planeSpecks", { x: -9, duration: 4.6, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+      // …foreground bokeh drifts at ~1.6× the mid-layer rate (parallax)
+      tl.to("#planeBokeh", { x: 17, duration: 2.5, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      // gentle per-mote twinkle (opacity only — never breaks the plane trajectory)
+      [...dust, ...specks, ...bokeh].forEach((el, i) => {
+        const base = gsap.getProperty(el, "opacity");
+        tl.to(
+          el,
+          {
+            opacity: Math.max(0.06, base * 0.5),
+            duration: 1.4 + rand() * 1.8,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+          },
+          rand() * 2.0,
+        );
+      });
+
+      // ---------- live film grain (transform-driven wander, no strobe) ----------
+      tl.to("#grain", { x: -90, y: -54, duration: 1.1, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
