@@ -1,0 +1,8 @@
+# Build-time only — not needed by the renderer
+package-lock.json
+build-typeface.mjs
+assets/fonts/Anton-Regular.ttf
+.gitignore
+node_modules/
+snapshots/
+.debug/
