@@ -1,0 +1,15 @@
+{
+  "name": "coalesce-100b",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "render": "hyperframes render",
+    "cloud": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/coalesce-100b.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get"
+  },
+  "devDependencies": { "hyperframes": "0.7.107" }
+}

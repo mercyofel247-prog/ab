@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$100B — Particle Coalesce</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Anton";
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url("assets/fonts/anton-latin.woff2") format("woff2");
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --ground: #0a0a0c;
+        --bone: #ede8dd;
+        --gold: #c9a24b;
+      }
+
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: var(--ground);
+        font-family: "Anton", sans-serif;
+      }
+
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+
+      .plane { position: absolute; inset: 0; will-change: transform; }
+
+      /* z0 far — near-black vignette + faint gold ambient glow */
+      #z0 {
+        pointer-events: none;
+        background:
+          radial-gradient(40% 50% at 50% 50%, rgba(201,162,75,0.16) 0%, rgba(201,162,75,0.05) 42%, rgba(201,162,75,0) 72%),
+          radial-gradient(78% 76% at 50% 48%, rgba(10,10,12,0) 44%, rgba(0,0,0,0.6) 100%),
+          var(--ground);
+      }
+
+      /* z1 particle field */
+      #z1 { pointer-events: none; }
+      .frag {
+        position: absolute; top: 0; left: 0;
+        border-radius: 50%;
+        will-change: transform, opacity;
+      }
+
+      /* z2 solid numeral */
+      #z2plane { pointer-events: none; display: grid; place-items: center; transform-origin: 50% 50%; will-change: transform; }
+      #numWrap { position: relative; transform-origin: 50% 50%; will-change: transform; display: grid; place-items: center; }
+      #numBlur { position: relative; will-change: filter; display: grid; place-items: center; }
+      .num {
+        grid-area: 1 / 1;
+        font-family: "Anton", sans-serif;
+        font-weight: 400;
+        line-height: 1;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      /* brushed-metal warm-bone fill + extrusion */
+      #num {
+        color: transparent; -webkit-text-fill-color: transparent;
+        background:
+          repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, rgba(0,0,0,0.05) 1px 2px),
+          linear-gradient(176deg, #fffdf7 0%, #ede8dd 34%, #cec6b2 52%, #f1ece1 68%, #d6cdb9 100%);
+        -webkit-background-clip: text; background-clip: text;
+        text-shadow:
+          1px 1px 0 #bcb096, 2px 2px 0 #ab9f85, 3px 3px 0 #998d74,
+          4px 4px 0 #877c65, 5px 5px 0 #746a56, 6px 5px 0 #5f5647;
+        opacity: 0;
+      }
+      /* gold rim on the top-right edge (blooms at solidify) — offset gold copy, one edge only */
+      #rim {
+        color: var(--gold); -webkit-text-fill-color: var(--gold);
+        text-shadow: 0 0 5px rgba(201,162,75,0.5), 0 0 12px rgba(201,162,75,0.28);
+        transform: translate(4px, -4px); /* rake toward the top-right edge */
+        mix-blend-mode: screen;
+        opacity: 0;
+        /* reveal the gold only along the top-right edge (one edge, not a symmetric glow) */
+        -webkit-mask-image: linear-gradient(225deg, #000 0%, #000 36%, rgba(0,0,0,0) 55%);
+        mask-image: linear-gradient(225deg, #000 0%, #000 36%, rgba(0,0,0,0) 55%);
+      }
+
+      /* z3 foreground bokeh (independent of the convergence set) */
+      #z3 { pointer-events: none; }
+      .bokeh {
+        position: absolute; border-radius: 50%; will-change: transform, opacity;
+        background: radial-gradient(circle, rgba(232,220,190,0.5) 0%, rgba(201,162,75,0.14) 45%, rgba(201,162,75,0) 72%);
+        filter: blur(2.4px);
+      }
+
+      /* z4 grade */
+      #grain {
+        position: absolute; left: -50%; top: -50%; width: 200%; height: 200%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat; opacity: 0.08; mix-blend-mode: overlay; will-change: transform; pointer-events: none;
+      }
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 16%, rgba(0,0,0,0) 32%),
+          radial-gradient(120% 108% at 50% 46%, rgba(0,0,0,0) 46%, rgba(0,0,0,0.6) 100%);
+      }
+      #edgeCA {
+        position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.5;
+        background:
+          linear-gradient(90deg, rgba(255,0,40,0.10) 0%, rgba(255,0,40,0) 10%, rgba(255,0,40,0) 90%, rgba(0,170,255,0.10) 100%),
+          linear-gradient(270deg, rgba(0,170,255,0.07) 0%, rgba(0,170,255,0) 10%, rgba(0,170,255,0) 90%, rgba(255,0,40,0.07) 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6" data-track-index="1">
+        <div class="plane" id="z0"></div>
+        <div class="plane" id="z1" data-layout-ignore></div>
+        <div class="plane" id="z2plane" data-layout-allow-overflow>
+          <div id="numWrap" data-layout-allow-overflow>
+            <div id="numBlur">
+              <div class="num" id="num" data-layout-allow-occlusion>$100B</div>
+              <div class="num" id="rim" data-layout-ignore aria-hidden="true">$100B</div>
+            </div>
+          </div>
+        </div>
+        <div class="plane" id="z3" data-layout-ignore></div>
+        <div id="grain"></div>
+        <div id="vignette"></div>
+        <div id="edgeCA"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---------- deterministic PRNG (mulberry32) ----------
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const W = 1920, H = 1080, CX = W / 2, CY = H / 2;
+      const N = 400;                 // deterministic particle count
+      const TARGET_W = W * 0.68;     // numeral 68% frame width
+
+      async function build() {
+        // wait for the numeral font so canvas sampling matches the solid glyphs
+        try { await document.fonts.load('400 100px "Anton"'); await document.fonts.ready; } catch (e) {}
+
+        // ---- sample the $100B glyph shape from an offscreen canvas ----
+        const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        const cx = cv.getContext("2d");
+        cx.font = '400 100px "Anton"';
+        const w100 = cx.measureText("$100B").width || 246;
+        const fontSize = 100 * TARGET_W / w100;
+        cx.clearRect(0, 0, W, H);
+        cx.font = `400 ${fontSize}px "Anton"`;
+        cx.textAlign = "center";
+        cx.textBaseline = "middle";
+        cx.fillStyle = "#fff";
+        cx.fillText("$100B", CX, CY);
+        const data = cx.getImageData(0, 0, W, H).data;
+        const opaqueAt = (x, y) =>
+          x >= 0 && x < W && y >= 0 && y < H && data[(y * W + x) * 4 + 3] > 128;
+
+        // sample the glyph OUTLINE (edge pixels): a crisp dotted numeral reads
+        // far better than points scattered through the solid fill
+        const STEP = 2;
+        const opaque = [];
+        for (let y = 0; y < H; y += STEP) {
+          for (let x = 0; x < W; x += STEP) {
+            if (!opaqueAt(x, y)) continue;
+            if (
+              !opaqueAt(x - STEP, y) || !opaqueAt(x + STEP, y) ||
+              !opaqueAt(x, y - STEP) || !opaqueAt(x, y + STEP)
+            ) {
+              opaque.push(x + (y << 12));
+            }
+          }
+        }
+
+        // deterministic Fisher–Yates shuffle, then take N target points
+        const rand = mulberry32(0x100b);
+        for (let i = opaque.length - 1; i > 0; i--) {
+          const j = Math.floor(rand() * (i + 1));
+          const t = opaque[i]; opaque[i] = opaque[j]; opaque[j] = t;
+        }
+        const count = Math.min(N, opaque.length);
+        const targets = [];
+        for (let i = 0; i < count; i++) {
+          const v = opaque[i];
+          targets.push([v & 0xfff, v >> 12]);
+        }
+
+        // ---- create particles: off-frame start → assigned glyph target ----
+        const rp = mulberry32(0x5eed);
+        const z1 = document.getElementById("z1");
+        const frags = [];
+        const order = [];
+        for (let i = 0; i < count; i++) order.push(i);
+        // shuffle convergence order so the stagger is organic, not spatial
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(rp() * (i + 1));
+          const t = order[i]; order[i] = order[j]; order[j] = t;
+        }
+
+        for (let i = 0; i < count; i++) {
+          const [tx, ty] = targets[i];
+          const ang = rp() * Math.PI * 2;
+          const rad = 1180 + rp() * 720;          // outside the frame (half-diag ≈ 1101)
+          const sx = CX + Math.cos(ang) * rad;
+          const sy = CY + Math.sin(ang) * rad * 0.8;
+          const d = 4 + rp() * 6;
+          const gold = rp() < 0.5;
+          const el = document.createElement("div");
+          el.className = "frag";
+          el.style.width = d + "px"; el.style.height = d + "px";
+          el.style.background = gold
+            ? "radial-gradient(circle, rgba(201,162,75,1) 0%, rgba(201,162,75,0) 72%)"
+            : "radial-gradient(circle, rgba(237,232,221,1) 0%, rgba(237,232,221,0) 72%)";
+          z1.appendChild(el);
+          gsap.set(el, { x: sx, y: sy, opacity: 0.6 });
+          frags.push({ el, sx, sy, tx, ty });
+        }
+
+        // ---- z3 foreground bokeh (independent, deterministic) ----
+        const rb = mulberry32(0xb0e);
+        const z3 = document.getElementById("z3");
+        const bokeh = [];
+        const MX = W * 0.06, MY = H * 0.07;
+        for (let i = 0; i < 7; i++) {
+          const el = document.createElement("div");
+          el.className = "bokeh";
+          const d = 16 + rb() * 26;
+          el.style.width = d + "px"; el.style.height = d + "px";
+          const x = MX + rb() * (W - MX * 2), y = MY + rb() * (H - MY * 2);
+          const op = 0.1 + rb() * 0.16;
+          gsap.set(el, { x, y, xPercent: -50, yPercent: -50, opacity: op });
+          z3.appendChild(el);
+          bokeh.push({ el, x, op, ph: rb() });
+        }
+
+        // ---- size + align the solid numeral to the sampled shape ----
+        document.querySelectorAll(".num").forEach((n) => { n.style.fontSize = fontSize + "px"; });
+
+        // =====================================================
+        //  TIMELINE
+        // =====================================================
+        gsap.set("#z2plane", { scale: 1.0 });
+        gsap.set("#numWrap", { scale: 1.03 });
+        gsap.set("#numBlur", { filter: "blur(8px)" });
+        gsap.set("#z0", { scale: 1.0 });
+        gsap.set("#grain", { x: 0, y: 0 });
+
+        const tl = gsap.timeline({ paused: true });
+
+        // ---- 0–1800ms CONVERGENCE: one inward trajectory, organic stagger, power3.in ----
+        const STAG = 0.003, DUR = 0.55;
+        for (let i = 0; i < count; i++) {
+          const f = frags[i];
+          const delay = order[i] * STAG;          // 0 .. ~1.2s, shuffled = organic
+          tl.to(f.el, { x: f.tx, y: f.ty, duration: DUR, ease: "power3.in" }, delay);
+          tl.to(f.el, { opacity: 1, duration: DUR * 0.9, ease: "power2.out" }, delay);
+        }
+
+        // ---- 1800ms SOLIDIFY: crossfade particles → solid, rim bloom, scale settle ----
+        tl.to("#z1", { opacity: 0, duration: 0.25, ease: "expo.out" }, 1.8);
+        tl.to("#num", { opacity: 1, duration: 0.25, ease: "expo.out" }, 1.8);
+        tl.to("#rim", { opacity: 1, duration: 0.3, ease: "expo.out" }, 1.8);   // gold rim blooms 0 → full
+        tl.to("#numWrap", { scale: 1.0, duration: 0.09, ease: "back.out(3)" }, 1.8); // 90ms settle 1.03 → 1.0
+
+        // ---- 1800–2500ms rack focus 8px → sharp ----
+        tl.to("#numBlur", { filter: "blur(0px)", duration: 0.7, ease: "power2.out" }, 1.8);
+
+        // ---- 2000–5800ms push-in 1.00 → 1.10, z3 parallax independent ----
+        tl.to("#z2plane", { scale: 1.10, duration: 3.67, ease: "sine.inOut" }, 2.0);
+        tl.to("#z0", { scale: 1.04, duration: 3.67, ease: "sine.inOut" }, 2.0);
+        tl.to("#z3", { scale: 1.16, duration: 3.8, ease: "sine.inOut" }, 2.0);
+
+        // ---- 0–6000ms z3 specks drift continuously (own slow rate) ----
+        tl.to("#z3", { x: 22, duration: 5.0, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+        bokeh.forEach((p) => {
+          tl.to(p.el, {
+            opacity: Math.max(0.05, p.op * 0.5),
+            duration: 2.0 + p.ph * 2.2, ease: "sine.inOut", repeat: -1, yoyo: true,
+          }, 0.5 + p.ph * 2.0);
+        });
+
+        // ---- moving film grain ----
+        tl.to("#grain", { x: -110, y: -70, duration: 1.2, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+        window.__timelines["main"] = tl;
+      }
+
+      build();
+    </script>
+  </body>
+</html>

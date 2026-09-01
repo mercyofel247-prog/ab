@@ -1,0 +1,6 @@
+# Build-time only
+package-lock.json
+.gitignore
+node_modules/
+snapshots/
+.debug/
