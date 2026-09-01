@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$100B — Stamp / Impact</title>
+    <script src="vendor/three.min.js"></script>
+    <script src="vendor/anton-font.js"></script>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      :root {
+        --ground: #0a0a0c;
+        --bone: #ede8dd;
+        --gold: #c9a24b;
+      }
+
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: var(--ground);
+        font-family: system-ui, sans-serif;
+      }
+
+      #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+
+      /* #camera carries only the impact recoil shake (whole stage) */
+      #camera { position: absolute; inset: 0; will-change: transform; }
+
+      .plane { position: absolute; inset: 0; will-change: transform; pointer-events: none; }
+
+      /* z0 far — dark radial vignette + faint warm-gold glow behind the number */
+      #z0 {
+        background:
+          radial-gradient(38% 46% at 50% 50%, rgba(201,162,75,0.20) 0%, rgba(201,162,75,0.06) 40%, rgba(201,162,75,0) 70%),
+          radial-gradient(75% 75% at 50% 48%, rgba(10,10,12,0) 40%, rgba(0,0,0,0.55) 100%),
+          var(--ground);
+      }
+
+      /* z2 hero canvas */
+      #gl { position: absolute; inset: 0; will-change: filter, opacity; }
+
+      /* z1 dust motes (mid), z3 bokeh (near) */
+      .mote { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+      #z1 .mote { background: radial-gradient(circle, rgba(237,232,221,0.9) 0%, rgba(237,232,221,0) 72%); }
+      #z3 .mote {
+        background: radial-gradient(circle, rgba(232,220,190,0.55) 0%, rgba(201,162,75,0.16) 45%, rgba(201,162,75,0) 72%);
+        filter: blur(2.2px);
+      }
+
+      /* z4 grade (screen-space, fixed) */
+      #grain {
+        position: absolute; left: -50%; top: -50%; width: 200%; height: 200%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        opacity: 0.08; mix-blend-mode: overlay; will-change: transform; pointer-events: none;
+      }
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.10) 16%, rgba(0,0,0,0) 32%),
+          radial-gradient(120% 108% at 50% 46%, rgba(0,0,0,0) 46%, rgba(0,0,0,0.62) 100%);
+      }
+      #edgeCA {
+        position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: 0.55;
+        background:
+          linear-gradient(90deg, rgba(255,0,40,0.11) 0%, rgba(255,0,40,0) 10%, rgba(255,0,40,0) 90%, rgba(0,170,255,0.11) 100%),
+          linear-gradient(270deg, rgba(0,170,255,0.08) 0%, rgba(0,170,255,0) 10%, rgba(0,170,255,0) 90%, rgba(255,0,40,0.08) 100%);
+      }
+      /* impact chromatic-split shimmer (localized to the numeral band) */
+      #shimmer {
+        position: absolute; left: 0; top: 34%; width: 100%; height: 32%;
+        pointer-events: none; mix-blend-mode: screen; opacity: 0;
+        background:
+          linear-gradient(90deg, rgba(255,32,48,0.5) 0%, rgba(255,32,48,0) 46%),
+          linear-gradient(270deg, rgba(40,180,255,0.5) 0%, rgba(40,180,255,0) 46%);
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6" data-track-index="1">
+        <div id="camera">
+          <div class="plane" id="z0"></div>
+          <div class="plane" id="z1"></div>
+          <canvas id="gl"></canvas>
+          <div class="plane" id="z3"></div>
+        </div>
+        <div id="grain"></div>
+        <div id="vignette"></div>
+        <div id="edgeCA"></div>
+        <div id="shimmer"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---------- deterministic PRNG (mulberry32) ----------
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x100b1a);
+
+      const W = 1920, H = 1080, CX = W / 2, CY = H / 2;
+
+      // ======================================================
+      //  z2 — Three.js 3D metal hero
+      // ======================================================
+      const canvas = document.getElementById("gl");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(W, H, false);
+      renderer.setClearColor(0x000000, 0); // transparent → the z0 glow shows through
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 100);
+      const CAM_Z0 = 14.2;
+      camera.position.set(0, 0, CAM_Z0);
+
+      // gradient environment so the brushed metal reflects a bright-top → dark-bottom
+      // falloff (this is what gives the face its light-to-dark gradient).
+      function makeEnvTexture() {
+        const c = document.createElement("canvas");
+        c.width = 32; c.height = 256;
+        const x = c.getContext("2d");
+        const g = x.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0.0, "#fff8ec");
+        g.addColorStop(0.30, "#ded5c1");
+        g.addColorStop(0.50, "#8d8474");
+        g.addColorStop(0.72, "#332e27");
+        g.addColorStop(1.0, "#0a0a0c");
+        x.fillStyle = g; x.fillRect(0, 0, 32, 256);
+        // faint gold reflection band near the top for the rim to pick up
+        x.fillStyle = "rgba(201,162,75,0.35)";
+        x.fillRect(0, 24, 32, 26);
+        const t = new THREE.CanvasTexture(c);
+        t.mapping = THREE.EquirectangularReflectionMapping;
+        t.encoding = THREE.sRGBEncoding;
+        return t;
+      }
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      scene.environment = pmrem.fromEquirectangular(makeEnvTexture()).texture;
+
+      // key light (upper-left) + gold rim (upper-right, rakes the top-right bevel)
+      const key = new THREE.DirectionalLight(0xfff2df, 1.25);
+      key.position.set(-7, 8, 9);
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0xc9a24b, 0.25); // blooms up at impact
+      rim.position.set(8, 6.5, -2.5);
+      scene.add(rim);
+      scene.add(new THREE.AmbientLight(0x20242e, 0.5));
+
+      const font = new THREE.Font(window.ANTON_FONT);
+      const geo = new THREE.TextBufferGeometry("$100B", {
+        font, size: 3.5, height: 1.7, curveSegments: 10,
+        bevelEnabled: true, bevelThickness: 0.24, bevelSize: 0.15, bevelSegments: 5,
+      });
+      geo.center();
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xede8dd, metalness: 0.9, roughness: 0.35, envMapIntensity: 1.05,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      const BASE_Y = 0;
+      mesh.position.set(0, BASE_Y, 0);
+      scene.add(mesh);
+
+      function renderThree() { renderer.render(scene, camera); }
+
+      // ======================================================
+      //  z1 / z3 — deterministic particle planes
+      // ======================================================
+      const MX = W * 0.06, MY = H * 0.07, IW = W - MX * 2, IH = H - MY * 2;
+
+      function buildPlane(id, count, sizeMin, sizeMax, opMin, opMax, burstScale) {
+        const plane = document.getElementById(id);
+        const items = [];
+        for (let i = 0; i < count; i++) {
+          const d = sizeMin + rand() * (sizeMax - sizeMin);
+          const el = document.createElement("div");
+          el.className = "mote";
+          el.style.width = d + "px"; el.style.height = d + "px";
+          const x = MX + rand() * IW, y = MY + rand() * IH;
+          const op = opMin + rand() * (opMax - opMin);
+          gsap.set(el, { x, y, xPercent: -50, yPercent: -50, opacity: op });
+          // outward burst vector from frame centre (the impact dust-puff)
+          let dx = x - CX, dy = y - CY;
+          const len = Math.hypot(dx, dy) || 1;
+          const push = (26 + rand() * 46) * burstScale;
+          plane.appendChild(el);
+          items.push({ el, x, y, op, bx: (dx / len) * push, by: (dy / len) * push, ph: rand() });
+        }
+        return items;
+      }
+      // z1 mid dust ~40% opacity; z3 near bokeh, bigger, drift+burst at ~2.5x
+      const dust = buildPlane("z1", 70, 1.4, 3.0, 0.16, 0.42, 1.0);
+      const bokeh = buildPlane("z3", 11, 12, 30, 0.10, 0.26, 2.5);
+
+      // ======================================================
+      //  TIMELINE
+      // ======================================================
+      // initial states
+      gsap.set(mesh.scale, { x: 2.4, y: 2.4, z: 2.4 });
+      gsap.set(canvas, { opacity: 0, filter: "blur(8px)" });
+      gsap.set("#camera", { y: 0 });
+      gsap.set("#z0", { scale: 1.0 });
+      gsap.set("#z1", { x: 0, scale: 1.0 });
+      gsap.set("#z3", { x: 0, scale: 1.0 });
+      gsap.set("#grain", { x: 0, y: 0 });
+      gsap.set("#shimmer", { opacity: 0, x: 0 });
+
+      const tl = gsap.timeline({ paused: true, onUpdate: renderThree });
+
+      // ---- 0–560ms STAMP DROP: scale 2.4 → 1.0 (power4.in), opacity 0→1 over first 200ms ----
+      tl.to(mesh.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.56, ease: "power4.in" }, 0);
+      tl.to(canvas, { opacity: 1, duration: 0.2, ease: "power2.out" }, 0);
+
+      // ---- 560ms IMPACT: stacked movements in the same ~250ms ----
+      // (a) 90ms scale overshoot 1.0 → 1.06 → 1.0 (elastic settle)
+      tl.to(mesh.scale, { x: 1.06, y: 1.06, z: 1.06, duration: 0.05, ease: "power3.out" }, 0.56);
+      tl.to(mesh.scale, { x: 1.0, y: 1.0, z: 1.0, duration: 0.19, ease: "back.out(3)" }, 0.61);
+      // (b) 6px downward stage recoil that damps out
+      tl.to("#camera", { y: 6, duration: 0.03, ease: "power2.out" }, 0.56);
+      tl.to("#camera", { y: -2.5, duration: 0.05, ease: "sine.inOut" }, 0.59);
+      tl.to("#camera", { y: 1, duration: 0.06, ease: "sine.inOut" }, 0.64);
+      tl.to("#camera", { y: 0, duration: 0.08, ease: "power2.out" }, 0.70);
+      // (c) gold rim light blooms 0 → full (expo.out)
+      tl.to(rim, { intensity: 2.6, duration: 0.32, ease: "expo.out" }, 0.56);
+      // (d) dust-puff burst — particles kick outward then the drift carries them
+      [...dust, ...bokeh].forEach((p) => {
+        tl.to(p.el, { x: p.x + p.bx, y: p.y + p.by, duration: 0.25, ease: "power2.out" }, 0.56);
+      });
+      // brief opacity flare on the near bokeh as the puff catches the light
+      bokeh.forEach((p) => {
+        tl.to(p.el, { opacity: Math.min(0.5, p.op * 2.1), duration: 0.12, ease: "power2.out" }, 0.56);
+        tl.to(p.el, { opacity: p.op, duration: 0.5, ease: "sine.inOut" }, 0.68);
+      });
+      // (e) 160ms chromatic-split shimmer, then settle
+      tl.to("#shimmer", { opacity: 0.55, duration: 0.05, ease: "power2.out" }, 0.56);
+      tl.to("#shimmer", { opacity: 0, duration: 0.11, ease: "power2.in" }, 0.61);
+      tl.to(canvas, { x: 3, duration: 0.04, ease: "power2.out" }, 0.56);
+      tl.to(canvas, { x: 0, duration: 0.12, ease: "back.out(2)" }, 0.60);
+
+      // ---- 560–1400ms rack focus: blur 8px → sharp (power2.out) ----
+      tl.to(canvas, { filter: "blur(0px)", duration: 0.84, ease: "power2.out" }, 0.56);
+
+      // ---- Y-axis spin from the impact to the end: one full turn (sine.inOut) ----
+      // Fastest at 180° (whips through the back, showing the extrude depth), slow
+      // and front-facing/readable at the impact and again on the final frame.
+      tl.to(mesh.rotation, { y: Math.PI * 2, duration: 5.44, ease: "sine.inOut" }, 0.56);
+
+      // ---- 700–5670ms BIG push-in, planes parallaxing at differential rates ----
+      // hero: dolly the camera in (true 3D push, stays razor sharp)
+      tl.to(camera.position, { z: CAM_Z0 - 1.55, duration: 4.97, ease: "sine.inOut" }, 0.7);
+      // planes: z0 slowest → z3 fastest
+      tl.to("#z0", { scale: 1.05, duration: 4.97, ease: "sine.inOut" }, 0.7);
+      tl.to("#z1", { scale: 1.09, duration: 4.97, ease: "sine.inOut" }, 0.7);
+      tl.to("#z3", { scale: 1.22, duration: 4.97, ease: "sine.inOut" }, 0.7);
+
+      // ---- 0–6000ms continuous lateral drift (one coherent trajectory per plane) ----
+      tl.to("#z1", { x: 14, duration: 4.2, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+      // z3 near drifts at ~2.5x the z1 rate (shorter period)
+      tl.to("#z3", { x: -26, duration: 1.68, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      // gentle per-mote twinkle (opacity only)
+      [...dust, ...bokeh].forEach((p) => {
+        tl.to(p.el, {
+          opacity: Math.max(0.05, p.op * 0.5),
+          duration: 1.3 + p.ph * 1.8, ease: "sine.inOut", repeat: -1, yoyo: true,
+        }, 1.0 + p.ph * 1.6);
+      });
+
+      // ---- moving film grain (transform wander, no strobe) ----
+      tl.to("#grain", { x: -120, y: -80, duration: 1.2, ease: "sine.inOut", repeat: -1, yoyo: true }, 0);
+
+      renderThree();
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
