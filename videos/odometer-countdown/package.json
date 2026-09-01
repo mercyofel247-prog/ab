@@ -1,0 +1,19 @@
+{
+  "name": "odometer-countdown",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "snapshot": "hyperframes snapshot",
+    "render": "hyperframes render",
+    "cloud": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/odometer-countdown.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get",
+    "publish": "hyperframes publish"
+  },
+  "devDependencies": {
+    "hyperframes": "0.7.107"
+  }
+}

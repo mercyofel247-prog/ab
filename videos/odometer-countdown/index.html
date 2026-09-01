@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=854, height=480" />
+    <title>Odometer Countdown — 0 → −958,000,000</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      /* ---- Track-2 theme: dark alarm-red field ---- */
+      :root {
+        --black: #0a0403;
+        --field-lo: #1a0605;
+        --field-hi: #2c0a07;
+        --rim-base: #7a160e; /* resting rim */
+        --rim-alarm: #d62e1f; /* alarm spike */
+
+        /* animated (driven deterministically from GSAP) */
+        --rim-col: #7a160e;
+        --rim-glow: 0; /* 0..1 alarm halo opacity */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: Inter, "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 100% at 50% 46%, var(--field-hi) 0%, var(--field-lo) 42%, #100403 72%, var(--black) 100%);
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+        background-size: 40px 40px;
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(74% 72% at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.72) 100%);
+        pointer-events: none;
+      }
+
+      /* ambient resting glow behind the number */
+      #ambient {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 720px;
+        height: 340px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(122, 22, 14, 0.5) 0%, rgba(122, 22, 14, 0.16) 46%, rgba(122, 22, 14, 0) 74%);
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      /* ---- dimensional bloom (awe lever): flares toward the viewer on arrival ---- */
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        perspective: 900px;
+        perspective-origin: 50% 50%;
+      }
+
+      #bloom {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 760px;
+        height: 420px;
+        transform-style: preserve-3d;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(214, 46, 31, 0.9) 0%, rgba(214, 46, 31, 0.35) 34%, rgba(214, 46, 31, 0) 70%);
+        opacity: 0;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+
+      #numwrap {
+        position: relative;
+        transform-style: preserve-3d;
+        will-change: transform;
+        display: grid;
+        place-items: center;
+      }
+
+      /* fixed footprint so the value never drives a width / letter-spacing change */
+      #num {
+        width: 760px;
+        text-align: center;
+        font-size: 82px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: 0; /* static — never animated */
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        color: #c24a3d; /* oxidised alarm-red fill */
+        -webkit-text-stroke: 2px var(--rim-col);
+        will-change: filter;
+        /* the rim halo — its opacity is the spike toward the alarm colour */
+        filter:
+          drop-shadow(0 0 14px rgba(214, 46, 31, var(--rim-glow)))
+          drop-shadow(0 0 34px rgba(214, 46, 31, calc(var(--rim-glow) * 0.6)));
+        text-shadow:
+          0 2px 0 #200607,
+          0 4px 10px rgba(0, 0, 0, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="4.5"
+      data-fps="24"
+      data-width="854"
+      data-height="480"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="4.5" data-track-index="1">
+        <div id="ambient"></div>
+        <div class="grain"></div>
+
+        <div id="scene">
+          <div id="bloom" data-layout-allow-overflow></div>
+          <div id="numwrap" data-layout-allow-overflow>
+            <div id="num" data-layout-allow-overflow data-layout-allow-occlusion>0</div>
+          </div>
+        </div>
+
+        <div class="vignette"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const root = document.documentElement;
+      const numEl = document.querySelector("#num");
+
+      const END_VALUE = -958000000; // −958,000,000
+      const COUNT_START = 0.45; // count begins
+      const COUNT_DUR = 1.2; // ~1.2s roll
+      const ARRIVAL = COUNT_START + COUNT_DUR; // 1.65 — number lands
+
+      // ---- deterministic odometer formatting (tabular-nums keeps width stable) ----
+      function fmt(v) {
+        return Math.round(v).toLocaleString("en-US");
+      }
+
+      // ---- deterministic rim colour lerp: base (k=0) -> alarm (k=1) ----
+      const RIM_BASE = [122, 22, 14]; // #7A160E
+      const RIM_ALARM = [214, 46, 31]; // #D62E1F
+      function setRim(k) {
+        const r = Math.round(RIM_BASE[0] + (RIM_ALARM[0] - RIM_BASE[0]) * k);
+        const g = Math.round(RIM_BASE[1] + (RIM_ALARM[1] - RIM_BASE[1]) * k);
+        const b = Math.round(RIM_BASE[2] + (RIM_ALARM[2] - RIM_BASE[2]) * k);
+        root.style.setProperty("--rim-col", `rgb(${r}, ${g}, ${b})`);
+        root.style.setProperty("--rim-glow", String(0.9 * k));
+      }
+
+      const count = { v: 0 };
+      const rim = { k: 0 };
+
+      const tl = gsap.timeline({ paused: true });
+
+      // initial state
+      gsap.set("#num", { scale: 1 });
+      gsap.set("#bloom", { xPercent: -50, yPercent: -50, z: -260, scale: 0.6, opacity: 0 });
+      setRim(0);
+      numEl.textContent = fmt(0);
+
+      // (0) lead-in fade of the whole scene
+      gsap.set("#numwrap", { opacity: 0 });
+      tl.to("#numwrap", { opacity: 1, duration: 0.35, ease: "power2.out" }, 0);
+
+      // (1) odometer count DOWN 0 -> −958,000,000 over ~1.2s, named ease-out
+      tl.to(
+        count,
+        {
+          v: END_VALUE,
+          duration: COUNT_DUR,
+          ease: "expo.out",
+          onUpdate: () => {
+            numEl.textContent = fmt(count.v);
+          },
+          onComplete: () => {
+            numEl.textContent = fmt(END_VALUE);
+          },
+        },
+        COUNT_START,
+      );
+
+      // (2) 4% settle push on arrival — overshoot then settle back to rest
+      tl.to("#num", { scale: 1.04, duration: 0.09, ease: "power3.out" }, ARRIVAL);
+      tl.to("#num", { scale: 1.0, duration: 0.5, ease: "power2.out" }, ARRIVAL + 0.09);
+
+      // (3) rim opacity spikes ONCE toward the alarm colour on arrival, back to base
+      tl.to(rim, { k: 1, duration: 0.1, ease: "power2.out", onUpdate: () => setRim(rim.k) }, ARRIVAL);
+      tl.to(rim, { k: 0, duration: 0.65, ease: "power2.inOut", onUpdate: () => setRim(rim.k) }, ARRIVAL + 0.1);
+
+      // (4) dimensional bloom on arrival (awe lever): flares toward viewer, then settles
+      tl.to(
+        "#bloom",
+        { opacity: 0.92, z: 60, scale: 1.16, duration: 0.12, ease: "power3.out" },
+        ARRIVAL,
+      );
+      tl.to(
+        "#bloom",
+        { opacity: 0.34, z: 0, scale: 1.0, duration: 0.7, ease: "power2.out" },
+        ARRIVAL + 0.12,
+      );
+
+      // hold on the settled alarm number to 4.5s (nothing moves)
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
