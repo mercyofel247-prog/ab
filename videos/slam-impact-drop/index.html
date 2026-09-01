@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Heavy Slam — –$958,000,000</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #060203;
+        --field-lo: #1a0407;
+        --field: #240609;
+        --alarm: #d62e1f; /* rim bloom on arrival */
+        --settle: #7a160e; /* rim rests here */
+        --face-top: #ff5a48;
+        --face-hi: #e23a2c;
+        --face-mid: #b21d13;
+        --face-lo: #6e130c;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(120% 100% at 50% 52%, var(--field) 0%, var(--field-lo) 40%, #100305 66%, var(--black) 100%);
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+        background-size: 74px 74px;
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      /* alarm bloom that floods the field on contact, then decays */
+      #impactGlow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1700px;
+        height: 1000px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(214, 46, 31, 0.55) 0%,
+          rgba(160, 26, 20, 0.22) 42%,
+          rgba(160, 26, 20, 0) 72%
+        );
+        opacity: 0;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 74% at 50% 50%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.78) 100%);
+        pointer-events: none;
+      }
+
+      /* camera rig — the 8px contact shake lives here */
+      #camera {
+        position: absolute;
+        inset: 0;
+        will-change: transform;
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      #numwrap {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: transform, filter;
+        filter: url(#mblur);
+      }
+
+      /* the three stacked numeral layers share one box so they register exactly */
+      .layer {
+        grid-area: 1 / 1;
+        font-size: 132px;
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      /* face — metallic alarm-red */
+      #num {
+        background: linear-gradient(
+          178deg,
+          var(--face-top) 0%,
+          var(--face-hi) 22%,
+          var(--face-mid) 50%,
+          #7c130b 68%,
+          var(--face-mid) 82%,
+          var(--face-lo) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          1px 1px 0 #5c110a,
+          2px 2px 0 #4c0e08,
+          3px 3px 0 #3d0b06,
+          4px 4px 0 #300805,
+          5px 6px 14px rgba(0, 0, 0, 0.6);
+      }
+
+      /* rim layers — opaque colored glyphs that sit BEHIND the face, so the
+         fill is hidden and only the colored stroke + glow halo spill out. */
+      .rim {
+        pointer-events: none;
+      }
+
+      #rimSettle {
+        opacity: 0;
+        color: var(--settle);
+        -webkit-text-fill-color: var(--settle);
+        -webkit-text-stroke: 1.2px var(--settle);
+        text-shadow:
+          0 0 14px rgba(122, 22, 14, 0.9),
+          0 0 30px rgba(122, 22, 14, 0.6);
+      }
+
+      #rimAlarm {
+        opacity: 0;
+        color: var(--alarm);
+        -webkit-text-fill-color: var(--alarm);
+        -webkit-text-stroke: 1.6px var(--alarm);
+        text-shadow:
+          0 0 16px rgba(214, 46, 31, 0.95),
+          0 0 40px rgba(214, 46, 31, 0.7),
+          0 0 72px rgba(214, 46, 31, 0.45);
+      }
+
+      /* dust kicked up from the numeral's base on contact */
+      #dust {
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        width: 0;
+        height: 0;
+        transform: translate(-50%, -18px);
+        pointer-events: none;
+      }
+
+      #dust .mote {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 40%, rgba(226, 176, 168, 0.55) 0%, rgba(150, 40, 30, 0.28) 55%, rgba(150, 40, 30, 0) 100%);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- vertical motion-blur filter driven from the timeline -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <filter id="mblur" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+          <feGaussianBlur id="mblurG" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+      </defs>
+    </svg>
+
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div class="grain"></div>
+        <div id="impactGlow"></div>
+
+        <div id="camera" data-layout-allow-overflow>
+          <div id="scene">
+            <div id="numwrap" data-layout-allow-overflow>
+              <div id="rimSettle" class="layer rim" data-layout-allow-occlusion>–$958,000,000</div>
+              <div id="rimAlarm" class="layer rim" data-layout-allow-occlusion>–$958,000,000</div>
+              <div id="num" class="layer" data-layout-allow-occlusion>–$958,000,000</div>
+              <div id="dust" data-layout-allow-overflow></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vignette"></div>
+      </section>
+
+      <audio
+        id="thud"
+        data-start="0.45"
+        data-duration="2.55"
+        data-track-index="2"
+        src="assets/thud.wav"
+        data-volume="0.95"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---------- timing (seconds) ----------
+      const FALL_DUR = 0.45; // scale 2.6 -> 1.0, power4.in
+      const IMPACT_T = FALL_DUR; // one impact only (12.1) — no second slam
+
+      // ---------- deterministic dust field ----------
+      const dustEl = document.querySelector("#dust");
+      const MOTES = 14;
+      const motes = [];
+      // fixed pseudo-random so every render is identical
+      let seed = 1337;
+      const rnd = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+      };
+      for (let i = 0; i < MOTES; i++) {
+        const m = document.createElement("div");
+        m.className = "mote";
+        const size = 14 + rnd() * 30;
+        m.style.width = size + "px";
+        m.style.height = size + "px";
+        dustEl.appendChild(m);
+        const side = i % 2 === 0 ? -1 : 1;
+        motes.push({
+          el: m,
+          dx: side * (60 + rnd() * 340), // spreads out from the base
+          dy: -(30 + rnd() * 90), // kicks up, then eased out
+          rest: 20 + rnd() * 70, // settles slightly below launch
+          sc: 0.8 + rnd() * 1.9,
+        });
+      }
+
+      // ---------- motion-blur driver (vertical) ----------
+      const mblurG = document.querySelector("#mblurG");
+      const blur = { y: 0 };
+      const applyBlur = () => mblurG.setAttribute("stdDeviation", "0 " + blur.y.toFixed(2));
+      applyBlur();
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------- initial state ----------
+      gsap.set("#numwrap", { scale: 2.6, opacity: 0, transformOrigin: "50% 50%" });
+      gsap.set("#camera", { x: 0, y: 0 });
+      gsap.set("#impactGlow", { opacity: 0 });
+      gsap.set(["#rimSettle", "#rimAlarm"], { opacity: 0 });
+      motes.forEach((m) => gsap.set(m.el, { x: 0, y: 0, scale: 0.2, opacity: 0 }));
+
+      // ===================================================================
+      // (1) THE FALL — punches in from 2.6 -> 1.0 on power4.in (~450ms),
+      //     opacity 0 -> 1 over the first 130ms, motion blur rising through
+      //     the fall as velocity climbs.
+      // ===================================================================
+      tl.to("#numwrap", { scale: 1.0, duration: FALL_DUR, ease: "power4.in" }, 0);
+      tl.to("#numwrap", { opacity: 1, duration: 0.13, ease: "power1.out" }, 0);
+      // blur climbs with the accelerating fall, then snaps off on contact
+      tl.to(blur, { y: 26, duration: FALL_DUR, ease: "power4.in", onUpdate: applyBlur }, 0);
+      tl.to(blur, { y: 0, duration: 0.06, ease: "power2.out", onUpdate: applyBlur }, IMPACT_T);
+
+      // ===================================================================
+      // (2) IMPACT — single 90ms overshoot 1.0 -> 1.06 -> 1.0 on back.out
+      // ===================================================================
+      tl.to("#numwrap", { scale: 1.06, duration: 0.03, ease: "power2.out" }, IMPACT_T);
+      tl.to("#numwrap", { scale: 1.0, duration: 0.06, ease: "back.out(3)" }, IMPACT_T + 0.03);
+
+      // ---------- 8px contact camera-shake, damping out over ~280ms ----------
+      const shake = [
+        { x: -8, y: 5, d: 0.035 },
+        { x: 6.2, y: -4.2, d: 0.04 },
+        { x: -4.4, y: 3.0, d: 0.045 },
+        { x: 3.0, y: -2.0, d: 0.05 },
+        { x: -1.6, y: 1.1, d: 0.05 },
+        { x: 0, y: 0, d: 0.06 },
+      ];
+      let at = IMPACT_T;
+      shake.forEach((s, i) => {
+        tl.to("#camera", { x: s.x, y: s.y, duration: s.d, ease: i === shake.length - 1 ? "power2.out" : "power1.inOut" }, at);
+        at += s.d;
+      });
+
+      // ---------- rim bloom: alarm spikes on arrival, settles to #7A160E ----------
+      // alarm rim spikes once
+      tl.to("#rimAlarm", { opacity: 0.95, duration: 0.04, ease: "power2.out" }, IMPACT_T);
+      tl.to("#rimAlarm", { opacity: 0, duration: 0.36, ease: "expo.out" }, IMPACT_T + 0.05);
+      // settle rim eases up and holds
+      tl.to("#rimSettle", { opacity: 0.6, duration: 0.34, ease: "expo.out" }, IMPACT_T + 0.02);
+
+      // ---------- alarm bloom flooding the field, then decay ----------
+      tl.to("#impactGlow", { opacity: 0.9, duration: 0.05, ease: "power2.out" }, IMPACT_T);
+      tl.to("#impactGlow", { opacity: 0.12, duration: 0.55, ease: "expo.out" }, IMPACT_T + 0.06);
+
+      // ---------- dust-puff kicks from the base on power2.out ----------
+      motes.forEach((m) => {
+        tl.set(m.el, { opacity: 0.9 }, IMPACT_T);
+        tl.to(
+          m.el,
+          { x: m.dx, y: m.rest, scale: m.sc, duration: 0.5, ease: "power2.out" },
+          IMPACT_T,
+        );
+        tl.to(m.el, { opacity: 0, duration: 0.42, ease: "power1.out" }, IMPACT_T + 0.12);
+      });
+
+      // ===================================================================
+      // (3) 3% settle push after — a slow forward lean as the mass beds in
+      // ===================================================================
+      tl.to("#numwrap", { scale: 1.03, duration: 0.6, ease: "power2.out" }, IMPACT_T + 0.16);
+
+      // hold on the settled numeral to the end — nothing else moves.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
