@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Gyokuro Investigation — Cold Open</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #07070a;
+        --ink: #edeae2;
+        --ink-dim: #9a978f;
+        --red: #c81e3a;
+        --red-dim: #7a1224;
+        --amber: #e8a33d;
+        --teal: #3fc7c1;
+        --gold: #c9a227;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "JetBrains Mono", "Courier New", monospace;
+      }
+
+      .display {
+        font-family: "Bebas Neue", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 42%, #101014 0%, #0a0a0d 46%, var(--black) 100%);
+      }
+
+      .grain {
+        position: absolute;
+        inset: -4%;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.016) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.016) 1px, transparent 1px);
+        background-size: 5px 5px;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 90;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.78) 100%);
+        pointer-events: none;
+        z-index: 91;
+      }
+
+      .flash {
+        position: absolute;
+        inset: 0;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 95;
+      }
+
+      .fadeout {
+        position: absolute;
+        inset: 0;
+        background: var(--black);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 96;
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Scene A — hook                                                    */
+      /* ---------------------------------------------------------------- */
+      #scene-hook {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      .hook-line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        font-size: 118px;
+        line-height: 1;
+        letter-spacing: 0.01em;
+        color: var(--ink);
+        text-align: center;
+        white-space: nowrap;
+        text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+        opacity: 0;
+      }
+
+      .hook-line .accent {
+        color: var(--red);
+      }
+
+      .hook-line .ghost-r,
+      .hook-line .ghost-b {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+      .hook-line .ghost-r {
+        color: var(--red);
+        mix-blend-mode: screen;
+      }
+      .hook-line .ghost-b {
+        color: #3fc7ff;
+        mix-blend-mode: screen;
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Scene B — evidence board                                          */
+      /* ---------------------------------------------------------------- */
+      #scene-board {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+      }
+
+      .board-bg {
+        position: absolute;
+        inset: 0;
+        background:
+          repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 26px),
+          radial-gradient(90% 80% at 50% 40%, #121014 0%, #0a0909 60%, var(--black) 100%);
+      }
+
+      .board-string {
+        position: absolute;
+        background: linear-gradient(90deg, rgba(200, 30, 58, 0) 0%, rgba(200, 30, 58, 0.35) 50%, rgba(200, 30, 58, 0) 100%);
+        height: 2px;
+        opacity: 0.5;
+        transform-origin: 0 0;
+      }
+
+      .board-header {
+        position: absolute;
+        top: 56px;
+        left: 70px;
+        right: 70px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        color: var(--ink-dim);
+        font-size: 22px;
+        letter-spacing: 0.08em;
+      }
+
+      .board-header .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--red);
+        margin-right: 10px;
+        transform: translateY(1px);
+      }
+
+      .board-rule {
+        position: absolute;
+        top: 96px;
+        left: 70px;
+        right: 70px;
+        height: 1px;
+        background: linear-gradient(90deg, var(--red-dim), transparent 80%);
+      }
+
+      .card {
+        position: absolute;
+        left: 50%;
+        top: 55%;
+        width: 1400px;
+        text-align: center;
+        opacity: 0;
+      }
+
+      .card .tag {
+        display: inline-block;
+        font-size: 22px;
+        letter-spacing: 0.14em;
+        color: #d34d63;
+        border: 1px solid var(--red-dim);
+        padding: 6px 18px;
+        margin-bottom: 26px;
+      }
+
+      .card h2 {
+        font-family: "Bebas Neue", sans-serif;
+        font-weight: 400;
+        font-size: 92px;
+        letter-spacing: 0.02em;
+        color: var(--ink);
+      }
+
+      .card p {
+        margin-top: 22px;
+        font-size: 28px;
+        color: var(--ink-dim);
+        letter-spacing: 0.01em;
+      }
+
+      .card .diagram {
+        position: relative;
+        margin: 40px auto 0;
+        width: 640px;
+        height: 140px;
+      }
+
+      .stamp {
+        position: absolute;
+        left: 50%;
+        top: -150px;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 46px;
+        letter-spacing: 0.1em;
+        color: var(--red);
+        border: 4px solid var(--red);
+        padding: 6px 24px;
+        opacity: 0;
+      }
+
+      /* card 2 — shade diagram */
+      .bush-row {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 40px;
+      }
+      .bush {
+        width: 34px;
+        height: 34px;
+        border-radius: 50% 50% 45% 45%;
+        background: #163420;
+        border: 1px solid #2a5a3a;
+      }
+      .sun {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        transform: translateX(-50%);
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 3px solid var(--amber);
+      }
+      .sun::before,
+      .sun::after {
+        content: "";
+        position: absolute;
+        left: 6px;
+        top: 21px;
+        width: 66px;
+        height: 3px;
+        background: var(--red);
+        transform: rotate(45deg);
+        transform-origin: center;
+      }
+      .tarp {
+        position: absolute;
+        left: -650px;
+        top: 66px;
+        width: 640px;
+        height: 6px;
+        background: var(--red);
+        box-shadow: 0 0 18px rgba(200, 30, 58, 0.6);
+      }
+
+      /* card 3 — chemistry bars */
+      .bars {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: center;
+        gap: 90px;
+        align-items: flex-end;
+        height: 120px;
+      }
+      .bar {
+        width: 46px;
+        height: 4px;
+        background: linear-gradient(180deg, var(--teal), var(--gold));
+        border-radius: 3px 3px 0 0;
+      }
+      .bar-label {
+        position: absolute;
+        bottom: -34px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 16px;
+        color: var(--ink-dim);
+        white-space: nowrap;
+      }
+
+      /* card 4 — amino burst */
+      .burst {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--gold);
+        box-shadow: 0 0 24px 6px rgba(201, 162, 39, 0.5);
+      }
+      .burst-ring {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 20px;
+        height: 20px;
+        margin: -10px 0 0 -10px;
+        border: 2px solid rgba(201, 162, 39, 0.7);
+        border-radius: 50%;
+        opacity: 0;
+      }
+
+      /* card 5 — converging dots */
+      .conv-dot {
+        position: absolute;
+        top: 50%;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+      }
+      .conv-dot.caf {
+        left: 30%;
+        background: var(--amber);
+        box-shadow: 0 0 20px 4px rgba(232, 163, 61, 0.45);
+      }
+      .conv-dot.the {
+        right: 30%;
+        background: var(--teal);
+        box-shadow: 0 0 20px 4px rgba(63, 199, 193, 0.45);
+      }
+      .conv-label {
+        position: absolute;
+        top: 50%;
+        margin-top: 26px;
+        font-size: 16px;
+        letter-spacing: 0.1em;
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Scene C — mechanism diagram                                       */
+      /* ---------------------------------------------------------------- */
+      #scene-mech {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background: radial-gradient(70% 60% at 50% 46%, #0d1113 0%, var(--black) 70%);
+      }
+
+      .mech-title {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 46px;
+        letter-spacing: 0.14em;
+        color: var(--ink-dim);
+        opacity: 0;
+      }
+
+      .node {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        opacity: 0;
+      }
+      .node .ring {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        border: 2px solid currentColor;
+        display: grid;
+        place-items: center;
+      }
+      .node .lbl {
+        margin-top: 18px;
+        font-size: 22px;
+        letter-spacing: 0.12em;
+        color: var(--ink);
+      }
+      .node.caf {
+        left: 22%;
+        top: 30%;
+        color: var(--amber);
+      }
+      .node.the {
+        right: 22%;
+        top: 30%;
+        color: var(--teal);
+      }
+      .node.center {
+        left: 50%;
+        top: 62%;
+        color: var(--ink);
+      }
+      .node.center .ring {
+        width: 210px;
+        height: 210px;
+        border-color: var(--gold);
+        box-shadow: 0 0 0 rgba(201, 162, 39, 0);
+      }
+
+      .mech-caption {
+        position: absolute;
+        left: 50%;
+        bottom: 110px;
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 40px;
+        letter-spacing: 0.04em;
+        color: var(--ink);
+        opacity: 0;
+        white-space: nowrap;
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Scene D — metaphor (chaos -> still water)                         */
+      /* ---------------------------------------------------------------- */
+      #scene-metaphor {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        background: #050506;
+      }
+
+      .jit-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--red);
+      }
+
+      .metaphor-caption {
+        position: absolute;
+        left: 50%;
+        top: 130px;
+        transform: translateX(-50%);
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 46px;
+        letter-spacing: 0.05em;
+        color: var(--ink);
+        opacity: 0;
+        white-space: nowrap;
+        text-align: center;
+      }
+
+      .water {
+        position: absolute;
+        left: 50%;
+        top: 58%;
+        transform: translate(-50%, -50%);
+        width: 900px;
+        height: 460px;
+        opacity: 0;
+      }
+
+      .drop {
+        position: absolute;
+        left: 50%;
+        top: -60px;
+        width: 10px;
+        height: 10px;
+        margin-left: -5px;
+        border-radius: 50%;
+        background: var(--teal);
+      }
+
+      .metaphor-sub {
+        position: absolute;
+        left: 50%;
+        bottom: 120px;
+        font-size: 26px;
+        letter-spacing: 0.1em;
+        color: var(--ink-dim);
+        opacity: 0;
+        white-space: nowrap;
+      }
+
+      /* ---------------------------------------------------------------- */
+      /* Scene E — outro                                                   */
+      /* ---------------------------------------------------------------- */
+      #scene-outro {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        background: var(--black);
+      }
+
+      .outro-title {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 150px;
+        letter-spacing: 0.1em;
+        color: var(--ink);
+        opacity: 0;
+      }
+
+      .outro-kicker {
+        position: absolute;
+        left: 50%;
+        top: 62%;
+        transform: translateX(-50%);
+        font-size: 26px;
+        letter-spacing: 0.08em;
+        color: var(--ink-dim);
+        opacity: 0;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section
+        id="stage"
+        class="clip"
+        data-start="0"
+        data-duration="30"
+        data-track-index="1"
+        data-layout-allow-occlusion
+      >
+        <!-- Scene A: hook -->
+        <div id="scene-hook" data-layout-allow-overflow>
+          <div id="hook-1" class="hook-line" data-layout-allow-overflow>
+            <span class="ghost-r" data-layout-allow-overlap>GROWN IN TOTAL DARKNESS.</span>
+            <span class="ghost-b" data-layout-allow-overlap>GROWN IN TOTAL DARKNESS.</span>
+            <span class="main-text">GROWN IN <span class="accent">TOTAL DARKNESS.</span></span>
+          </div>
+          <div id="hook-2" class="hook-line" data-layout-allow-overflow>
+            <span class="ghost-r" data-layout-allow-overlap>THAT'S NOT AN ACCIDENT.</span>
+            <span class="ghost-b" data-layout-allow-overlap>THAT'S NOT AN ACCIDENT.</span>
+            <span class="main-text">THAT'S <span class="accent">NOT AN ACCIDENT.</span></span>
+          </div>
+        </div>
+
+        <!-- Scene B: evidence board -->
+        <div id="scene-board" data-layout-allow-overflow>
+          <div class="board-bg"></div>
+          <div class="board-header">
+            <span><span class="dot"></span>CASE FILE — GYOKURO · NO. 04-119</span>
+            <span>STATUS: ACTIVE</span>
+          </div>
+          <div class="board-rule"></div>
+
+          <div id="card-1" class="card" data-layout-allow-overflow>
+            <div class="tag">OPENING THE FILE</div>
+            <h2 class="display">CASE FILE: GYOKURO</h2>
+            <p>Japan's rarest shade-grown green tea.</p>
+            <div class="stamp">CLASSIFIED</div>
+          </div>
+
+          <div id="card-2" class="card" data-layout-allow-overflow>
+            <div class="tag">EVIDENCE 01 — THE SHADE</div>
+            <h2 class="display">20+ DAYS IN THE DARK</h2>
+            <p>Covered before every harvest, on purpose.</p>
+            <div class="diagram">
+              <div class="sun"></div>
+              <div class="bush-row">
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+                <div class="bush"></div>
+              </div>
+              <div class="tarp"></div>
+            </div>
+          </div>
+
+          <div id="card-3" class="card" data-layout-allow-overflow>
+            <div class="tag">EVIDENCE 02 — THE SHIFT</div>
+            <h2 class="display">THE CHEMISTRY CHANGES</h2>
+            <p>Chlorophyll rises. Catechins fall. L-theanine floods in.</p>
+            <div class="diagram">
+              <div class="bars">
+                <div style="position:relative">
+                  <div class="bar" id="bar-chl"></div>
+                  <div class="bar-label">CHLOROPHYLL</div>
+                </div>
+                <div style="position:relative">
+                  <div class="bar" id="bar-cat"></div>
+                  <div class="bar-label">CATECHINS</div>
+                </div>
+                <div style="position:relative">
+                  <div class="bar" id="bar-the"></div>
+                  <div class="bar-label">L-THEANINE</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="card-4" class="card" data-layout-allow-overflow>
+            <div class="tag">EVIDENCE 03 — THE AMINO ACID</div>
+            <h2 class="display">OFF THE CHART</h2>
+            <p>The highest L-theanine levels ever recorded in tea.</p>
+            <div class="diagram">
+              <div class="burst"></div>
+              <div class="burst-ring" id="ring-1"></div>
+              <div class="burst-ring" id="ring-2"></div>
+              <div class="burst-ring" id="ring-3"></div>
+            </div>
+          </div>
+
+          <div id="card-5" class="card" data-layout-allow-overflow>
+            <div class="tag">EVIDENCE 04 — THE PAIRING</div>
+            <h2 class="display">NOT AGAINST EACH OTHER</h2>
+            <p>Caffeine and L-theanine, working together.</p>
+            <div class="diagram">
+              <div class="conv-dot caf" id="dot-caf"></div>
+              <div class="conv-dot the" id="dot-the"></div>
+              <div class="conv-label" id="lbl-caf" data-layout-allow-overlap style="left:30%;color:var(--amber)">CAFFEINE</div>
+              <div class="conv-label" id="lbl-the" data-layout-allow-overlap style="right:30%;color:var(--teal)">L-THEANINE</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene C: the mechanism -->
+        <div id="scene-mech" data-layout-allow-overflow>
+          <div class="mech-title">THE MECHANISM</div>
+
+          <svg id="mech-lines" width="1920" height="1080" style="position:absolute;inset:0;pointer-events:none">
+            <path id="line-caf" d="M 512 260 C 650 460, 780 560, 960 690" fill="none" stroke="#e8a33d" stroke-width="2" opacity="0.8" />
+            <path id="line-the" d="M 1408 260 C 1270 460, 1140 560, 960 690" fill="none" stroke="#3fc7c1" stroke-width="2" opacity="0.8" />
+          </svg>
+
+          <div class="node caf" data-layout-allow-overflow>
+            <div class="ring">⚡</div>
+            <div class="lbl">CAFFEINE</div>
+          </div>
+          <div class="node the" data-layout-allow-overflow>
+            <div class="ring">〜</div>
+            <div class="lbl">L-THEANINE</div>
+          </div>
+          <div class="node center" data-layout-allow-overflow>
+            <div class="ring">𝜶</div>
+            <div class="lbl">ALPHA WAVES</div>
+          </div>
+
+          <div class="mech-caption">CALM ALERTNESS — WITHOUT THE CRASH.</div>
+        </div>
+
+        <!-- Scene D: the metaphor -->
+        <div id="scene-metaphor" data-layout-allow-overflow>
+          <div class="metaphor-caption" id="metaphor-cap-1">THIS IS YOUR BRAIN ON CAFFEINE ALONE.</div>
+          <div class="metaphor-caption" id="metaphor-cap-2" style="opacity:0">THIS IS YOUR BRAIN ON GYOKURO.</div>
+
+          <div id="jitter-field" data-layout-allow-overflow></div>
+
+          <div class="water" data-layout-allow-overflow>
+            <svg width="900" height="460" viewBox="0 0 900 460" style="position:absolute;inset:0">
+              <defs>
+                <radialGradient id="waterGrad" cx="50%" cy="30%" r="80%">
+                  <stop offset="0%" stop-color="#0e2224" />
+                  <stop offset="100%" stop-color="#04070a" />
+                </radialGradient>
+              </defs>
+              <rect x="0" y="0" width="900" height="460" fill="url(#waterGrad)" />
+              <text x="450" y="250" text-anchor="middle" font-family="Bebas Neue, sans-serif" font-size="70" letter-spacing="6" fill="#123230" opacity="0.6">GYOKURO</text>
+              <circle id="rip-1" cx="450" cy="60" r="4" fill="none" stroke="#3fc7c1" stroke-width="2" opacity="0" />
+              <circle id="rip-2" cx="450" cy="60" r="4" fill="none" stroke="#3fc7c1" stroke-width="2" opacity="0" />
+              <circle id="rip-3" cx="450" cy="60" r="4" fill="none" stroke="#3fc7c1" stroke-width="2" opacity="0" />
+            </svg>
+            <div class="drop"></div>
+          </div>
+
+          <div class="metaphor-sub">FOCUSED. NOT WIRED.</div>
+        </div>
+
+        <!-- Scene E: outro -->
+        <div id="scene-outro" data-layout-allow-overflow>
+          <div class="outro-title display">GYOKURO</div>
+          <div class="outro-kicker">STEEPED IN SHADE. BACKED BY CHEMISTRY.</div>
+        </div>
+
+        <div class="grain" data-layout-allow-overflow></div>
+        <div class="vignette" data-layout-allow-occlusion></div>
+        <div class="flash" id="flash"></div>
+        <div class="fadeout" id="fadeout"></div>
+      </section>
+
+      <audio
+        id="score"
+        data-start="0"
+        data-duration="30"
+        data-track-index="2"
+        src="assets/score.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const FPS = 24;
+
+      // deterministic jitter field (golden-angle spread, fixed seed math — no Math.random)
+      const jitterField = document.querySelector("#jitter-field");
+      const GOLDEN = 137.508 * (Math.PI / 180);
+      const JITTER_COUNT = 22;
+      const jitterDots = [];
+      for (let i = 0; i < JITTER_COUNT; i++) {
+        const a = i * GOLDEN;
+        const r = 60 + (i % 7) * 42;
+        const cx = 960 + Math.cos(a) * r;
+        const cy = 540 + Math.sin(a) * r * 0.6;
+        const dot = document.createElement("div");
+        dot.className = "jit-dot";
+        dot.style.left = cx + "px";
+        dot.style.top = cy + "px";
+        jitterField.appendChild(dot);
+        jitterDots.push({ el: dot, phaseX: i * 0.7, phaseY: i * 1.3, freqX: 9 + (i % 5), freqY: 11 + (i % 4) });
+      }
+
+      // static centering anchors, expressed as GSAP transform components (not CSS
+      // `transform`) so GSAP fully owns the transform on every element it later
+      // animates — mixing the two causes GSAP to silently drop the CSS centering.
+      gsap.set(".hook-line", { xPercent: -50, yPercent: -50 });
+      gsap.set(".card", { xPercent: -50, yPercent: -50 });
+      gsap.set(".stamp", { xPercent: -50 });
+      gsap.set(".burst", { xPercent: -50, yPercent: -50 });
+      gsap.set(".conv-dot", { yPercent: -50 });
+      gsap.set(".conv-label", { xPercent: -50 });
+      gsap.set(".mech-title", { xPercent: -50 });
+      gsap.set(".node.center", { xPercent: -50, yPercent: -50 });
+      gsap.set(".mech-caption", { xPercent: -50 });
+      gsap.set(".metaphor-sub", { xPercent: -50 });
+
+      // connector-line geometry: measured synchronously at build time (not inside a
+      // timeline callback, whose seek-order-dependent re-fires would read stale DOM)
+      ["#line-caf", "#line-the"].forEach((sel) => {
+        const p = document.querySelector(sel);
+        const len = p.getTotalLength();
+        p.style.strokeDasharray = String(len);
+        p.style.strokeDashoffset = String(len);
+      });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ================================================================
+      // SCENE A — HOOK  (0.00 - 3.00)
+      // ================================================================
+      gsap.set("#flash", { opacity: 0 });
+      gsap.set("#hook-1, #hook-2", { opacity: 0 });
+      gsap.set("#hook-1 .ghost-r, #hook-1 .ghost-b, #hook-2 .ghost-r, #hook-2 .ghost-b", { opacity: 0, x: 0 });
+
+      tl.to("#flash", { opacity: 0.9, duration: 1 / FPS, ease: "none" }, 0.04);
+      tl.to("#flash", { opacity: 0, duration: 2 / FPS, ease: "none" }, 0.04 + 1 / FPS);
+
+      // line 1 glitch-slam-in
+      tl.set("#hook-1", { opacity: 1 }, 0.12);
+      tl.fromTo("#hook-1 .ghost-r", { opacity: 0.8, x: -14 }, { opacity: 0, x: 0, duration: 0.16, ease: "power2.out" }, 0.12);
+      tl.fromTo("#hook-1 .ghost-b", { opacity: 0.8, x: 14 }, { opacity: 0, x: 0, duration: 0.16, ease: "power2.out" }, 0.12);
+      tl.fromTo("#hook-1", { scale: 1.06 }, { scale: 1, duration: 0.22, ease: "power3.out" }, 0.12);
+      tl.to("#hook-1", { opacity: 0, duration: 0.1, ease: "none" }, 1.0);
+
+      // line 2 glitch-slam-in
+      tl.set("#hook-2", { opacity: 1 }, 1.18);
+      tl.fromTo("#hook-2 .ghost-r", { opacity: 0.8, x: -14 }, { opacity: 0, x: 0, duration: 0.16, ease: "power2.out" }, 1.18);
+      tl.fromTo("#hook-2 .ghost-b", { opacity: 0.8, x: 14 }, { opacity: 0, x: 0, duration: 0.16, ease: "power2.out" }, 1.18);
+      tl.fromTo("#hook-2", { scale: 1.06 }, { scale: 1, duration: 0.22, ease: "power3.out" }, 1.18);
+      tl.to("#hook-2", { opacity: 0, duration: 0.18, ease: "none" }, 2.62);
+
+      // ================================================================
+      // SCENE B — EVIDENCE BOARD  (3.00 - 14.00)
+      // ================================================================
+      gsap.set("#scene-board", { opacity: 0 });
+      gsap.set(".card", { opacity: 0, x: 0, skewX: 0 });
+      gsap.set(".stamp", { opacity: 0 });
+
+      tl.set("#scene-board", { opacity: 1 }, 3.0);
+      tl.to("#flash", { opacity: 0.7, duration: 1 / FPS, ease: "none" }, 2.86);
+      tl.to("#flash", { opacity: 0, duration: 3 / FPS, ease: "none" }, 2.86 + 1 / FPS);
+
+      const cardTimes = [
+        [3.0, 5.0],
+        [5.0, 7.1],
+        [7.1, 9.2],
+        [9.2, 11.3],
+        [11.3, 14.0],
+      ];
+
+      cardTimes.forEach(([start, end], i) => {
+        const n = i + 1;
+        const sel = `#card-${n}`;
+        // whip-in
+        tl.fromTo(sel, { opacity: 0, x: -70, skewX: 8 }, { opacity: 1, x: 0, skewX: 0, duration: 0.16, ease: "power4.out" }, start);
+        // whip-out (except after the last card, which hands off to scene C)
+        const outStart = end - 0.14;
+        tl.to(sel, { opacity: 0, x: 70, skewX: -8, duration: 0.14, ease: "power4.in" }, outStart);
+        // glitch flash on every cut boundary
+        tl.to("#flash", { opacity: 0.5, duration: 1 / FPS, ease: "none" }, start - 0.02);
+        tl.to("#flash", { opacity: 0, duration: 2 / FPS, ease: "none" }, start - 0.02 + 1 / FPS);
+      });
+
+      // card 1 — classified stamp thud
+      tl.fromTo(
+        ".stamp",
+        { opacity: 0, y: -40, rotate: -20, scale: 1.8 },
+        { opacity: 1, y: 0, rotate: -8, scale: 1.4, duration: 0.22, ease: "back.out(2.4)" },
+        3.32,
+      );
+
+      // card 2 — tarp sweeps across, sun gets struck through
+      tl.fromTo("#card-2 .tarp", { x: 0 }, { x: 650, duration: 0.7, ease: "power2.inOut" }, 5.35);
+      tl.fromTo("#card-2 .sun", { opacity: 1 }, { opacity: 0.25, duration: 0.4, ease: "power1.out" }, 5.9);
+
+      // card 3 — chemistry bars rise/fall
+      tl.fromTo("#bar-chl", { height: 4 }, { height: 108, duration: 0.6, ease: "power2.out" }, 7.55);
+      tl.fromTo("#bar-cat", { height: 96 }, { height: 30, duration: 0.6, ease: "power2.out" }, 7.55);
+      tl.fromTo("#bar-the", { height: 4 }, { height: 132, duration: 0.6, ease: "power2.out" }, 7.55);
+
+      // card 4 — amino burst rings
+      ["#ring-1", "#ring-2", "#ring-3"].forEach((sel, i) => {
+        const t0 = 9.55 + i * 0.22;
+        tl.fromTo(sel, { opacity: 0.8, scale: 0.3 }, { opacity: 0, scale: 3.6, duration: 0.7, ease: "power1.out" }, t0);
+      });
+      tl.fromTo(".burst", { scale: 0.6 }, { scale: 1.3, duration: 0.3, ease: "power2.out", yoyo: true, repeat: 1 }, 9.55);
+
+      // card 5 — caffeine & theanine dots drift together (bridges into scene C)
+      tl.to("#dot-caf, #lbl-caf", { x: 260, duration: 1.9, ease: "power2.inOut" }, 11.7);
+      tl.to("#dot-the, #lbl-the", { x: -260, duration: 1.9, ease: "power2.inOut" }, 11.7);
+
+      // ================================================================
+      // SCENE C — THE MECHANISM  (14.00 - 21.00)
+      // ================================================================
+      gsap.set("#scene-mech", { opacity: 0 });
+      gsap.set(".mech-title, .mech-caption", { opacity: 0, y: 16 });
+      gsap.set(".node", { opacity: 0, y: 20 });
+      gsap.set("#line-caf, #line-the", { opacity: 0 });
+      tl.set("#scene-board", { opacity: 0 }, 14.0);
+
+      tl.set("#scene-mech", { opacity: 1 }, 14.0);
+      tl.to("#flash", { opacity: 0.6, duration: 1 / FPS, ease: "none" }, 13.98);
+      tl.to("#flash", { opacity: 0, duration: 3 / FPS, ease: "none" }, 13.98 + 1 / FPS);
+
+      tl.to(".mech-title", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 14.1);
+      tl.to(".node.caf", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 14.3);
+      tl.to(".node.the", { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 14.45);
+
+      // draw connector lines via stroke-dashoffset (geometry already captured above)
+      tl.set("#line-caf, #line-the", { opacity: 1 }, 14.6);
+      tl.to("#line-caf", { strokeDashoffset: 0, duration: 1.4, ease: "power2.inOut" }, 14.6);
+      tl.to("#line-the", { strokeDashoffset: 0, duration: 1.4, ease: "power2.inOut" }, 14.6);
+
+      tl.to(".node.center", { opacity: 1, y: 0, duration: 0.35, ease: "back.out(1.8)" }, 16.5);
+      tl.fromTo(".node.center .ring", { scale: 0.85 }, { scale: 1, duration: 0.4, ease: "power2.out" }, 16.5);
+      // one soft confirming pulse on the connection
+      tl.to(".node.center .ring", { scale: 1.08, duration: 0.22, ease: "sine.out", yoyo: true, repeat: 1 }, 17.3);
+
+      tl.to(".mech-caption", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 17.9);
+      tl.to("#scene-mech", { opacity: 0, duration: 0.2, ease: "power1.in" }, 20.8);
+
+      // ================================================================
+      // SCENE D — THE METAPHOR  (21.00 - 27.50)
+      // ================================================================
+      gsap.set("#scene-metaphor", { opacity: 0 });
+      gsap.set("#metaphor-cap-1", { opacity: 0 });
+      gsap.set("#metaphor-cap-2", { opacity: 0 });
+      gsap.set(".water", { opacity: 0 });
+      gsap.set(".drop", { opacity: 0, y: 0 });
+      gsap.set(".metaphor-sub", { opacity: 0, y: 10 });
+      gsap.set(["#rip-1", "#rip-2", "#rip-3"], { opacity: 0 });
+
+      tl.set("#scene-metaphor", { opacity: 1 }, 21.0);
+      tl.to("#flash", { opacity: 0.8, duration: 1 / FPS, ease: "none" }, 20.98);
+      tl.to("#flash", { opacity: 0, duration: 3 / FPS, ease: "none" }, 20.98 + 1 / FPS);
+
+      tl.to("#metaphor-cap-1", { opacity: 1, duration: 0.2, ease: "none" }, 21.1);
+
+      // chaotic jitter: deterministic sine-driven shake, no Math.random
+      jitterDots.forEach((d, i) => {
+        const t0 = 21.1;
+        const dur = 1.15;
+        const steps = 10;
+        for (let s = 0; s <= steps; s++) {
+          const tt = t0 + (dur * s) / steps;
+          const dx = Math.sin(d.phaseX + s * d.freqX * 0.6) * 26;
+          const dy = Math.cos(d.phaseY + s * d.freqY * 0.6) * 18;
+          tl.to(d.el, { x: dx, y: dy, opacity: 0.9, duration: dur / steps, ease: "none" }, tt);
+        }
+      });
+
+      tl.to("#metaphor-cap-1", { opacity: 0, duration: 0.18, ease: "none" }, 22.25);
+      tl.to("#jitter-field", { opacity: 0, duration: 0.35, ease: "power1.in" }, 22.25);
+
+      tl.to("#flash", { opacity: 0.9, duration: 1 / FPS, ease: "none" }, 22.6);
+      tl.to("#flash", { opacity: 0, duration: 4 / FPS, ease: "none" }, 22.6 + 1 / FPS);
+
+      // still water settles in
+      tl.to(".water", { opacity: 1, duration: 0.5, ease: "power1.out" }, 22.7);
+      tl.to("#metaphor-cap-2", { opacity: 1, duration: 0.4, ease: "power2.out" }, 23.0);
+
+      // a single drop falls, ripples expand and settle — the payoff
+      tl.to(".drop", { opacity: 1, duration: 0.05, ease: "none" }, 23.3);
+      tl.to(".drop", { y: 120, duration: 0.42, ease: "power1.in" }, 23.3);
+      tl.to(".drop", { opacity: 0, duration: 0.06, ease: "none" }, 23.7);
+
+      ["#rip-1", "#rip-2", "#rip-3"].forEach((sel, i) => {
+        const t0 = 23.72 + i * 0.16;
+        tl.fromTo(sel, { opacity: 0.7, attr: { r: 4 } }, { opacity: 0, attr: { r: 220 }, duration: 2.2, ease: "power2.out" }, t0);
+      });
+
+      tl.to(".metaphor-sub", { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 25.6);
+      tl.to("#scene-metaphor", { opacity: 0, duration: 0.3, ease: "power1.in" }, 27.2);
+
+      // ================================================================
+      // SCENE E — OUTRO  (27.50 - 30.00)
+      // ================================================================
+      gsap.set("#scene-outro", { opacity: 0 });
+      gsap.set(".outro-title", { opacity: 0, scale: 0.94 });
+      gsap.set(".outro-kicker", { opacity: 0 });
+      gsap.set("#fadeout", { opacity: 0 });
+
+      tl.set("#scene-outro", { opacity: 1 }, 27.5);
+      tl.to(".outro-title", { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, 27.55);
+      tl.to(".outro-kicker", { opacity: 1, duration: 0.4, ease: "power2.out" }, 28.25);
+
+      // final fade to black over the last ~10 frames
+      const FADE_FRAMES = 10;
+      const FADE_DUR = FADE_FRAMES / FPS;
+      const FADE_START = 30 - FADE_DUR;
+      tl.to("#fadeout", { opacity: 1, duration: FADE_DUR, ease: "power1.in" }, FADE_START);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
