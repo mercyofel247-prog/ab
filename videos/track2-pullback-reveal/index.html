@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=854, height=480" />
+    <title>Track-2 Pull-Back Reveal — $1,000,000,000</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c; /* final fade target */
+        --bg-deep: #0d1512; /* deep emerald-black, background center */
+        --bg-lo: #0a100d;
+        --em-deep: #04140d; /* darkest emerald, numeral extrusion */
+        --em: #0e6b46; /* core emerald */
+        --em-hi: #2fae7c; /* emerald highlight */
+        --gold: #d4af37; /* core gold */
+        --gold-hi: #f4e2a1; /* gold highlight, top of numeral face */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 854px;
+        height: 480px;
+        overflow: hidden;
+        background: radial-gradient(120% 95% at 50% 46%, var(--bg-deep) 0%, var(--bg-lo) 46%, var(--black) 100%);
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+        background-size: 34px 34px;
+        opacity: 0.35;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(80% 72% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.6) 100%);
+        pointer-events: none;
+      }
+
+      /* everything that pulls back lives inside #pullback; only its
+         transform (scale) animates — width/height never change */
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      #pullback {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: transform;
+      }
+
+      /* rim light — a fixed-size halo band whose opacity breathes once */
+      #rim {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 640px;
+        height: 300px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(244, 226, 161, 0) 38%,
+          rgba(212, 175, 55, 0.4) 60%,
+          rgba(212, 175, 55, 0) 80%
+        );
+        mix-blend-mode: screen;
+        pointer-events: none;
+        will-change: opacity;
+      }
+
+      #num {
+        position: relative;
+        font-size: 64px;
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        will-change: transform, opacity;
+        /* emerald + gold metallic face */
+        background: linear-gradient(
+          178deg,
+          var(--gold-hi) 0%,
+          var(--gold) 16%,
+          var(--em-hi) 38%,
+          var(--em) 62%,
+          var(--em-deep) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          1px 1px 0 #0a3a26,
+          2px 2px 0 #082f1f,
+          3px 3px 0 #062419,
+          4px 6px 16px rgba(0, 0, 0, 0.55);
+      }
+
+      /* final fade-to-black overlay — opacity only, covers the frame */
+      #fadeout {
+        position: absolute;
+        inset: 0;
+        background: var(--black);
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-fps="24"
+      data-width="854"
+      data-height="480"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="6" data-track-index="2">
+        <div class="grain"></div>
+        <div class="vignette"></div>
+
+        <div id="scene">
+          <div id="pullback" data-layout-allow-overflow>
+            <div id="rim"></div>
+            <div id="num" data-layout-allow-overflow></div>
+          </div>
+        </div>
+
+        <div id="fadeout"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const numEl = document.querySelector("#num");
+
+      const VALUE = 1000000000; // $1,000,000,000, held — never counts
+      const FPS = 24;
+      const DURATION = 6;
+      const FADE_FRAMES = 10;
+      const FADE_DUR = FADE_FRAMES / FPS; // ~0.4167s
+      const FADE_START = DURATION - FADE_DUR; // ~5.5833s
+
+      // ---- deterministic formatting ----
+      function fmt(v) {
+        return "$" + v.toLocaleString("en-US");
+      }
+      numEl.textContent = fmt(VALUE);
+
+      const tl = gsap.timeline({ paused: true });
+
+      // initial state: 4% in, held numeral not yet settled, rim dim, no fade
+      gsap.set("#pullback", { scale: 1.04, transformOrigin: "50% 50%" });
+      gsap.set("#num", { opacity: 0, scale: 0.985, transformOrigin: "50% 50%" });
+      gsap.set("#rim", { opacity: 0.12 });
+      gsap.set("#fadeout", { opacity: 0 });
+
+      // the numeral settles in quickly, then holds — it never re-animates
+      tl.to("#num", { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }, 0);
+
+      // (awe lever) 4% pull-back on transform only — camera eases out,
+      // revealing negative space around the held numeral
+      tl.to("#pullback", { scale: 1, duration: FADE_START, ease: "power2.out" }, 0);
+
+      // rim opacity: one slow breath (up, then back down) across the hold
+      const breathEnd = FADE_START - 0.15;
+      const breathHalf = breathEnd / 2;
+      tl.to("#rim", { opacity: 0.55, duration: breathHalf, ease: "sine.inOut" }, 0.2);
+      tl.to("#rim", { opacity: 0.12, duration: breathHalf, ease: "sine.inOut" }, 0.2 + breathHalf);
+
+      // final fade to #0B0B0C over the last ~10 frames
+      tl.to("#fadeout", { opacity: 1, duration: FADE_DUR, ease: "power1.in" }, FADE_START);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
