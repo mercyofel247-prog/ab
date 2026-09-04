@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>$200,000,000,000 — molten gold pour</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0a0a0c;
+        --gold: #c9a24b;
+        --bone: #ede8dd;
+        --etch: #2a2620;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: "Arial Black", "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      #stagezoom {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* z0 — near-black vignette + faint gold ambient glow */
+      .z0-ground {
+        position: absolute;
+        inset: -8%;
+        background: radial-gradient(120% 96% at 50% 47%, #131218 0%, #0d0c10 34%, #0a0a0c 70%, #070709 100%);
+      }
+      #z0-glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1500px;
+        height: 860px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(201, 162, 75, 0.13) 0%, rgba(201, 162, 75, 0.05) 40%, rgba(201, 162, 75, 0) 72%);
+        pointer-events: none;
+        will-change: opacity, transform;
+      }
+      .z0-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(80% 74% at 50% 48%, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, 0.55) 82%, rgba(0, 0, 0, 0.86) 100%);
+      }
+
+      /* z1 — ambient dust (subtle) */
+      #dust {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.3;
+      }
+      #dust .mote,
+      #bokeh .spec {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border-radius: 50%;
+        will-change: transform;
+      }
+
+      /* z2 — cavity + rising fill */
+      #hero {
+        position: absolute;
+        left: 50%;
+        top: 540px;
+        will-change: transform, opacity;
+      }
+      #numbox {
+        position: relative;
+        transform-origin: 50% 50%;
+        width: 1536px; /* refit to exactly 80% width once the face has loaded */
+        height: 560px;
+        will-change: filter;
+      }
+      .glyph {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        text-align: center;
+        white-space: nowrap;
+        line-height: 560px; /* = NUMBOX_H, vertically centers the single line (no flex, so
+                               background-clip:text still clips the fill to the glyphs) */
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        text-transform: uppercase;
+        overflow: visible;
+      }
+      /* the dark etched cavity: transparent fill + engraved bevel edges (barely legible) */
+      #cavity {
+        color: transparent;
+        text-shadow:
+          0 2px 1px var(--etch),
+          1px 1px 0 var(--etch),
+          0 -1px 0 #050506;
+      }
+      /* Fill/spec use TWO clips: the wrapper clips the rising fill level (clip-path), while the
+         inner text clips the paint to the glyph shape (background-clip:text). They must live on
+         separate elements — clip-path + background-clip:text on one element conflict in Chromium. */
+      .fillwrap {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        will-change: clip-path, transform;
+      }
+      #spec {
+        opacity: 0.9;
+      }
+      /* molten gold letters — solid colored text (inherently glyph-shaped); the wrapper's
+         clip-path reveals them bottom-up. A darker contact shadow gives the pour some body. */
+      .goldface {
+        color: #c9a24b;
+        text-shadow:
+          0 -2px 1px #e7c56b,
+          1px 2px 0 #7c5f26,
+          2px 4px 6px rgba(0, 0, 0, 0.5);
+      }
+      /* bright molten surface at the fill line */
+      .specface {
+        color: #fff6de;
+        text-shadow: 0 0 8px rgba(255, 240, 200, 0.7);
+      }
+      /* cooled brushed-metal face: warm-bone, ONE upper-left key, extrusion + contact shadow */
+      #face {
+        color: var(--bone);
+        opacity: 0;
+        text-shadow:
+          -2px -2px 0 #fbf7ee,
+          -1px -1px 0 #f4efe4,
+          1px 1px 0 #2c2a26,
+          2px 2px 0 #272521,
+          3px 3px 0 #221f1c,
+          4px 4px 0 #1d1b18,
+          5px 5px 0 #181614,
+          6px 6px 0 #131210,
+          7px 7px 0 #0e0d0b,
+          9px 11px 26px rgba(0, 0, 0, 0.72);
+      }
+      /* gold rim — locks to the top-right bevel only */
+      #rim {
+        color: var(--gold);
+        transform: translate(7px, -7px);
+        filter: drop-shadow(4px -4px 4px rgba(201, 162, 75, 0.95))
+          drop-shadow(9px -9px 15px rgba(201, 162, 75, 0.4));
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+
+      /* z3 — foreground bokeh */
+      #bokeh {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      /* z4 — grade */
+      .z4-chroma {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 40, 60, 0.055) 0%,
+          rgba(255, 40, 60, 0) 4.5%,
+          rgba(0, 0, 0, 0) 50%,
+          rgba(40, 190, 255, 0) 95.5%,
+          rgba(40, 190, 255, 0.055) 100%
+        );
+      }
+      #grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        mix-blend-mode: overlay;
+        opacity: 0.08;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="4.5"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="4.5" data-track-index="1">
+        <div id="stagezoom" data-layout-allow-overflow>
+          <div class="z0-ground"></div>
+          <div id="z0-glow"></div>
+          <div class="z0-vignette"></div>
+
+          <div id="dust" data-layout-allow-overflow></div>
+
+          <div id="hero" data-layout-allow-overflow>
+            <div id="numbox" data-layout-allow-overflow>
+              <div id="cavity" class="glyph" data-layout-ignore aria-hidden="true" role="presentation">$200,000,000,000</div>
+              <div id="fill" class="fillwrap" data-layout-ignore aria-hidden="true" role="presentation"><div class="glyph goldface">$200,000,000,000</div></div>
+              <div id="spec" class="fillwrap" data-layout-ignore aria-hidden="true" role="presentation"><div class="glyph specface">$200,000,000,000</div></div>
+              <div id="face" class="glyph" data-layout-allow-overflow>$200,000,000,000</div>
+              <div id="rim" class="glyph" data-layout-allow-overflow data-layout-allow-overlap aria-hidden="true" role="presentation">$200,000,000,000</div>
+            </div>
+          </div>
+
+          <div id="bokeh" data-layout-allow-overflow></div>
+        </div>
+
+        <div class="z4-chroma"></div>
+        <svg id="grain" viewBox="0 0 1920 1080" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <filter id="grainFilter" x="0" y="0" width="100%" height="100%">
+            <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="1" stitchTiles="stitch" result="n" />
+            <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.9 0.9 0.9 0 0" />
+          </filter>
+          <rect width="1920" height="1080" filter="url(#grainFilter)" />
+        </svg>
+
+        <audio
+          id="bed"
+          data-start="0"
+          data-duration="4.5"
+          data-track-index="2"
+          src="assets/bed.wav"
+          data-volume="0.9"
+        ></audio>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      const FPS = 24;
+      const FRAME = 1 / FPS;
+      const CANVAS_W = 1920;
+      const NUMBOX_W = 1536; // 80% of 1920
+      const NUMBOX_H = 560;
+      const BASE_FONT = 300;
+      const TEXT = "$200,000,000,000";
+      const COOL = 48 * FRAME; // 2.0s — cool / sub-boom / sync frame
+
+      const numbox = document.querySelector("#numbox");
+      const fillEl = document.querySelector("#fill");
+      const specEl = document.querySelector("#spec");
+      const faceEl = document.querySelector("#face");
+      const cavityEl = document.querySelector("#cavity");
+      const rimEl = document.querySelector("#rim");
+      const turb = document.querySelector("#turb");
+
+      let condense = 1;
+      let inkTop = NUMBOX_H * 0.2;
+      let inkBottom = NUMBOX_H * 0.8;
+
+      function fitHero() {
+        document.querySelectorAll(".glyph").forEach((e) => (e.style.fontSize = BASE_FONT + "px"));
+        const probe = document.createElement("span");
+        probe.textContent = TEXT;
+        probe.style.cssText =
+          "position:absolute;left:-99999px;top:-99999px;white-space:nowrap;" +
+          "font-weight:900;font-variant-numeric:tabular-nums;line-height:1;text-transform:uppercase;" +
+          'font-family:"Arial Black","Helvetica Neue",Arial,system-ui,sans-serif;font-size:' + BASE_FONT + "px";
+        document.body.appendChild(probe);
+        const natW = probe.getBoundingClientRect().width || NUMBOX_W;
+        document.body.removeChild(probe);
+        numbox.style.width = natW + "px";
+        condense = NUMBOX_W / natW;
+        numbox.style.transform = "scaleX(" + condense + ")";
+        numbox.style.transformOrigin = "50% 50%";
+        return natW;
+      }
+
+      // measure the glyph ink's vertical extent inside the box (so the fill tracks real letters)
+      function measureInk(natW) {
+        const box = faceEl.getBoundingClientRect();
+        const w = Math.max(4, Math.round(box.width));
+        const h = Math.max(4, Math.round(box.height));
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        const ctx = cv.getContext("2d", { willReadFrequently: true });
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = '900 ' + BASE_FONT + 'px "Arial Black","Helvetica Neue",Arial,sans-serif';
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(w / natW, 1);
+        ctx.fillText(TEXT, 0, 0);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        let top = h, bot = 0;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x += 2) {
+            if (data[(y * w + x) * 4 + 3] > 128) {
+              if (y < top) top = y;
+              if (y > bot) bot = y;
+              break;
+            }
+          }
+        }
+        if (bot > top) {
+          inkTop = top;
+          inkBottom = bot;
+        }
+      }
+
+      // the SOLE non-transform animation: a fill level + specular band, driven by one progress value
+      const fx = { p: 0, hy: 0 };
+      function updateFill() {
+        const p = Math.max(0, Math.min(1, fx.p));
+        const line = inkTop + (1 - p) * (inkBottom - inkTop); // fill line (px from box top)
+        fillEl.style.clipPath = "inset(" + line.toFixed(2) + "px 0px 0px 0px)";
+        const half = 7;
+        const bTop = Math.max(0, line - half);
+        const bBot = Math.max(0, NUMBOX_H - (line + half));
+        specEl.style.clipPath = "inset(" + bTop.toFixed(2) + "px 0px " + bBot.toFixed(2) + "px 0px)";
+        specEl.style.transform = "translateY(" + fx.hy.toFixed(2) + "px)"; // heat shimmer wobble
+      }
+
+      /* grain */
+      const grainRng = mulberry32(0xbeef11);
+      const grainSeeds = [];
+      for (let f = 0; f <= 120; f++) grainSeeds.push(1 + Math.floor(grainRng() * 9000));
+      function setGrainForTime(t) {
+        const f = Math.max(0, Math.min(grainSeeds.length - 1, Math.round(t * FPS)));
+        turb.setAttribute("seed", String(grainSeeds[f]));
+      }
+
+      function buildAll() {
+        const natW = fitHero();
+        gsap.set("#hero", { xPercent: -50, yPercent: -50 });
+        measureInk(natW);
+
+        // z1 dust
+        const dust = document.querySelector("#dust");
+        const rng = mulberry32(0x51a2b9);
+        const motes = [];
+        for (let i = 0; i < 40; i++) {
+          const el = document.createElement("div");
+          el.className = "mote";
+          const size = 1.6 + rng() * 3.0;
+          const x0 = rng() * CANVAS_W;
+          const y0 = 60 + rng() * 960;
+          el.style.width = size + "px";
+          el.style.height = size + "px";
+          el.style.opacity = String(0.25 + rng() * 0.5);
+          el.style.background = "radial-gradient(circle, rgba(201,162,75,0.9) 0%, rgba(201,162,75,0) 72%)";
+          dust.appendChild(el);
+          motes.push({ el, x0, y0, ax: 22 + rng() * 34, ay: 6 + rng() * 14, dir: rng() < 0.5 ? -1 : 1 });
+        }
+
+        // z3 bokeh
+        const bokeh = document.querySelector("#bokeh");
+        const brng = mulberry32(0x7ea5e7);
+        const specs = [];
+        for (let i = 0; i < 7; i++) {
+          const el = document.createElement("div");
+          el.className = "spec";
+          const size = 40 + brng() * 90;
+          const x0 = brng() * CANVAS_W;
+          const y0 = 40 + brng() * 1000;
+          el.style.width = size + "px";
+          el.style.height = size + "px";
+          el.style.opacity = String(0.05 + brng() * 0.08);
+          el.style.filter = "blur(10px)";
+          el.style.background = "radial-gradient(circle, rgba(201,162,75,0.85) 0%, rgba(201,162,75,0) 70%)";
+          bokeh.appendChild(el);
+          specs.push({ el, x0, y0, ax: 55 + brng() * 85, dir: brng() < 0.5 ? -1 : 1 });
+        }
+
+        /* ================= MASTER TIMELINE ================= */
+        const tl = gsap.timeline({ paused: true });
+        // rack focus: 8px -> 0 over [COOL, COOL+0.7] on power2.out, driven purely by timeline
+        // time (deterministic on any seek); zero everywhere else, so the pour stays razor-sharp.
+        const RF_DUR = 0.7;
+        function setRackFocus(t) {
+          let b = 0;
+          if (t >= COOL && t < COOL + RF_DUR) {
+            const p = (t - COOL) / RF_DUR;
+            b = 8 * (1 - p) * (1 - p); // power2.out: 8 -> 0
+          }
+          numbox.style.filter = b > 0.03 ? "blur(" + b.toFixed(2) + "px)" : "none";
+        }
+
+        gsap.set("#stagezoom", { scale: 1.0 });
+        gsap.set("#hero", { xPercent: -50, yPercent: -50, scale: 1.0 });
+        gsap.set("#face", { opacity: 0 });
+        gsap.set("#rim", { opacity: 0 });
+        gsap.set("#spec", { opacity: 0.9 });
+        gsap.set("#fill", { opacity: 1 });
+        fx.p = 0;
+        fx.hy = 0;
+        updateFill();
+
+        /* ---- 0–300ms (f0–7): OPEN-LOOP — etched cavity static (dust/grain keep frame alive) ---- */
+
+        /* ---- 300–2000ms (f7–48): POUR — one directional fill bottom->top ---- */
+        tl.to(fx, { p: 1, duration: COOL - 0.3, ease: "power2.inOut", onUpdate: updateFill }, 0.3);
+        // heat-shimmer: ~2px sine.inOut wobble just above the fill line, only during the pour
+        tl.to(
+          fx,
+          { hy: -2, duration: 0.22, ease: "sine.inOut", yoyo: true, repeat: Math.round((COOL - 0.3) / 0.22), onUpdate: updateFill },
+          0.3,
+        );
+        // ambient push-in 1.00 -> 1.03
+        tl.to("#stagezoom", { scale: 1.03, duration: COOL - 0.3, ease: "sine.inOut" }, 0.3);
+
+        /* ---- 2000ms (f48): COOL / SYNC — four simultaneous, subordinate moves ---- */
+        // (1) molten gold cools to brushed-metal: specular sharpens + gold fill crossfades to bone face
+        tl.to("#spec", { opacity: 0, duration: 0.16, ease: "expo.out" }, COOL);
+        tl.to("#fill", { opacity: 0, duration: 0.22, ease: "expo.out" }, COOL);
+        tl.to("#face", { opacity: 1, duration: 0.2, ease: "expo.out" }, COOL);
+        // (2) 70ms scale-breath 1.0 -> 1.02 -> 1.0 (back.out)
+        tl.to("#hero", { scale: 1.02, duration: 0.035, ease: "back.out(4)" }, COOL);
+        tl.to("#hero", { scale: 1.0, duration: 0.035, ease: "power2.out" }, COOL + 0.035);
+        // (3) gold rim locks to the top-right edge only
+        tl.to("#rim", { opacity: 1, duration: 0.14, ease: "expo.out" }, COOL);
+        tl.to("#rim", { opacity: 0.85, duration: 0.5, ease: "sine.inOut" }, COOL + 0.16);
+        // (4) soft settle-pulse of the ambient glow (expo.out)
+        tl.fromTo("#z0-glow", { scale: 1.0 }, { scale: 1.14, duration: 0.14, ease: "expo.out" }, COOL);
+        tl.to("#z0-glow", { scale: 1.0, duration: 0.6, ease: "power2.out" }, COOL + 0.14);
+        // stop the shimmer at the cool
+        tl.set(fx, { hy: 0, onComplete: updateFill }, COOL);
+
+        /* ---- 2000–2700ms (f48–65): rack focus resolves 8px blur -> sharp, timed to the cool ----
+           (driven from the master onUpdate below, purely by timeline time) */
+
+        /* ---- 2300–4300ms (f55–103): SUSTAINED — push-in + parallax + rim breath ---- */
+        tl.to("#stagezoom", { scale: 1.06, duration: 4.3 - 2.3, ease: "sine.inOut" }, 2.3);
+        tl.to(
+          "#rim",
+          { keyframes: [
+            { opacity: 0.7, duration: 1.0, ease: "sine.inOut" },
+            { opacity: 0.85, duration: 1.0, ease: "sine.inOut" },
+          ] },
+          2.3,
+        );
+        // z1 dust drift (one coherent eased trajectory across the clip)
+        motes.forEach((m) => {
+          gsap.set(m.el, { x: m.x0, y: m.y0 });
+          tl.to(m.el, { x: m.x0 + m.dir * m.ax, y: m.y0 - m.ay, duration: 4.5, ease: "sine.inOut" }, 0);
+        });
+        // z3 bokeh parallax (own slower rate)
+        specs.forEach((s) => {
+          gsap.set(s.el, { x: s.x0, y: s.y0 });
+          tl.to(s.el, { x: s.x0 + s.dir * s.ax, duration: 4.5, ease: "sine.inOut" }, 0);
+        });
+
+        /* ---- 4300–4500ms (f103–108): EXIT HOLD — cooled numeral locked, dust + grain live, NO fade ---- */
+
+        tl.eventCallback("onUpdate", () => {
+          const t = tl.time();
+          setGrainForTime(t);
+          setRackFocus(t);
+        });
+        setGrainForTime(0);
+        setRackFocus(0);
+
+        window.__timelines["main"] = tl;
+      }
+
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(buildAll);
+      else buildAll();
+    </script>
+  </body>
+</html>
