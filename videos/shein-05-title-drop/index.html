@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN — Title Drop (Shot 05)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --type: #ede8dd;
+        --ox: #7a160e;
+        --ox-hot: #c8422a;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: "League Gothic", "Archivo Black", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      /* z-space wrapper that carries the ambient camera push-in;
+         grain + vignette live outside it (screen-space, un-scaled) */
+      #camera {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* everything but the top line — shifted down to clear it, sized so the
+         hero can hit its 84%-width lock without colliding with #topline */
+      #cluster {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform: translateY(74px);
+      }
+
+      /* z4 — graphite depth panel behind the hero */
+      #panel {
+        position: absolute;
+        left: 50%;
+        top: 52%;
+        width: 1500px;
+        height: 620px;
+        background: linear-gradient(155deg, var(--graphite) 0%, #29292c 60%, #1c1c1e 100%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* z0 — small top line */
+      #topline {
+        position: absolute;
+        left: 50%;
+        top: 168px;
+        transform: translateX(-50%);
+        color: var(--type);
+        opacity: 0.88;
+        font-family: "Oswald", sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        letter-spacing: 0.32em;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      /* z2 — oxblood under-glow, clip-path revealed from below */
+      #glow-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1900px;
+        height: 780px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        filter: blur(2px);
+      }
+      #glow-hot,
+      #glow-deep {
+        position: absolute;
+        inset: 0;
+      }
+      #glow-hot {
+        background: radial-gradient(52% 58% at 50% 62%, rgba(200, 66, 42, 0.85) 0%, rgba(200, 66, 42, 0) 72%);
+        opacity: 0;
+      }
+      #glow-deep {
+        background: radial-gradient(58% 62% at 50% 64%, rgba(122, 22, 14, 0.55) 0%, rgba(122, 22, 14, 0) 74%);
+        opacity: 0.55;
+      }
+
+      /* z3 — contact shadow under the hero */
+      #shadow {
+        position: absolute;
+        left: 50%;
+        top: 68.5%;
+        width: 1360px;
+        height: 120px;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 72%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* z3 — dust-puff particles */
+      #dust {
+        position: absolute;
+        left: 50%;
+        top: 66%;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+      }
+      .mote {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 50%;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(237, 232, 221, 0.9) 0%, rgba(237, 232, 221, 0) 75%);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      /* z1 — hero wordmark */
+      #hero {
+        position: relative;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+      .depth-stack {
+        position: relative;
+      }
+      .depth-text {
+        font-family: "League Gothic", "Archivo Black", sans-serif;
+        font-weight: 400;
+        line-height: 0.86;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        text-transform: uppercase;
+      }
+      .depth-text.is-back {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+      }
+      .depth-text.is-front {
+        position: relative;
+        z-index: 10;
+        color: transparent;
+        background: linear-gradient(180deg, #efe9db 0%, #c9c4b8 18%, #8f8b83 42%, #57544e 58%, #837f77 74%, #46433d 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      /* specular sweep across the metal face, settle beat */
+      #specular {
+        position: absolute;
+        inset: -10% -60% -10% -60%;
+        z-index: 11;
+        background: linear-gradient(100deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 58%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+        -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 100%);
+      }
+
+      /* z5 — grain + vignette, screen space, front of everything */
+      #grain {
+        position: absolute;
+        inset: -20%;
+        opacity: 0.06;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        will-change: transform;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 100%);
+        opacity: 0.18;
+        pointer-events: none;
+      }
+      /* subtle edge chromatic fringe (static, screen-space) */
+      #fringe {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: 0.5;
+        background:
+          radial-gradient(120% 120% at 6% 50%, rgba(255, 60, 40, 0.05) 0%, rgba(255, 60, 40, 0) 26%),
+          radial-gradient(120% 120% at 94% 50%, rgba(50, 160, 255, 0.05) 0%, rgba(50, 160, 255, 0) 26%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3.41667"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.41667" data-track-index="1">
+        <div id="camera" data-layout-allow-overflow>
+          <div id="topline" data-layout-allow-occlusion>THE MOST EXPENSIVE CHEAP CLOTHES ON EARTH</div>
+          <div id="cluster">
+            <div id="panel"></div>
+            <div id="glow-wrap" data-layout-allow-overflow>
+              <div id="glow-deep"></div>
+              <div id="glow-hot"></div>
+            </div>
+            <div id="shadow"></div>
+            <div id="dust" data-layout-allow-overflow></div>
+            <div id="hero" data-layout-allow-overflow>
+              <div class="depth-stack" id="depthStack"><!-- layers injected by script --></div>
+              <div id="specular"></div>
+            </div>
+          </div>
+        </div>
+        <div id="grain"></div>
+        <div id="fringe"></div>
+        <div id="vignette"></div>
+      </section>
+
+      <audio
+        id="impact-sfx"
+        data-start="0.5"
+        data-duration="2.1"
+        data-track-index="2"
+        src=".media/audio/sfx/sfx_001.mp3"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------
+      // deterministic PRNG (mulberry32) — no Math.random / Date.now
+      // ---------------------------------------------------------------
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rng = mulberry32(1337);
+
+      // ---------------------------------------------------------------
+      // frame grid
+      // ---------------------------------------------------------------
+      const FPS = 24;
+      const F = (n) => n / FPS;
+      const T_SYNC = F(12); // 0.5   — heavy slam
+      const T_SLAM_END = F(16); // 0.6667 — slam beat resolves
+      const T_SETTLE_END = F(34); // 1.41667 — settle -> sustained
+      const T_SUSTAIN_END = F(76); // 3.16667 — sustained -> exit hold
+      const T_END = F(82); // 3.41667 — total duration
+
+      // ---------------------------------------------------------------
+      // build the extruded depth-stack ("SHEIN")
+      // ---------------------------------------------------------------
+      const WORD = "SHEIN";
+      const stack = document.getElementById("depthStack");
+      const LAYER_COUNT = 7;
+      const BACK_ALPHA_MAX = 0.78;
+      const BACK_ALPHA_STEP = 0.1;
+      const BACK_ALPHA_MIN = 0.16;
+      const OFFSET_X = 3.2;
+      const OFFSET_Y = 3.6;
+      const BASE_FONT_SIZE = 120; // measured, then scaled to fit 84% width
+
+      for (let i = LAYER_COUNT - 1; i >= 0; i--) {
+        const el = document.createElement("div");
+        el.className = "depth-text " + (i === 0 ? "is-front" : "is-back");
+        el.textContent = WORD;
+        el.style.fontSize = BASE_FONT_SIZE + "px";
+        if (i > 0) {
+          const alpha = Math.max(BACK_ALPHA_MAX - i * BACK_ALPHA_STEP, BACK_ALPHA_MIN);
+          el.style.color = "rgba(122, 22, 14, " + alpha + ")";
+          el.style.transform = "translate(" + i * OFFSET_X + "px, " + i * OFFSET_Y + "px)";
+        }
+        el.dataset.layer = String(i);
+        if (i > 0) el.setAttribute("data-layout-ignore", "true"); // decorative extrusion shadow
+        stack.appendChild(el);
+      }
+
+      // ---------------------------------------------------------------
+      // size-lock: fit "SHEIN" to 84% of frame width, inner title-safe 90%
+      // ---------------------------------------------------------------
+      const FRAME_W = 1920;
+      const TARGET_W = FRAME_W * 0.84;
+      const frontLayer = stack.querySelector(".is-front");
+
+      function sizeLockHero() {
+        const measuredW = frontLayer.getBoundingClientRect().width;
+        const scale = TARGET_W / measuredW;
+        const finalSize = Math.round(BASE_FONT_SIZE * scale);
+        stack.querySelectorAll(".depth-text").forEach((el) => {
+          el.style.fontSize = finalSize + "px";
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // dust-puff particles (deterministic, mulberry32-seeded)
+      // ---------------------------------------------------------------
+      const dustHost = document.getElementById("dust");
+      const MOTE_COUNT = 16;
+      const motes = [];
+      for (let i = 0; i < MOTE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "mote";
+        dustHost.appendChild(el);
+        const angle = -Math.PI * 0.15 - rng() * Math.PI * 0.7; // upward-ish burst
+        const dist = 90 + rng() * 260;
+        const size = 6 + rng() * 10;
+        const delay = rng() * 0.05;
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        el.style.marginLeft = -size / 2 + "px";
+        el.style.marginTop = -size / 2 + "px";
+        motes.push({
+          el,
+          x: Math.cos(angle) * dist,
+          y: Math.sin(angle) * dist,
+          driftX: (rng() - 0.5) * 40,
+          driftY: -30 - rng() * 40,
+          delay,
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // timeline — registered only after the build completes
+      // ---------------------------------------------------------------
+      const tl = gsap.timeline({ paused: true });
+
+      document.fonts.ready.then(() => {
+        sizeLockHero();
+
+        // ---- initial states ----
+        gsap.set("#hero", { y: -40, scale: 1.12, opacity: 0 });
+        gsap.set("#glow-wrap", { clipPath: "inset(0% 0% 100% 0%)" });
+        gsap.set("#panel", { xPercent: -46, yPercent: -50, opacity: 0, y: -18 });
+        gsap.set("#shadow", { xPercent: -50, yPercent: -50, opacity: 0, scaleX: 0.85, scaleY: 0.85 });
+        gsap.set("#specular", { xPercent: -70 });
+        gsap.set(motes.map((m) => m.el), { opacity: 0, x: 0, y: 0, scale: 0.6 });
+
+        // ---- 0 -> 0.5s : SILENT VACUUM (breath so it isn't frozen) ----
+        tl.to("#camera", { scale: 1.008, duration: T_SYNC, ease: "sine.inOut" }, 0);
+
+        // ---- f12 (0.5s) : HEAVY SLAM — >=4 simultaneous impact moves ----
+        // (1) hero slam-in + impact bounce
+        tl.to("#hero", { opacity: 1, duration: 0.06, ease: "none" }, T_SYNC);
+        tl.to("#hero", { y: 0, duration: 0.15, ease: "expo.in" }, T_SYNC);
+        tl.to("#hero", { scale: 1, duration: 0.18, ease: "back.out(2.2)" }, T_SYNC);
+        tl.to("#panel", { opacity: 0.9, y: 0, duration: 0.2, ease: "power2.out" }, T_SYNC);
+
+        // (2) oxblood under-glow ignites from below
+        tl.to("#glow-wrap", { clipPath: "inset(0% 0% 0% 0%)", duration: 0.22, ease: "expo.out" }, T_SYNC);
+        tl.fromTo("#glow-hot", { opacity: 0 }, { opacity: 1, duration: 0.09, ease: "power2.out" }, T_SYNC);
+
+        // (3) dust-puff burst
+        motes.forEach((m) => {
+          tl.to(
+            m.el,
+            { opacity: 0.85, duration: 0.05, ease: "none" },
+            T_SYNC + m.delay,
+          );
+          tl.to(
+            m.el,
+            { x: m.x, y: m.y, scale: 1, duration: 0.4, ease: "power2.out" },
+            T_SYNC + m.delay,
+          );
+          tl.to(
+            m.el,
+            { opacity: 0, duration: 0.3, ease: "power1.in" },
+            T_SYNC + m.delay + 0.22,
+          );
+        });
+
+        // (4) contact shadow snaps in
+        tl.to("#shadow", { opacity: 0.55, scaleX: 1, scaleY: 1, duration: 0.12, ease: "back.out(1.6)" }, T_SYNC);
+
+        // (5) vignette pulse + grain kick (react, don't lead)
+        tl.fromTo("#vignette", { opacity: 0.1 }, { opacity: 0.24, duration: 0.08, ease: "power2.out" }, T_SYNC);
+        tl.to("#vignette", { opacity: 0.18, duration: 0.4, ease: "power2.out" }, T_SYNC + 0.08);
+        tl.fromTo("#grain", { opacity: 0.06 }, { opacity: 0.15, duration: 0.06, ease: "none" }, T_SYNC);
+        tl.to("#grain", { opacity: 0.06, duration: 0.3, ease: "power2.out" }, T_SYNC + 0.06);
+
+        // ---- 0.65 -> 1.41667s : SETTLE ----
+        // under-glow cools hot -> deep oxblood
+        tl.to("#glow-hot", { opacity: 0, duration: T_SETTLE_END - T_SLAM_END, ease: "sine.inOut" }, T_SLAM_END);
+        tl.fromTo(
+          "#glow-deep",
+          { opacity: 0.55 },
+          { opacity: 0.6, duration: T_SETTLE_END - T_SLAM_END, ease: "sine.inOut" },
+          T_SLAM_END,
+        );
+        // specular travels the metal caps
+        tl.to("#specular", { xPercent: 70, duration: 0.55, ease: "power2.out" }, T_SLAM_END + 0.05);
+        // camera settles off the vacuum breath before the sustained push-in
+        tl.to("#camera", { scale: 1, duration: 0.15, ease: "power2.out" }, T_SYNC);
+
+        // ---- 1.41667 -> 3.16667s : SUSTAINED (no dead air) ----
+        const sustainDur = T_SUSTAIN_END - T_SETTLE_END;
+        // ambient push-in, within cap
+        tl.to("#camera", { scale: 1.05, duration: sustainDur, ease: "sine.inOut" }, T_SETTLE_END);
+        // under-glow breathes +-5%
+        tl.to(
+          "#glow-deep",
+          { opacity: 0.63, duration: sustainDur / 4, ease: "sine.inOut", yoyo: true, repeat: 3 },
+          T_SETTLE_END,
+        );
+        // drifting embers (bounded, deterministic)
+        motes.forEach((m, i) => {
+          const start = T_SETTLE_END + (i / MOTE_COUNT) * sustainDur * 0.6;
+          tl.fromTo(
+            m.el,
+            { opacity: 0, x: m.x * 0.7, y: m.y * 0.4, scale: 0.5 },
+            {
+              opacity: 0.35,
+              x: m.x * 0.7 + m.driftX,
+              y: m.y * 0.4 + m.driftY,
+              scale: 0.7,
+              duration: 0.9,
+              ease: "sine.inOut",
+            },
+            start,
+          );
+          tl.to(m.el, { opacity: 0, duration: 0.5, ease: "power1.in" }, start + 0.6);
+        });
+        // grain keeps moving through the sustain + exit
+        tl.fromTo("#grain", { x: 0, y: 0 }, { x: -70, y: -50, duration: T_END, ease: "none" }, 0);
+
+        // ---- 3.16667 -> 3.41667s : EXIT — HOLD, no fade ----
+        window.__timelines["main"] = tl;
+      });
+    </script>
+  </body>
+</html>
