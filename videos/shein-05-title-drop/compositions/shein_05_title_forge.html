@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN — Title Drop Forge (Shot 05 alt)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --type: #ede8dd;
+        --ox: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: "League Gothic", "Archivo Black", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      #camera {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      #cluster {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        transform: translateY(74px);
+      }
+
+      /* z0 — small top line */
+      #topline {
+        position: absolute;
+        left: 50%;
+        top: 168px;
+        transform: translateX(-50%);
+        color: var(--type);
+        opacity: 0.88;
+        font-family: "Oswald", sans-serif;
+        font-weight: 700;
+        font-size: 30px;
+        letter-spacing: 0.32em;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      /* z4 — graphite depth panel behind the hero */
+      #panel {
+        position: absolute;
+        left: 50%;
+        top: 52%;
+        width: 1500px;
+        height: 620px;
+        background: linear-gradient(155deg, var(--graphite) 0%, #29292c 60%, #1c1c1e 100%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* z2 — oxblood halation behind the molten fill only */
+      #glow-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1900px;
+        height: 780px;
+        pointer-events: none;
+        filter: blur(2px);
+      }
+      #glow-hot,
+      #glow-deep {
+        position: absolute;
+        inset: 0;
+      }
+      #glow-hot {
+        background: radial-gradient(52% 58% at 50% 58%, rgba(232, 84, 44, 0.85) 0%, rgba(232, 84, 44, 0) 72%);
+        opacity: 0;
+      }
+      #glow-deep {
+        background: radial-gradient(58% 62% at 50% 60%, rgba(122, 22, 14, 0.5) 0%, rgba(122, 22, 14, 0) 74%);
+        opacity: 0;
+      }
+
+      /* z3 — contact shadow */
+      #shadow {
+        position: absolute;
+        left: 50%;
+        top: 68.5%;
+        width: 1360px;
+        height: 120px;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 72%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* z3 — heat shimmer bands rising off the pour */
+      #shimmer {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1500px;
+        height: 700px;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+      .shim-band {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 30%;
+        filter: blur(14px);
+        background: linear-gradient(0deg, rgba(255, 150, 90, 0.22) 0%, rgba(255, 150, 90, 0) 100%);
+      }
+
+      /* z3 — embers */
+      #embers {
+        position: absolute;
+        left: 50%;
+        top: 66%;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+      }
+      .ember {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 50%;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(255, 170, 110, 0.95) 0%, rgba(232, 84, 44, 0) 75%);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      /* z1 — the hero type stack: metal twin (bottom) -> molten fill (mid) -> cavity rim (top) */
+      #hero {
+        position: relative;
+        display: grid;
+        place-items: center;
+        will-change: transform;
+      }
+      .type-stack {
+        position: relative;
+        display: grid;
+      }
+      .type-layer {
+        grid-area: 1 / 1;
+        font-family: "League Gothic", "Archivo Black", sans-serif;
+        font-weight: 400;
+        line-height: 0.86;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        text-transform: uppercase;
+        color: transparent;
+      }
+      #metalText {
+        background: linear-gradient(180deg, #efe9db 0%, #c9c4ba 28%, #8f8b83 54%, #57544e 70%, #837f77 84%, #46433d 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+      }
+      #moltenText {
+        background: linear-gradient(180deg, #ffd8a8 0%, #ff8a4c 12%, #e8542c 26%, #c8422a 42%, #a02c1a 62%, #7a160e 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        will-change: clip-path, opacity;
+      }
+      #cavityText {
+        -webkit-text-stroke: 2px rgba(58, 58, 62, 0.85);
+        opacity: 0.34;
+      }
+      /* specular sweep, clipped INTO the glyphs (gradient-text-sweep) — never
+         a plain rectangle, or mix-blend-mode: screen washes out the ground */
+      #specularText {
+        background-image: linear-gradient(100deg, rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 58%);
+        background-size: 300% 100%;
+        background-position: 140% 50%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        mix-blend-mode: screen;
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      /* z5 — grain + vignette, screen space, front of everything */
+      #grain {
+        position: absolute;
+        inset: -20%;
+        opacity: 0.06;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        will-change: transform;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.7) 100%);
+        opacity: 0.18;
+        pointer-events: none;
+      }
+      #fringe {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: 0.5;
+        background:
+          radial-gradient(120% 120% at 6% 50%, rgba(255, 60, 40, 0.05) 0%, rgba(255, 60, 40, 0) 26%),
+          radial-gradient(120% 120% at 94% 50%, rgba(50, 160, 255, 0.05) 0%, rgba(50, 160, 255, 0) 26%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="forge"
+      data-start="0"
+      data-duration="3.41667"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.41667" data-track-index="1">
+        <div id="camera" data-layout-allow-overflow>
+          <div id="topline" data-layout-allow-occlusion>THE MOST EXPENSIVE CHEAP CLOTHES ON EARTH</div>
+          <div id="cluster">
+            <div id="panel"></div>
+            <div id="glow-wrap" data-layout-allow-overflow>
+              <div id="glow-deep"></div>
+              <div id="glow-hot"></div>
+            </div>
+            <div id="shadow"></div>
+            <div id="shimmer" data-layout-allow-overflow>
+              <div class="shim-band" style="bottom: 0%"></div>
+              <div class="shim-band" style="bottom: 30%"></div>
+              <div class="shim-band" style="bottom: 60%"></div>
+            </div>
+            <div id="embers" data-layout-allow-overflow></div>
+            <div id="hero" data-layout-allow-overflow>
+              <div class="type-stack" id="typeStack">
+                <div class="type-layer" id="metalText" data-layout-allow-occlusion>SHEIN</div>
+                <div class="type-layer" id="moltenText" data-layout-allow-occlusion>SHEIN</div>
+                <div class="type-layer" id="cavityText" data-layout-allow-occlusion>SHEIN</div>
+                <div class="type-layer" id="specularText" data-layout-allow-occlusion>SHEIN</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="grain"></div>
+        <div id="fringe"></div>
+        <div id="vignette"></div>
+      </section>
+
+      <audio
+        id="impact-sfx"
+        data-start="2"
+        data-duration="1.4"
+        data-track-index="3"
+        src=".media/audio/sfx/sfx_001.mp3"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------
+      // deterministic PRNG (mulberry32) — no Math.random / Date.now
+      // ---------------------------------------------------------------
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rng = mulberry32(4200);
+
+      // ---------------------------------------------------------------
+      // frame grid — MOLTEN FILL / SOLIDIFY variant
+      // fill-complete + solidify begins at f48 (2.0s); this is the "land"
+      // beat: the brief's own §5 names f60/2500ms as the sync frame, but
+      // its §4 motion timeline places every SOLIDIFY event (cool-shift,
+      // settle-overshoot, specular, ember-fade, vignette pulse) at f48-53
+      // — the two are inconsistent, so the land beat follows §4 (the
+      // frame-accurate phase breakdown) rather than the later §5 mention.
+      // ---------------------------------------------------------------
+      const FPS = 24;
+      const F = (n) => n / FPS;
+      const T_VACUUM_END = F(12); // 0.5      — silent vacuum -> molten fill
+      const T_LAND = F(48); // 2.0       — fill-complete / solidify begins ("land")
+      const T_SOLIDIFY_END = F(53); // 2.20833  — solidify -> sustained
+      const T_SUSTAIN_END = F(76); // 3.16667  — sustained -> exit hold
+      const T_END = F(82); // 3.41667  — total duration
+
+      // ---------------------------------------------------------------
+      // size-lock: fit "SHEIN" to 84% of frame width, inner title-safe 90%
+      // ---------------------------------------------------------------
+      const FRAME_W = 1920;
+      const TARGET_W = FRAME_W * 0.84;
+      const BASE_FONT_SIZE = 120;
+      const metalText = document.getElementById("metalText");
+      const moltenText = document.getElementById("moltenText");
+      const cavityText = document.getElementById("cavityText");
+      const specularText = document.getElementById("specularText");
+      const allTextLayers = [metalText, moltenText, cavityText, specularText];
+
+      function sizeLockHero() {
+        allTextLayers.forEach((el) => (el.style.fontSize = BASE_FONT_SIZE + "px"));
+        const measuredW = metalText.getBoundingClientRect().width;
+        const scale = TARGET_W / measuredW;
+        const finalSize = Math.round(BASE_FONT_SIZE * scale);
+        allTextLayers.forEach((el) => (el.style.fontSize = finalSize + "px"));
+        cavityText.style.webkitTextStroke = Math.max(2, Math.round(finalSize * 0.0055)) + "px rgba(58, 58, 62, 0.85)";
+      }
+
+      // ---------------------------------------------------------------
+      // embers (deterministic, mulberry32-seeded) — sparks off the pour
+      // ---------------------------------------------------------------
+      const embersHost = document.getElementById("embers");
+      const EMBER_COUNT = 18;
+      const embers = [];
+      for (let i = 0; i < EMBER_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "ember";
+        embersHost.appendChild(el);
+        const size = 4 + rng() * 7;
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        el.style.marginLeft = -size / 2 + "px";
+        el.style.marginTop = -size / 2 + "px";
+        embers.push({
+          el,
+          x: (rng() - 0.5) * 900,
+          riseY: -140 - rng() * 220,
+          driftX: (rng() - 0.5) * 60,
+          start: rng() * (T_LAND - T_VACUUM_END - 0.2) + T_VACUUM_END + 0.1,
+          life: 0.7 + rng() * 0.6,
+          peak: 0.5 + rng() * 0.35,
+        });
+      }
+
+      // ---------------------------------------------------------------
+      // timeline — registered only after the build completes
+      // ---------------------------------------------------------------
+      const tl = gsap.timeline({ paused: true });
+
+      document.fonts.ready.then(() => {
+        sizeLockHero();
+
+        // ---- initial states ----
+        // the metal twin stays hidden until the crossfade at LAND — otherwise
+        // the cast piece reads as solid the whole time, defeating the pour
+        gsap.set("#metalText", { opacity: 0 });
+        gsap.set("#moltenText", { clipPath: "inset(0% 0% 100% 0%)" });
+        gsap.set("#panel", { xPercent: -46, yPercent: -50, opacity: 0, y: -18 });
+        gsap.set("#glow-wrap", { xPercent: -50, yPercent: -50 });
+        gsap.set("#shadow", { xPercent: -50, yPercent: -50, opacity: 0, scaleX: 0.85, scaleY: 0.85 });
+        gsap.set("#shimmer", { xPercent: -50, yPercent: -50 });
+        embers.forEach((m) => gsap.set(m.el, { x: m.x, y: 0, opacity: 0 }));
+
+        // ---- 0 -> 0.5s : SILENT VACUUM (breath so it isn't frozen) ----
+        tl.to("#camera", { scale: 1.008, duration: T_VACUUM_END, ease: "sine.inOut" }, 0);
+        tl.to("#panel", { opacity: 0.85, y: 0, duration: 0.35, ease: "power2.out" }, 0.1);
+
+        // ---- 0.5 -> 2.0s : MOLTEN FILL — one directional downward pour ----
+        tl.to("#moltenText", { clipPath: "inset(0% 0% 0% 0%)", duration: T_LAND - T_VACUUM_END, ease: "none" }, T_VACUUM_END);
+        // oxblood halation rises with the pour
+        tl.fromTo("#glow-deep", { opacity: 0 }, { opacity: 0.5, duration: T_LAND - T_VACUUM_END, ease: "none" }, T_VACUUM_END);
+        tl.fromTo("#glow-hot", { opacity: 0 }, { opacity: 0.55, duration: T_LAND - T_VACUUM_END, ease: "none" }, T_VACUUM_END);
+        // heat shimmer rises, sine drift
+        tl.to("#shimmer", { opacity: 0.8, duration: 0.3, ease: "power2.out" }, T_VACUUM_END);
+        tl.to(".shim-band", { y: -40, duration: 1.1, ease: "sine.inOut", yoyo: true, repeat: 3, stagger: 0.15 }, T_VACUUM_END);
+        // embers drift up off the pour
+        embers.forEach((m) => {
+          tl.to(m.el, { opacity: m.peak, duration: 0.18, ease: "power1.out" }, m.start);
+          tl.to(m.el, { y: m.riseY, x: m.x + m.driftX, duration: m.life, ease: "sine.out" }, m.start);
+          tl.to(m.el, { opacity: 0, duration: m.life * 0.4, ease: "power1.in" }, m.start + m.life * 0.6);
+        });
+
+        // ---- f48 (2.0s) : LAND — >=4 simultaneous solidify events ----
+        // (1) fill-complete + settle overshoot
+        tl.fromTo("#hero", { scale: 1 }, { scale: 1.03, duration: 0.09, ease: "power2.out" }, T_LAND);
+        tl.to("#hero", { scale: 1, duration: 0.24, ease: "back.out(2)" }, T_LAND + 0.09);
+        // (2) cool-shift — crossfade: molten fill fades out, the metal twin fades in
+        tl.to("#moltenText", { opacity: 0, duration: T_SOLIDIFY_END - T_LAND, ease: "sine.inOut" }, T_LAND);
+        tl.to("#metalText", { opacity: 1, duration: T_SOLIDIFY_END - T_LAND, ease: "sine.inOut" }, T_LAND);
+        tl.to("#glow-hot", { opacity: 0, duration: T_SOLIDIFY_END - T_LAND, ease: "sine.inOut" }, T_LAND);
+        tl.to("#glow-deep", { opacity: 0.42, duration: T_SOLIDIFY_END - T_LAND, ease: "sine.inOut" }, T_LAND);
+        // (3) specular kick — the sweep gates in and starts traveling the caps
+        tl.to("#specularText", { opacity: 1, duration: 0.12, ease: "none" }, T_LAND);
+        // contact shadow snaps in as the cast piece lands
+        tl.to("#shadow", { opacity: 0.55, scaleX: 1, scaleY: 1, duration: 0.14, ease: "back.out(1.6)" }, T_LAND);
+        // (4) ember-fade — the burst thins immediately at land
+        tl.to(embers.map((m) => m.el), { opacity: 0, duration: 0.35, ease: "power1.in", overwrite: false }, T_LAND);
+        tl.to("#shimmer", { opacity: 0.25, duration: 0.4, ease: "power2.out" }, T_LAND);
+        // (5) vignette pulse + grain kick
+        tl.fromTo("#vignette", { opacity: 0.18 }, { opacity: 0.26, duration: 0.08, ease: "power2.out" }, T_LAND);
+        tl.to("#vignette", { opacity: 0.18, duration: 0.4, ease: "power2.out" }, T_LAND + 0.08);
+        tl.fromTo("#grain", { opacity: 0.06 }, { opacity: 0.15, duration: 0.06, ease: "none" }, T_LAND);
+        tl.to("#grain", { opacity: 0.06, duration: 0.3, ease: "power2.out" }, T_LAND + 0.06);
+
+        // ---- 2.20833 -> 3.16667s : SUSTAINED — no dead air ----
+        const sustainDur = T_SUSTAIN_END - T_SOLIDIFY_END;
+        // camera settles off the vacuum breath, then ambient push-in
+        tl.to("#camera", { scale: 1, duration: 0.15, ease: "power2.out" }, T_LAND);
+        tl.to("#camera", { scale: 1.05, duration: sustainDur, ease: "sine.inOut" }, T_SOLIDIFY_END);
+        // specular sweep travels the caps through the hold — gradient-text-sweep Form A,
+        // clipped into the glyphs; ease "none" so it reads as light, not an object
+        tl.fromTo("#specularText", { backgroundPosition: "140% 50%" }, { backgroundPosition: "-40% 50%", duration: T_SUSTAIN_END - T_LAND, ease: "none" }, T_LAND);
+        // halation breathes low and steady
+        tl.to("#glow-deep", { opacity: 0.48, duration: sustainDur / 4, ease: "sine.inOut", yoyo: true, repeat: 3 }, T_SOLIDIFY_END);
+        // embers thinning: a few late sparks, sparser than the pour burst
+        embers.slice(0, 6).forEach((m, i) => {
+          const start = T_SOLIDIFY_END + (i / 6) * sustainDur * 0.7;
+          tl.fromTo(m.el, { opacity: 0, x: m.x * 0.6, y: 0 }, { opacity: m.peak * 0.5, x: m.x * 0.6 + m.driftX * 0.5, y: m.riseY * 0.5, duration: 0.7, ease: "sine.out" }, start);
+          tl.to(m.el, { opacity: 0, duration: 0.4, ease: "power1.in" }, start + 0.45);
+        });
+        // grain keeps moving through the sustain + exit
+        tl.fromTo("#grain", { x: 0, y: 0 }, { x: -70, y: -50, duration: T_END, ease: "none" }, 0);
+
+        // ---- 3.16667 -> 3.41667s : EXIT — HOLD, no fade ----
+        window.__timelines["forge"] = tl;
+      });
+    </script>
+  </body>
+</html>
