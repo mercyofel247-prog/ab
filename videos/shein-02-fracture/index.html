@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN 02 — $5 Fracture Impact</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --oxblood-hot: #c94a2e;
+        --graphite: #3a3a3e;
+        --metal: #c9c4ba;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: Arial, "Helvetica Neue", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 46%, #141416 0%, #0f0f10 42%, var(--ground) 100%);
+      }
+
+      #container {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* ---------------- z4 : far background, blurred parcel wall ---------------- */
+      #parcelWall {
+        position: absolute;
+        inset: 0;
+        opacity: 0.25;
+        will-change: filter;
+      }
+
+      .parcel {
+        position: absolute;
+        background: linear-gradient(155deg, #46464b 0%, var(--graphite) 55%, #2c2c30 100%);
+        border: 1px solid rgba(237, 232, 221, 0.06);
+      }
+
+      /* ---------------- dust (back) ---------------- */
+      #dustLayer {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .mote {
+        position: absolute;
+        border-radius: 50%;
+        background: var(--metal);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z1/z2/z3 : hero numeral + crack seam ---------------- */
+      #heroSizeLock {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+      }
+
+      #heroWrap {
+        position: relative;
+        transform-origin: 50% 55%;
+        will-change: transform;
+      }
+
+      #heroA,
+      #heroB,
+      #crackGlow,
+      #chromaShimmer {
+        position: relative;
+        display: block;
+        font-size: 640px;
+        font-weight: 900;
+        line-height: 0.9;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        transform: scaleX(0.86);
+        transform-origin: 50% 50%;
+      }
+
+      .metalFace {
+        background: linear-gradient(178deg, #e9e5da 0%, var(--metal) 22%, #9c978c 46%, #6b675f 64%, var(--metal) 82%, #55524c 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          1px 1px 0 #8a867c,
+          2px 2px 0 #6f6b62,
+          3px 3px 0 #57544d,
+          4px 4px 0 var(--graphite),
+          5px 5px 0 #333336,
+          6px 6px 0 #2c2c2f,
+          7px 8px 16px rgba(0, 0, 0, 0.65);
+      }
+
+      /* heroA is in-flow (position:relative) so it gives #heroWrap its natural
+         size — heroB/crackGlow/chromaShimmer overlay it via inset:0. All four
+         being position:absolute left heroWrap at 0x0, which made every
+         percentage-based clip-path on them degenerate (nothing rendered). */
+      #heroA {
+        position: relative;
+      }
+
+      #heroB {
+        position: absolute;
+        inset: 0;
+        will-change: clip-path;
+      }
+
+      #crackGlow {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, var(--oxblood-hot) 0%, var(--oxblood) 55%, #4a0d08 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 10px var(--oxblood)) drop-shadow(0 0 26px rgba(122, 22, 14, 0.65));
+        opacity: 0;
+        will-change: opacity, clip-path;
+      }
+
+      #chromaShimmer {
+        position: absolute;
+        inset: 0;
+        /* barely-there ink so the checker sees real fill; the visible fringe
+           reads through the red/cyan text-shadow offsets below */
+        background: linear-gradient(90deg, rgba(255, 60, 60, 0.08), rgba(60, 180, 255, 0.08));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          -2px 0 0 rgba(255, 60, 60, 0.4),
+          2px 0 0 rgba(60, 180, 255, 0.4);
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      /* ---------------- z5 : grade pass ---------------- */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.18) 100%);
+        pointer-events: none;
+      }
+
+      #grain {
+        position: absolute;
+        inset: -6%;
+        background-image:
+          radial-gradient(rgba(237, 232, 221, 0.05) 1px, transparent 1px),
+          radial-gradient(rgba(237, 232, 221, 0.035) 1px, transparent 1px);
+        background-size: 5px 5px, 9px 9px;
+        background-position: 0 0, 3px 4px;
+        opacity: 0.06;
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="2.6"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="2.6" data-track-index="1">
+        <div id="container" data-layout-allow-overflow>
+          <div id="parcelWall" data-layout-allow-overflow></div>
+
+          <div id="dustLayer" data-layout-allow-overflow></div>
+
+          <div id="heroSizeLock" data-layout-allow-overflow>
+            <div id="heroWrap">
+              <div id="heroA" class="metalFace" data-layout-allow-overflow data-layout-allow-occlusion>$5</div>
+              <div id="heroB" class="metalFace" data-layout-allow-overflow data-layout-allow-occlusion>$5</div>
+              <div id="crackGlow" data-layout-allow-overflow data-layout-allow-occlusion aria-hidden="true">$5</div>
+              <div id="chromaShimmer" data-layout-allow-overflow data-layout-allow-occlusion aria-hidden="true">$5</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="vignette" data-layout-allow-overflow></div>
+        <div id="grain" data-layout-allow-overflow></div>
+      </section>
+
+      <audio
+        id="impact"
+        data-start="0"
+        data-duration="2.6"
+        data-track-index="2"
+        src="assets/impact.wav"
+        data-volume="0.95"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const FPS = 24;
+      const f = (n) => n / FPS;
+
+      // ---- deterministic PRNG (mulberry32) ----
+      function mulberry32(seed) {
+        let a = seed >>> 0;
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x9e3779b9);
+      const rand2 = mulberry32(0x1b873593);
+
+      // ---- z4: deterministic blurred parcel wall ----
+      const parcelWall = document.querySelector("#parcelWall");
+      const PARCEL_COUNT = 9;
+      for (let i = 0; i < PARCEL_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "parcel";
+        const w = 160 + rand2() * 220;
+        const h = 110 + rand2() * 160;
+        const left = rand2() * 100;
+        const top = rand2() * 100;
+        el.style.width = w + "px";
+        el.style.height = h + "px";
+        el.style.left = left + "%";
+        el.style.top = top + "%";
+        el.style.borderRadius = "4px";
+        parcelWall.appendChild(el);
+      }
+
+      // ---- heroA/heroB/crackGlow: deterministic jagged crack centerline ----
+      const heroA = document.querySelector("#heroA");
+      const heroB = document.querySelector("#heroB");
+      const crackGlow = document.querySelector("#crackGlow");
+      const heroWrap = document.querySelector("#heroWrap");
+      const heroSizeLock = document.querySelector("#heroSizeLock");
+      const chromaShimmer = document.querySelector("#chromaShimmer");
+
+      const CRACK_SAMPLES = 8;
+      const crackCenterline = [];
+      for (let i = 0; i <= CRACK_SAMPLES; i++) {
+        const yPct = (i / CRACK_SAMPLES) * 100;
+        const baseX = 41 + ((58 - 41) * i) / CRACK_SAMPLES;
+        const jitter = (rand() - 0.5) * 9;
+        crackCenterline.push({ x: Math.max(6, Math.min(94, baseX + jitter)), y: yPct });
+      }
+
+      function buildCrackClips(gapPct) {
+        const half = gapPct / 2;
+        const leftPts = crackCenterline.map((p) => `${Math.max(0, p.x - half).toFixed(2)}% ${p.y}%`);
+        const rightPts = crackCenterline.map((p) => `${Math.min(100, p.x + half).toFixed(2)}% ${p.y}%`);
+        const leftPolygon = `polygon(0% 0%, ${leftPts.join(", ")}, 0% 100%)`;
+        const rightPolygon = `polygon(100% 0%, ${rightPts.join(", ")}, 100% 100%)`;
+        const glowPolygon = `polygon(${leftPts.join(", ")}, ${[...rightPts].reverse().join(", ")})`;
+        return { leftPolygon, rightPolygon, glowPolygon };
+      }
+
+      function applyCrackGap(gapPct) {
+        const { leftPolygon, rightPolygon, glowPolygon } = buildCrackClips(gapPct);
+        heroA.style.clipPath = leftPolygon;
+        heroA.style.webkitClipPath = leftPolygon;
+        heroB.style.clipPath = rightPolygon;
+        heroB.style.webkitClipPath = rightPolygon;
+        crackGlow.style.clipPath = glowPolygon;
+        crackGlow.style.webkitClipPath = glowPolygon;
+      }
+      applyCrackGap(0); // hairline, hidden at f0
+
+      // ---- size-lock: hero fills up to 82% of frame width while staying inside
+      // the title-safe inner 90% height, leaving headroom for the 1.11x impact
+      // scale spike so the peak still fits ----
+      const GROWTH_HEADROOM = 1.11;
+      const TARGET_WIDTH = (1920 * 0.82) / GROWTH_HEADROOM;
+      const TARGET_HEIGHT = (1080 * 0.9) / GROWTH_HEADROOM;
+      const heroBox = heroA.getBoundingClientRect();
+      const widthScale = heroBox.width > 0 ? TARGET_WIDTH / heroBox.width : 1;
+      const heightScale = heroBox.height > 0 ? TARGET_HEIGHT / heroBox.height : 1;
+      const lockScale = Math.min(widthScale, heightScale);
+      gsap.set(heroSizeLock, { scale: lockScale });
+
+      // ---- dust motes: deterministic drift ----
+      const dustLayer = document.querySelector("#dustLayer");
+      const MOTE_COUNT = 40;
+      const motes = [];
+      for (let i = 0; i < MOTE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "mote";
+        const size = 1.4 + rand() * 3.2;
+        const left = rand() * 100;
+        const top = rand() * 100;
+        el.style.left = left + "%";
+        el.style.top = top + "%";
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        el.style.opacity = String(0.08 + rand() * 0.22);
+        dustLayer.appendChild(el);
+        motes.push({
+          el,
+          ampX: 10 + rand() * 26,
+          ampY: 6 + rand() * 16,
+          dur: 3.2 + rand() * 3,
+          delay: rand() * 1.5,
+        });
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ==================================================================
+      // 0 – 1200ms (f0–f29)  TENSION HOLD
+      // ==================================================================
+      gsap.set(container(), { scale: 1 });
+      gsap.set(heroWrap, { scale: 1, x: 0, y: 0 });
+      gsap.set(crackGlow, { opacity: 0 });
+      gsap.set(chromaShimmer, { opacity: 0 });
+      gsap.set(parcelWall, { filter: "blur(6px)" });
+
+      tl.to(container(), { scale: 1.03, duration: f(29), ease: "sine.inOut" }, f(0));
+
+      motes.forEach((m) => {
+        gsap.to(m.el, { x: m.ampX, y: -m.ampY, duration: m.dur, ease: "sine.inOut", yoyo: true, repeat: 1, delay: m.delay });
+      });
+      gsap.to("#grain", { x: 12, y: -9, duration: 4.8, ease: "sine.inOut", yoyo: true, repeat: 1 });
+
+      // ==================================================================
+      // 1200 – 1350ms (f29–f34)  SHATTER-SEAM IMPACT — sync frame f34
+      // ==================================================================
+      const IMPACT_T = f(34);
+
+      // (1) crack snaps open, 0 -> full, over 120ms, power4.in, ending exactly at f34
+      const crack = { gap: 0 };
+      tl.to(
+        crack,
+        { gap: 3.2, duration: 0.12, ease: "power4.in", onUpdate: () => applyCrackGap(crack.gap) },
+        IMPACT_T - 0.12,
+      );
+
+      // (2) oxblood floods out of the seam, 0 -> full, expo.out
+      tl.fromTo(crackGlow, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "expo.out" }, IMPACT_T - 0.05);
+
+      // (3) discrete impact scale spike 1.00 -> 1.11 -> 1.03, back.out then settle
+      tl.to(heroWrap, { scale: 1.11, duration: 0.09, ease: "back.out(2.6)" }, IMPACT_T - 0.09);
+      tl.to(heroWrap, { scale: 1.0, duration: 0.16, ease: "power2.out" }, IMPACT_T);
+
+      // (4) 6px camera-shake, deterministic damped decay, power2.out envelope
+      tl.to(heroWrap, { x: 6, y: -4, duration: 0.03, ease: "power1.out" }, IMPACT_T);
+      tl.to(heroWrap, { x: -5, y: 3, duration: 0.03, ease: "power1.out" }, IMPACT_T + 0.03);
+      tl.to(heroWrap, { x: 3, y: -2, duration: 0.03, ease: "power1.out" }, IMPACT_T + 0.06);
+      tl.to(heroWrap, { x: -2, y: 1, duration: 0.03, ease: "power1.out" }, IMPACT_T + 0.09);
+      tl.to(heroWrap, { x: 1, y: -0.5, duration: 0.03, ease: "power1.out" }, IMPACT_T + 0.12);
+      tl.to(heroWrap, { x: 0, y: 0, duration: 0.03, ease: "power1.out" }, IMPACT_T + 0.15);
+
+      // (5) one 180ms chromatic shimmer
+      tl.fromTo(chromaShimmer, { opacity: 0 }, { opacity: 0.55, duration: 0.06, ease: "power1.out" }, IMPACT_T - 0.02);
+      tl.to(chromaShimmer, { opacity: 0, duration: 0.12, ease: "power1.in" }, IMPACT_T + 0.04);
+
+      // (6) grain kick
+      tl.fromTo("#grain", { opacity: 0.06 }, { opacity: 0.22, duration: 0.05, ease: "power1.out" }, IMPACT_T);
+      tl.to("#grain", { opacity: 0.06, duration: 0.15, ease: "power1.out" }, IMPACT_T + 0.05);
+
+      // ==================================================================
+      // 1350 – 1900ms (f34–f46)  AFTERMATH
+      // ==================================================================
+      tl.to(parcelWall, { filter: "blur(2px)", duration: f(46) - f(34), ease: "power2.out" }, f(34));
+      // starts once the bloom tween above (ends at IMPACT_T+0.15) has finished —
+      // two tweens racing over the same property in the same window is what
+      // left a stray element stuck partially visible in shot 01
+      tl.to(crackGlow, { opacity: 0.85, duration: f(46) - (IMPACT_T + 0.15), ease: "power2.out" }, IMPACT_T + 0.15);
+      tl.to(
+        crack,
+        { gap: 1.6, duration: f(46) - f(34), ease: "power2.out", onUpdate: () => applyCrackGap(crack.gap) },
+        f(34),
+      );
+
+      // ==================================================================
+      // 1900 – 2450ms (f46–f59)  SUSTAINED — no dead air
+      // ==================================================================
+      tl.to(container(), { scale: 1.06, duration: f(59) - f(46), ease: "sine.inOut" }, f(46));
+      tl.to(
+        crackGlow,
+        { opacity: 0.8, duration: (f(59) - f(46)) / 2, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        f(46),
+      );
+
+      // ==================================================================
+      // 2450 – 2600ms (f59–f62)  EXIT — HOLD, cuttable, crack + grain live
+      // ==================================================================
+      // no new tweens: heroWrap/crackGlow freeze at their sustained values,
+      // dust motes and grain keep drifting underneath.
+
+      function container() {
+        return document.querySelector("#container");
+      }
+
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
