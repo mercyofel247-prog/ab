@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN 01 — $5 Hero Number Reveal</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+        --metal: #c9c4ba;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: Arial, "Helvetica Neue", sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 46%, #141416 0%, #0f0f10 42%, var(--ground) 100%);
+      }
+
+      #container {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* ---------------- z4 : dust motes (back) ---------------- */
+      #dustLayer {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .mote {
+        position: absolute;
+        border-radius: 50%;
+        background: var(--bone);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- contact shadow (under z1) ---------------- */
+      #contactShadow {
+        position: absolute;
+        left: 50%;
+        top: 66%;
+        width: 900px;
+        height: 160px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 72%);
+        opacity: 0.35;
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z1/z2 : hero numeral ---------------- */
+      #heroSizeLock {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+      }
+
+      #heroWrap {
+        position: relative;
+        transform-origin: 50% 62%;
+        will-change: transform;
+      }
+
+      #hero,
+      #heroRim {
+        position: relative;
+        display: block;
+        font-size: 640px;
+        font-weight: 900;
+        line-height: 0.9;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        transform: scaleX(0.86);
+        transform-origin: 50% 50%;
+      }
+
+      #hero {
+        background: linear-gradient(178deg, #e9e5da 0%, var(--metal) 22%, #9c978c 46%, #6b675f 64%, var(--metal) 82%, #55524c 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          1px 1px 0 #8a867c,
+          2px 2px 0 #6f6b62,
+          3px 3px 0 #57544d,
+          4px 4px 0 var(--graphite),
+          5px 5px 0 #333336,
+          6px 6px 0 #2c2c2f,
+          7px 8px 16px rgba(0, 0, 0, 0.65),
+          -1px 0 0 rgba(255, 70, 70, 0.1),
+          1px 0 0 rgba(70, 180, 255, 0.1);
+        filter: blur(9px);
+        opacity: 0.55;
+        will-change: filter, opacity;
+      }
+
+      #heroRim {
+        position: absolute;
+        inset: 0;
+        /* barely-there emissive tint (not a flat fill) — the stroke + glow carry
+           the rim; painted through background-clip so the checker sees real ink */
+        background: linear-gradient(178deg, rgba(178, 60, 48, 0.07) 0%, rgba(122, 22, 14, 0.05) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        -webkit-text-stroke: 2.5px var(--oxblood);
+        text-stroke: 2.5px var(--oxblood);
+        filter: drop-shadow(0 0 4px var(--oxblood)) drop-shadow(0 0 9px rgba(122, 22, 14, 0.5));
+        /* thin L-shaped band tracing just the top + right silhouette edges of "5" */
+        clip-path: polygon(52% 0%, 100% 0%, 100% 45%, 89% 45%, 89% 11%, 52% 11%);
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      /* lives unscaled at the container level (not inside the size-locked hero
+         group) so its travel distance is real screen pixels, not amplified
+         by the hero's size-lock scale factor */
+      #specular {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 220px;
+        height: 900px;
+        margin-left: -110px;
+        margin-top: -450px;
+        background: linear-gradient(100deg, transparent 0%, rgba(255, 250, 240, 0.55) 48%, transparent 100%);
+        mix-blend-mode: screen;
+        opacity: 0;
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z3 : price tag ---------------- */
+      #tag {
+        position: absolute;
+        right: 14%;
+        top: 60%;
+        transform-origin: 50% 0%;
+        will-change: transform;
+      }
+
+      #thread {
+        width: 1px;
+        height: 64px;
+        margin: 0 auto;
+        background: linear-gradient(180deg, rgba(237, 232, 221, 0.05) 0%, rgba(237, 232, 221, 0.55) 100%);
+      }
+
+      #tagBody {
+        margin-top: -1px;
+        padding: 12px 22px;
+        background: rgba(58, 58, 62, 0.82);
+        border: 1px solid rgba(237, 232, 221, 0.4);
+        border-radius: 3px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+      }
+
+      #tagText {
+        display: block;
+        color: var(--bone);
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+      }
+
+      /* ---------------- z5 : grade pass ---------------- */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(72% 68% at 50% 48%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.18) 100%);
+        pointer-events: none;
+      }
+
+      #grain {
+        position: absolute;
+        inset: -6%;
+        background-image:
+          radial-gradient(rgba(237, 232, 221, 0.05) 1px, transparent 1px),
+          radial-gradient(rgba(237, 232, 221, 0.035) 1px, transparent 1px);
+        background-size: 5px 5px, 9px 9px;
+        background-position: 0 0, 3px 4px;
+        opacity: 0.06;
+        pointer-events: none;
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-width="1920"
+      data-height="1080"
+      data-fps="24"
+      data-start="0"
+      data-duration="3.0"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.0" data-track-index="1">
+        <div id="container" data-layout-allow-overflow>
+          <div id="dustLayer" data-layout-allow-overflow></div>
+
+          <div id="contactShadow"></div>
+
+          <div id="heroSizeLock" data-layout-allow-overflow>
+            <div id="heroWrap">
+              <div id="hero" data-layout-allow-overflow>$5</div>
+              <div id="heroRim" data-layout-allow-overflow data-layout-allow-occlusion aria-hidden="true">$5</div>
+            </div>
+          </div>
+
+          <div id="specular" data-layout-allow-overflow></div>
+
+          <div id="tag" data-layout-allow-overflow>
+            <div id="thread"></div>
+            <div id="tagBody"><span id="tagText">one dress</span></div>
+          </div>
+        </div>
+
+        <div id="vignette" data-layout-allow-overflow></div>
+        <div id="grain" data-layout-allow-overflow></div>
+      </section>
+
+      <audio
+        id="shhk"
+        data-start="0"
+        data-duration="3.0"
+        data-track-index="2"
+        src="assets/shhk.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const FPS = 24;
+      const f = (n) => n / FPS;
+
+      // ---- deterministic PRNG (mulberry32) ----
+      function mulberry32(seed) {
+        let a = seed >>> 0;
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0xc0ffee);
+
+      // ---- size-lock: hero fills up to 82% of frame width while staying inside
+      // the title-safe inner 90% height, regardless of font metrics. Leaves
+      // headroom for the later 1.09x extrude-grow so the peak scale still fits. ----
+      const heroSizeLock = document.querySelector("#heroSizeLock");
+      const heroWrap = document.querySelector("#heroWrap");
+      const hero = document.querySelector("#hero");
+      const heroRim = document.querySelector("#heroRim");
+
+      const GROWTH_HEADROOM = 1.09;
+      const TARGET_WIDTH = (1920 * 0.82) / GROWTH_HEADROOM;
+      const TARGET_HEIGHT = (1080 * 0.9) / GROWTH_HEADROOM;
+      const heroBox = hero.getBoundingClientRect();
+      const widthScale = heroBox.width > 0 ? TARGET_WIDTH / heroBox.width : 1;
+      const heightScale = heroBox.height > 0 ? TARGET_HEIGHT / heroBox.height : 1;
+      const lockScale = Math.min(widthScale, heightScale);
+      gsap.set(heroSizeLock, { scale: lockScale });
+
+      // real on-screen half-width of the locked numeral, for the unscaled
+      // #specular glint's travel distance (plus a little run-off past the edge)
+      const heroScreenHalfWidth = (heroBox.width * lockScale) / 2 + 140;
+
+      // ---- z4 dust motes: deterministic drift on near-black ----
+      const dustLayer = document.querySelector("#dustLayer");
+      const MOTE_COUNT = 40;
+      const motes = [];
+      for (let i = 0; i < MOTE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "mote";
+        const size = 1.4 + rand() * 3.2;
+        const left = rand() * 100;
+        const top = rand() * 100;
+        el.style.left = left + "%";
+        el.style.top = top + "%";
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        el.style.opacity = String(0.08 + rand() * 0.22);
+        dustLayer.appendChild(el);
+        motes.push({
+          el,
+          ampX: 10 + rand() * 26,
+          ampY: 6 + rand() * 16,
+          dur: 3.4 + rand() * 3.2,
+          delay: rand() * 2,
+        });
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ==================================================================
+      // 0 – 450ms (f0–f11)  DEFOCUS HOLD
+      // ==================================================================
+      gsap.set(hero, { filter: "blur(9px)", opacity: 0.55 });
+      gsap.set(heroRim, { opacity: 0 });
+      gsap.set(specularEl(), { opacity: 0, x: 0 });
+      gsap.set(heroWrap, { scale: 1 });
+      gsap.set(container(), { scale: 1 });
+      gsap.set("#tag", { rotation: 0 });
+      gsap.set("#contactShadow", { scaleX: 0.86, opacity: 0.22 });
+
+      tl.to(container(), { scale: 1.01, duration: f(11), ease: "sine.inOut" }, f(0));
+
+      // dust drifts continuously across the whole 3.0s
+      motes.forEach((m) => {
+        gsap.to(m.el, {
+          x: m.ampX,
+          y: -m.ampY,
+          duration: m.dur,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 1,
+          delay: m.delay,
+        });
+      });
+
+      // grain drifts continuously across the whole 3.0s ("moving ~6%")
+      gsap.to("#grain", { x: 14, y: -10, duration: 5.4, ease: "sine.inOut", yoyo: true, repeat: 1 });
+
+      // ==================================================================
+      // 450 – 1250ms (f11–f30)  MATTE LIGHT-SWEEP REVEAL
+      // ==================================================================
+      const SWEEP_DUR = f(30) - f(11);
+
+      // a bright matte light-band rakes L->R across the numeral, ease:"none"
+      tl.fromTo(specularEl(), { x: -heroScreenHalfWidth }, { x: heroScreenHalfWidth, duration: SWEEP_DUR, ease: "none" }, f(11));
+      tl.fromTo(specularEl(), { opacity: 0 }, { opacity: 0.9, duration: SWEEP_DUR * 0.3, ease: "power1.out" }, f(11));
+      tl.to(specularEl(), { opacity: 0, duration: SWEEP_DUR * 0.3, ease: "power1.in" }, f(30) - SWEEP_DUR * 0.3);
+
+      // as the sweep passes, the blur resolves and the numeral fades sharp, power4.out
+      tl.to(hero, { filter: "blur(0px)", opacity: 1, duration: SWEEP_DUR, ease: "power4.out" }, f(11));
+
+      // ==================================================================
+      // 1250 – 1400ms (f30–f34)  RACK SNAP  — sync frame f30
+      // ==================================================================
+      tl.set(hero, { filter: "blur(0px)", opacity: 1 }, f(30));
+      tl.to(heroRim, { opacity: 1, duration: f(34) - f(30), ease: "expo.out" }, f(30));
+
+      // ==================================================================
+      // 1400 – 1650ms (f34–f40)  EXTRUDE-GROW IMPACT — >=4 simultaneous moves
+      // ==================================================================
+      // (1) extrude-grow: the numeral pushes toward camera
+      tl.to(heroWrap, { scale: 1.06, duration: f(40) - f(34), ease: "back.out(2.2)" }, f(34));
+
+      // (2) rim-ignite tail: a small settle after the expo.out ignition
+      tl.to(heroRim, { opacity: 0.92, duration: f(40) - f(34), ease: "power2.out" }, f(34));
+
+      // (3) specular glint travels the bevel. Position tweens for the full
+      // impact window; opacity rises then falls as two back-to-back (never
+      // overlapping) tweens, since two tweens fighting over the same property
+      // in the same window left it stuck partially visible.
+      const IMPACT_DUR = f(40) - f(34);
+      tl.fromTo(
+        specularEl(),
+        { x: -heroScreenHalfWidth * 0.5 },
+        { x: heroScreenHalfWidth * 0.6, duration: IMPACT_DUR, ease: "power2.out" },
+        f(34),
+      );
+      tl.fromTo(specularEl(), { opacity: 0 }, { opacity: 1, duration: IMPACT_DUR * 0.35, ease: "power1.out" }, f(34));
+      tl.to(specularEl(), { opacity: 0, duration: IMPACT_DUR * 0.35, ease: "power1.in" }, f(34) + IMPACT_DUR * 0.65);
+      // hard reset once the impact beat ends — nothing uses the glint again
+      tl.set(specularEl(), { opacity: 0, x: 0 }, f(40));
+
+      // (4) contact-shadow settle
+      tl.to("#contactShadow", { scaleX: 1.04, opacity: 0.4, duration: f(40) - f(34), ease: "power2.out" }, f(34));
+
+      // (5) tag sway 0deg -> 2deg
+      tl.to("#tag", { rotation: 2, duration: f(40) - f(34), ease: "back.out(2)" }, f(34));
+
+      // ==================================================================
+      // 1650 – 2750ms (f40–f66)  SUSTAINED — no dead air
+      // ==================================================================
+      tl.to(heroWrap, { scale: 1.09, duration: f(66) - f(40), ease: "sine.inOut" }, f(40));
+      tl.to(
+        heroRim,
+        { opacity: 0.98, duration: (f(66) - f(40)) / 2, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        f(40),
+      );
+      tl.to("#tag", { rotation: 1, duration: f(66) - f(40), ease: "sine.inOut" }, f(40));
+
+      // ==================================================================
+      // 2750 – 3000ms (f66–f72)  EXIT — HOLD, cuttable (motion done; dust + grain still live)
+      // ==================================================================
+      // no new tweens here: heroWrap/rim/tag freeze at their sustained values,
+      // dust motes and grain keep looping underneath.
+
+      function specularEl() {
+        return document.querySelector("#specular");
+      }
+      function container() {
+        return document.querySelector("#container");
+      }
+
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
