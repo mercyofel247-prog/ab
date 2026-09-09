@@ -11,7 +11,10 @@
       "properties": {
         "title": {"type": "string"},
         "topic": {"type": "string"},
-        "palette_track": {"enum": ["oxblood", "gold"], "description": "Part 0.5 accent lock — oxblood #7A160E (scandal/fall) or gold #C9A24B (wealth/rise). Never mix."},
+        "palette_track": {"enum": ["oxblood", "gold"], "description": "Part 0.5 accent lock, chosen by story ARC — oxblood #7A160E (scandal/fall, ends in reckoning) or gold #C9A24B (wealth/rise, ends in triumph). Never mix. See references/palette-and-grade.md."},
+        "accent": {"type": "object", "description": "The Part 0.5 accent triad for the chosen track (ground/accent/secondary/type/label hexes). Recorded so overlays, animations and grade tweaks key the ONE accent off it.", "properties": {
+          "ground": {"type": "string"}, "accent": {"type": "string"}, "secondary": {"type": "string"}, "type": {"type": "string"}, "label": {"type": "string"}
+        }},
         "fps": {"type": "number", "default": 24, "description": "Global 1080p lock: 24fps."},
         "width": {"type": "integer", "default": 1920},
         "height": {"type": "integer", "default": 1080},
@@ -21,15 +24,21 @@
     },
     "grade": {
       "type": "object",
-      "description": "Shared look-block (master-prompt Part 15.4 continuity layer) applied to EVERY visual segment so independently-generated clips read as one film. This is the fix for the 'assembled clips' problem.",
+      "description": "Shared look-block (master-prompt Part 15.4 continuity layer) applied to EVERY visual segment so independently-generated clips read as one film — the fix for the 'assembled clips' problem. The house grade (Playbook 'The grade'): warm-amber highlights, teal shadows, heavy vignette, grain. Order applied: eq -> colorbalance -> lut -> vignette -> grain. See references/palette-and-grade.md.",
       "properties": {
-        "lut": {"type": ["string", "null"], "description": "Optional .cube LUT path (relative to project dir)."},
+        "lut": {"type": ["string", "null"], "description": "Optional .cube LUT path (relative to project dir). Runs after colorbalance."},
         "eq": {"type": "object", "properties": {
           "contrast": {"type": "number", "default": 1.0},
           "brightness": {"type": "number", "default": 0.0},
           "saturation": {"type": "number", "default": 1.0},
           "gamma": {"type": "number", "default": 1.0}
         }},
+        "colorbalance": {"type": "object", "description": "Split-tone (the house look): [red,green,blue] triples, -1..1, kept subtle (|v|<=~0.12). Teal-leaning shadows, warm-amber highlights.", "properties": {
+          "shadows": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+          "midtones": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+          "highlights": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3}
+        }},
+        "vignette": {"type": ["number", "boolean"], "description": "Heavy dark vignette = ffmpeg vignette angle in radians; SMALLER is darker. House default 0.5 (true selects it). Omit / 0 / false to disable."},
         "grain": {"type": "number", "default": 0.0, "description": "Film grain strength 0-20 (continuous across cuts hides seams)."}
       }
     },

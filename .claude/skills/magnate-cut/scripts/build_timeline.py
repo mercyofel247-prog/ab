@@ -84,7 +84,11 @@ def main():
                      help="trim every clip to this many seconds (0 = use full clip length)")
     ap.add_argument("--chapters", default="auto",
                      help="'auto' (~1 per 40 clips) or an integer count")
-    ap.add_argument("--palette", default="oxblood", choices=["oxblood", "gold"])
+    ap.add_argument("--palette", default="oxblood", choices=["oxblood", "gold"],
+                     help="accent track by STORY ARC (Part 0.5): 'oxblood' = fall/scandal/"
+                          "collapse (ends in reckoning); 'gold' = rise/wealth/success (ends in "
+                          "triumph). Chosen by where the story ENDS, not its premise. One accent "
+                          "per video, never both.")
     ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--width", type=int, default=1920)
     ap.add_argument("--height", type=int, default=1080)
@@ -206,14 +210,36 @@ def main():
             "fade_in_s": 0.8, "fade_out_s": 1.0,
         })
 
+    # The MagnatesMedia HOUSE GRADE (Playbook "The grade"): one look across every
+    # shot — warm-amber / tungsten highlights, teal-leaning shadows, a heavy dark
+    # vignette, visible grain. This is the continuity layer (master prompt Part 15)
+    # that stops independently-generated shots reading as assembled clips. The
+    # Part 0.5 ACCENT (oxblood OR gold) is authored into each shot on top of this,
+    # never flooded. See references/palette-and-grade.md.
     grade = {"lut": None,
-             "eq": {"contrast": 1.04, "brightness": -0.005, "saturation": 0.95, "gamma": 1.02},
-             "grain": 3}
+             "eq": {"contrast": 1.06, "brightness": -0.01, "saturation": 0.92, "gamma": 1.02},
+             "colorbalance": {
+                 "shadows":    [-0.06, -0.01, 0.07],   # teal-leaning shadows
+                 "midtones":   [0.02, 0.0, -0.02],
+                 "highlights": [0.08, 0.02, -0.08],     # warm-amber / tungsten highlights
+             },
+             "vignette": 0.5,                            # heavy dark vignette (smaller = darker)
+             "grain": 4}
+
+    # The accent triad for the chosen track (Part 0.5). Recorded so downstream
+    # steps (grade tweaks, overlays, animation builds) key the ONE accent off it.
+    ACCENTS = {
+        "oxblood": {"ground": "#0B0B0C", "accent": "#7A160E", "secondary": "#3A3A3E",
+                    "type": "#EDE8DD", "label": "#8A8F98"},   # TRACK 2 — fall / scandal / collapse
+        "gold":    {"ground": "#0B0B0C", "accent": "#C9A24B", "secondary": "#1B2A3A",
+                    "type": "#EDE8DD", "label": "#8A8F98"},   # TRACK 1 — rise / wealth / success
+    }
 
     timeline = {
         "meta": {
             "title": os.path.basename(project),
             "palette_track": args.palette,
+            "accent": ACCENTS.get(args.palette, ACCENTS["oxblood"]),
             "fps": args.fps, "width": args.width, "height": args.height,
             "master_lufs": -14.0, "master_true_peak_dbtp": -1.0,
         },

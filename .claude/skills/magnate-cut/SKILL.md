@@ -30,8 +30,11 @@ empirical half and every default here traces to it.
 - **−14 LUFS integrated, true peak ≤ −1.0 dBTP** — the #1 audit lesson (7 of 8
   audited videos were clipping over 0 dBTP; only the one correctly-mastered
   reference stood out). `assemble.py` masters to this automatically.
-- **One shared colour grade** across every shot (continuity), with the Part 0.5
-  accent locked (oxblood OR gold, never both).
+- **One shared colour grade** across every shot (continuity): the house look —
+  warm-amber highlights, teal-leaning shadows, heavy vignette, visible grain —
+  with the Part 0.5 accent locked (oxblood OR gold, never both), chosen by the
+  story's ARC. `assemble.py` applies it; `build_timeline.py` seeds it. Full
+  doctrine + hexes: `references/palette-and-grade.md`.
 
 ## Workflow
 
@@ -75,9 +78,20 @@ auto defaults per clip. Swap any transition to `crash_zoom`/`fly_through` once
 you've rendered its HyperFrames bridge (step 3). Schema + field docs:
 `references/timeline.schema.json`; worked example:
 `examples/timeline.example.json`. Map narration timing to segment durations so
-picture and voice line up.
+picture and voice line up. **Space the durations to the archetype's cut-pace
+band** (Founder-bio/Industrialist/Brand ~11–15 cuts/min, Explainer 8–18, Heist
+period ~11 → modern ~25) with a deliberate **burst-vs-hold** spread — never a
+flat rate; the era dial (period → slow, modern-with-real-footage → fast) moves
+the band. Full bands + rationale: `references/pacing.md`.
 
 ### 3. Generate the missing visual pieces
+> **Everything you generate renders PICTURE-ONLY (Part 26).** Every animation and
+> transition bridge must render with an **empty audio track** — no embedded
+> `<audio>`, no baked-in music/SFX/TTS. All sound is laid in the mix (step 5). A
+> baked-in sting or robotic VO fights the real narration and is unusable. See
+> `references/audio.md` → "PART 26". (`assemble.py` also strips segment audio with
+> `-an` as a safety net, but render silent in the first place.)
+
 - **Animations** (Mode B — data motion, number reveals, kinetic type, charts,
   intros): build with HyperFrames (deepest animation control), Remotion
   (reusable parametric components), or Blender (3D). Follow the repo's existing
@@ -87,9 +101,14 @@ picture and voice line up.
 - **Signature transitions** — render the ones you need from `templates/`
   (`crash-zoom-parallax.html`, `whip-pan.html`, `dof-rack.html`,
   `slow-fly-through.html`) to `transitions/`, then point the segment's
-  `transition_out.src` at the MP4. See `references/transitions.md`. Native
-  transitions (hard_cut/dissolve/fade*/wipe*/smooth*) need no render — the
-  assembler does them in ffmpeg.
+  `transition_out.src` at the MP4. Native transitions
+  (hard_cut/dissolve/fade*/wipe*/smooth*) need no render — the assembler does
+  them in ffmpeg. `references/transitions.md` also carries the full **40-device
+  extended library (14.6.5)** — light-leak bloom (the default dissolve),
+  paper-burn reveal, circular iris, the numbered chapter-title card, "read the
+  receipts" document devices, and more — each engine-tagged and tiered, with the
+  3 governing laws and the REJECT (anti-warp) list. Styled transitions live ONLY
+  at scene boundaries; inside a montage/same-subject run it's hard cuts only.
 - **Overlays** (Mode-A kinetic emphasis composited over a cinematic clip):
   render as a transparent MOV — **qtrle or ProRes 4444** (real alpha; VP9/WebM
   alpha is unreliable across ffmpeg builds) — and set the segment's `overlay`.
@@ -157,9 +176,13 @@ Verify, from the manifest:
   is a hard fail — re-master).
 - `cuts` / transitions: the mix is VARIED (not one locked type), hard cuts land
   on the beat where the music has a pulse (`beat_analysis`), the crash-zoom
-  signature is present but not spammed.
-- `color_palette`: consistent across the runtime (continuity holding), accent
-  locked to the chosen track.
+  signature is present but not spammed. The cuts/min average sits in the
+  archetype+era band with a visible **burst-vs-hold** spread, not a flat rate
+  (`references/pacing.md`).
+- `color_palette`: consistent across the runtime (continuity holding) — the
+  house grade (warm highlights / teal shadows / vignette) reading uniform, the
+  Part 0.5 accent present and the off-accent colour absent
+  (`references/palette-and-grade.md`).
 - Look at the frames: grade continuous across cuts, no shot reading as an
   odd-one-out, overlays legible in the title-safe area.
 Report what passed and what to fix, then iterate on `timeline.json` and re-run.
@@ -181,5 +204,9 @@ give it clips + VO + a timeline, and it returns a mastered film.
 - Re-run safely: `assemble.py` writes only to the `--out` path and a temp dir;
   point `--out` somewhere new to keep versions.
 - Grounding docs: `references/lessons-from-8-videos.md` (the audit findings),
-  `references/transitions.md`, `references/audio.md`,
-  `references/timeline.schema.json`.
+  `references/transitions.md` (core four + the 40-device 14.6.5 library),
+  `references/audio.md` (Part 10/18/26 audio doctrine + matched-sound table),
+  `references/palette-and-grade.md` (Part 0.5 accent + house grade),
+  `references/pacing.md` (Part 21 cut-pace bands + era dial),
+  `references/timeline.schema.json`. These distil the M-HYBRID master prompt
+  (v2.41) and the MagnatesMedia Playbook down to the merge/finish stage.

@@ -3,6 +3,7 @@
     "title": "The Man Who Built Standard Oil",
     "topic": "Rockefeller / Standard Oil rise-and-fall",
     "palette_track": "oxblood",
+    "accent": { "ground": "#0B0B0C", "accent": "#7A160E", "secondary": "#3A3A3E", "type": "#EDE8DD", "label": "#8A8F98" },
     "fps": 24,
     "width": 1920,
     "height": 1080,
@@ -11,8 +12,14 @@
   },
   "grade": {
     "lut": null,
-    "eq": { "contrast": 1.05, "brightness": -0.01, "saturation": 0.94, "gamma": 1.02 },
-    "grain": 3
+    "eq": { "contrast": 1.06, "brightness": -0.01, "saturation": 0.92, "gamma": 1.02 },
+    "colorbalance": {
+      "shadows":    [-0.06, -0.01, 0.07],
+      "midtones":   [0.02, 0.0, -0.02],
+      "highlights": [0.08, 0.02, -0.08]
+    },
+    "vignette": 0.5,
+    "grain": 4
   },
   "vo": { "file": "vo/narration.wav", "offset_s": 0.4, "gain_db": 0 },
 
