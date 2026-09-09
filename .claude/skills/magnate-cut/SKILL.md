@@ -58,6 +58,15 @@ Confirm the VO exists and get its duration — the whole edit hangs off it.
 See **Scaling to hundreds of clips** below for where large clip sets live and
 how they reach the pipeline.
 
+**No VO yet?** The doctrine prefers real recorded / ElevenLabs-grade narration,
+but you can synthesize a draft VO here with `scripts/tts.py` (providers: ai84 /
+ai33; key read from `AI84_API_KEY` / `AI33_API_KEY`, never committed) and write
+it straight into `vo/`. See `references/voiceover.md`:
+```bash
+python3 .claude/skills/magnate-cut/scripts/tts.py \
+    --project <project> --out vo/narration.mp3 --text-file script.txt --voice <id>
+```
+
 ### 2. Generate the timeline (don't hand-author it)
 For anything past a handful of clips, run the generator instead of writing
 `timeline.json` by hand:
@@ -208,5 +217,6 @@ give it clips + VO + a timeline, and it returns a mastered film.
   `references/audio.md` (Part 10/18/26 audio doctrine + matched-sound table),
   `references/palette-and-grade.md` (Part 0.5 accent + house grade),
   `references/pacing.md` (Part 21 cut-pace bands + era dial),
+  `references/voiceover.md` (synthesize the VO spine via ai84/ai33 TTS),
   `references/timeline.schema.json`. These distil the M-HYBRID master prompt
   (v2.41) and the MagnatesMedia Playbook down to the merge/finish stage.
