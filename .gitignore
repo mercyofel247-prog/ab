@@ -8,6 +8,9 @@
 !/.claude/skills/**
 /skills-lock.json
 
+# Rendered/generated media outputs (TTS voiceovers, rendered MP4s) — not source
+/renders/
+
 # watchutube skill output (extracted frames, downloaded source videos, transcripts)
 watchutube_analysis_*/
 __pycache__/
