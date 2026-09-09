@@ -286,6 +286,7 @@ def main():
                     help="true/false")
     ap.add_argument("--timeout", type=float, default=600, help="Poll deadline in seconds (default 600).")
     ap.add_argument("--list-voices", action="store_true")
+    ap.add_argument("--search", help="Filter --list-voices by name/keyword.")
     ap.add_argument("--list-models", action="store_true")
     ap.add_argument("--credits", action="store_true")
     ap.add_argument("--estimate", action="store_true", help="Print credit estimate only; do not generate.")
