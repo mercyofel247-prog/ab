@@ -1,0 +1,9 @@
+# Render outputs (regenerated from build_scene.py)
+renders/frames/
+renders/*.png
+renders/*.mp4
+renders/*.mov
+renders/*.log
+
+# Blender backups
+*.blend1
