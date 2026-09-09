@@ -85,7 +85,20 @@ def ffprobe_dur(path):
 
 
 def grade_filter(grade, want):
-    """Build the eq/grade filter fragment (continuity look-block)."""
+    """Build the grade filter fragment (the continuity look-block / house grade).
+
+    Order matters and mirrors a real grade: exposure/contrast (eq) -> split-tone
+    colour (colorbalance / optional LUT) -> vignette -> film grain on top. Every
+    key is optional; a grade with only `eq`/`lut`/`grain` renders exactly as it
+    did before these keys existed (backward-compatible).
+
+    The MagnatesMedia HOUSE GRADE (Playbook "The grade"): warm-amber / tungsten
+    highlights, teal-leaning shadows, a heavy dark vignette, visible grain — ONE
+    look pushed across every shot (clip, animation, stock, AI image) so
+    independently-generated shots stop reading as "assembled clips". The Part 0.5
+    accent (oxblood OR gold, never both) is authored INTO the shot on top of this
+    base look, not by this filter. See references/palette-and-grade.md.
+    """
     if not want or not grade:
         return ""
     parts = []
@@ -98,9 +111,30 @@ def grade_filter(grade, want):
         if "gamma" in eq:     eqbits.append(f"gamma={eq['gamma']}")
     if eqbits:
         parts.append("eq=" + ":".join(eqbits))
+    # split-tone: warm highlights + cool/teal shadows (the house look). Values are
+    # ffmpeg colorbalance -1..1 triples [red, green, blue] per tonal range; keep
+    # them subtle (|v| <= ~0.12) — this is a tint, never a colour cast.
+    cb = (grade or {}).get("colorbalance")
+    if cb:
+        s = cb.get("shadows",    [0, 0, 0])
+        m = cb.get("midtones",   [0, 0, 0])
+        h = cb.get("highlights", [0, 0, 0])
+        parts.append(
+            "colorbalance="
+            f"rs={s[0]}:gs={s[1]}:bs={s[2]}:"
+            f"rm={m[0]}:gm={m[1]}:bm={m[2]}:"
+            f"rh={h[0]}:gh={h[1]}:bh={h[2]}"
+        )
     lut = (grade or {}).get("lut")
     if lut:
         parts.append(f"lut3d='{lut}'")
+    # heavy dark vignette. `vignette` is the ffmpeg vignette angle in radians:
+    # SMALLER = darker corners. House default 0.5 (heavier than ffmpeg's ~0.628);
+    # `true` selects that default. Omit / 0 / false to disable.
+    vig = (grade or {}).get("vignette")
+    if vig:
+        ang = 0.5 if vig is True else float(vig)
+        parts.append(f"vignette=angle={ang}")
     grain = float((grade or {}).get("grain", 0) or 0)
     if grain > 0:
         parts.append(f"noise=alls={grain}:allf=t+u")
