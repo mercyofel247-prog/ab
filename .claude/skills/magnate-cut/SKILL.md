@@ -1,6 +1,6 @@
 ---
 name: magnate-cut
-description: End-to-end MagnatesMedia-style money-documentary video editor for Claude Code. Takes provided video clips (Omni-flash scenes) and a provided voice-over narration, generates the missing pieces here in Claude Code — animations (HyperFrames / Remotion / Blender), the S-tier signature transitions (crash-zoom-through-parallax, whip-pan, DOF-rack, slow fly-through), sound effects and background music — then MERGES everything into one finished, mastered video: clips + animations joined by beat-matched S-tier transitions, pushed through one shared colour grade for continuity, with SFX and music beds ducked under the narration and scored silence before the big reveals, all mastered to broadcast spec (1920x1080 @ 24fps, -14 LUFS, true peak <= -1 dBTP). Grounded in the M-HYBRID master prompt (MagnatesMedia cinematic base) and the measured craft lessons from a deep watchutube audit of 8 real money-doc videos. Use this whenever the user wants to assemble, edit, cut, merge, or finish a MagnatesMedia / faceless-money-doc / rise-and-fall documentary video from provided clips + narration — "edit my video," "merge these scenes with transitions," "cut this like MagnatesMedia," "add sound design and music," "assemble the final video," "sync the edit to the voiceover."
+description: End-to-end MagnatesMedia-style money-documentary video editor for Claude Code. Takes provided video clips (Omni-flash scenes) and a voice-over narration — provided, OR generated here from a script via the AI84.pro text-to-speech API — generates the missing pieces here in Claude Code — animations (HyperFrames / Remotion / Blender), the S-tier signature transitions (crash-zoom-through-parallax, whip-pan, DOF-rack, slow fly-through), sound effects and background music — then MERGES everything into one finished, mastered video: clips + animations joined by beat-matched S-tier transitions, pushed through one shared colour grade for continuity, with SFX and music beds ducked under the narration and scored silence before the big reveals, all mastered to broadcast spec (1920x1080 @ 24fps, -14 LUFS, true peak <= -1 dBTP). Grounded in the M-HYBRID master prompt (MagnatesMedia cinematic base) and the measured craft lessons from a deep watchutube audit of 8 real money-doc videos. Use this whenever the user wants to assemble, edit, cut, merge, or finish a MagnatesMedia / faceless-money-doc / rise-and-fall documentary video from provided clips + narration — "edit my video," "merge these scenes with transitions," "cut this like MagnatesMedia," "add sound design and music," "generate the voiceover," "make the narration from this script," "assemble the final video," "sync the edit to the voiceover."
 ---
 
 # magnate-cut: MagnatesMedia-style video assembly & finishing
@@ -12,9 +12,11 @@ write the script (that's the M-HYBRID master prompt) and does not generate the
 provided clips (that's Gemini Omni). It takes:
 
 - **Provided:** video clips (Omni-flash cinematic scenes) + the voice-over
-  narration (the spine the whole edit syncs to).
-- **Generated here in Claude Code:** animations (HyperFrames / Remotion /
-  Blender), the S-tier signature transitions, sound effects, background music.
+  narration (the spine the whole edit syncs to) — though the VO can also be
+  generated here (see below) from a narration script.
+- **Generated here in Claude Code:** the voice-over (optional — from a script,
+  via the AI84.pro TTS API), animations (HyperFrames / Remotion / Blender), the
+  S-tier signature transitions, sound effects, background music.
 - **Produced by you:** one finished, mastered MP4 — clips + animations joined
   by beat-matched S-tier transitions, one shared grade for continuity, SFX +
   music ducked under the VO with scored silence, mastered to spec.
@@ -54,6 +56,29 @@ Put everything in one project directory:
 Confirm the VO exists and get its duration — the whole edit hangs off it.
 See **Scaling to hundreds of clips** below for where large clip sets live and
 how they reach the pipeline.
+
+### 1a. Generate the voice-over if it isn't provided
+If there's no VO in `vo/` but you have a narration script, generate it with the
+AI84.pro TTS API — it drops the narration into `vo/`, and everything downstream
+is unchanged (`build_timeline.py` auto-detects it). **This spends credits**, so
+preview the cost with `--estimate` and get the user's explicit go-ahead before
+the real run (same "confirm before you spend" rule as cloud renders). Set the
+key in the environment first: `export AI84_API_KEY=sk-...` (sent as
+`xi-api-key`; never hard-code it).
+```bash
+# browse narrator voices (deep, authoritative male reads best):
+python3 .claude/skills/magnate-cut/scripts/generate_voiceover.py \
+    --list-voices --gender male --search narrator
+
+# preview cost (spends nothing), then generate after go-ahead:
+python3 .claude/skills/magnate-cut/scripts/generate_voiceover.py <project> \
+    --text-file script.txt --model eleven_multilingual_v2 --estimate
+python3 .claude/skills/magnate-cut/scripts/generate_voiceover.py <project> \
+    --text-file script.txt --voice-id <VOICE_ID> --model eleven_multilingual_v2
+```
+Keep the same voice across the whole film (one narrator = continuity). Full
+API flow, model choices, failure handling and cost notes:
+`references/voiceover.md`. If the VO is already provided, skip this step.
 
 ### 2. Generate the timeline (don't hand-author it)
 For anything past a handful of clips, run the generator instead of writing
@@ -168,8 +193,10 @@ Treat watchutube as the edit-bay reference monitor for this pipeline.
 ## What this skill is NOT
 It doesn't write the narrative script (that's the M-HYBRID master prompt →
 supply TOPIC + RUNTIME to that separately) and it doesn't generate the provided
-cinematic clips (Gemini Omni). It is the deterministic merge + finish stage:
-give it clips + VO + a timeline, and it returns a mastered film.
+cinematic clips (Gemini Omni). It CAN voice a finished narration script into the
+VO track (step 1a, AI84.pro TTS), but that only turns existing copy into audio —
+it does not author the copy. It is the deterministic merge + finish stage: give
+it clips + VO + a timeline, and it returns a mastered film.
 
 ## Notes
 - Only ffmpeg/ffprobe are required for the merge itself; they're installed by
@@ -182,4 +209,5 @@ give it clips + VO + a timeline, and it returns a mastered film.
   point `--out` somewhere new to keep versions.
 - Grounding docs: `references/lessons-from-8-videos.md` (the audit findings),
   `references/transitions.md`, `references/audio.md`,
+  `references/voiceover.md` (generating the VO via AI84.pro TTS),
   `references/timeline.schema.json`.

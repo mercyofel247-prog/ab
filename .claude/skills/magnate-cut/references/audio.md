@@ -2,8 +2,8 @@
 
 Fuses the master prompt's Part 10 (audio design) + Part 18 (tier authority)
 with the 8-video mastering finding (`lessons-from-8-videos.md` §1, §4, §8).
-Clips render SILENT — all sound is designed in the edit. The provided VO is the
-spine.
+Clips render SILENT — all sound is designed in the edit. The VO is the spine —
+provided, or generated from a script via AI84.pro TTS (see `voiceover.md`).
 
 ## The three governing rules (hard-set, outrank everything)
 - **R0 — the voice always wins.** No layer — hit, swell, riser, motif — lands
