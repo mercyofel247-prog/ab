@@ -1,0 +1,11 @@
+It starts the way every HyperFrames video starts. You write HTML.
+A div. A timeline. One line of GSAP, paused and seekable.
+Drop it on the wire and it becomes a clip. Audio, video, one timeline.
+And every piece is measured. Over fifty catalog blocks. Nineteen agent skills. Seven runtime adapters.
+Render it anywhere. Lambda, Cloud Run, real cloud regions around the world.
+Footage is just material on the timeline. Matte the background, and the words land in sync.
+Frosted glass, live values, every token yours to change.
+Run the beats, and the cut moves with the music.
+The wire spirals into three dimensions, and rises back to the plane.
+And when it renders, it is identical. Every single time. Because that is the whole point.
+Write HTML. Render video.
