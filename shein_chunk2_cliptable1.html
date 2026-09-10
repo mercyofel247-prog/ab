@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M-HYBRID · Shein · Chunk 2 (Ch.1 The Machine) · Clip Table (v2.40)</title>
+<style>
+  :root{
+    --ground:#0B0B0C; --panel:#141416; --panel2:#1A1A1D; --edge:#2A2A2E;
+    --bone:#EDE8DD; --grey:#8A8F98; --oxblood:#7A160E; --oxblood-lit:#A8281B; --alarm:#D62E1F;
+    --graphite:#3A3A3E; --steel:#5B6068; --gold-ghost:#7d7469;
+    --mA:#5B6E82; --mB:#7A160E; --mI:#B08A2E;
+    --mono:"SFMono-Regular",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ground);color:var(--bone);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  body{padding-bottom:80px}
+  a{color:var(--oxblood-lit)}
+  .wrap{max-width:940px;margin:0 auto;padding:0 16px}
+
+  header.masthead{
+    border-bottom:1px solid var(--edge);
+    background:linear-gradient(180deg,#141416,#0B0B0C);
+    padding:26px 0 20px;
+  }
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--grey);text-transform:uppercase}
+  .eyebrow b{color:var(--oxblood-lit);font-weight:600}
+  h1.title{font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.08;margin:8px 0 6px;letter-spacing:-.01em}
+  h1.title .lit{color:var(--bone);border-bottom:2px solid var(--oxblood);padding-bottom:2px}
+  .usage{font-size:13px;color:var(--grey);max-width:70ch;line-height:1.5}
+  .stamp{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;padding:4px 8px;border:1px solid var(--edge);border-radius:2px;color:var(--bone);background:#101012}
+  .chip b{color:var(--oxblood-lit)}
+
+  .toolbar{position:sticky;top:0;z-index:20;background:rgba(11,11,12,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--edge);padding:10px 0}
+  .toolbar .wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .filters{display:flex;gap:6px;flex-wrap:wrap}
+  .fbtn{font-family:var(--mono);font-size:11px;letter-spacing:.03em;color:var(--grey);background:transparent;border:1px solid var(--edge);border-radius:2px;padding:6px 11px;cursor:pointer;transition:.14s}
+  .fbtn:hover{color:var(--bone);border-color:var(--steel)}
+  .fbtn.on{color:var(--bone);border-color:var(--oxblood);background:rgba(122,22,14,.14)}
+  .count{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--grey)}
+  .count b{color:var(--bone)}
+  .exportbtn{font-family:var(--mono);font-size:11px;color:var(--bone);background:var(--oxblood);border:1px solid var(--oxblood-lit);border-radius:2px;padding:6px 12px;cursor:pointer}
+  .exportbtn:hover{background:var(--oxblood-lit)}
+
+  section.pane{margin:16px 0;border:1px solid var(--edge);border-radius:4px;overflow:hidden}
+  .pane .head{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;user-select:none;font-family:var(--mono);font-size:12px;letter-spacing:.05em}
+  .pane.cont .head{background:linear-gradient(90deg,rgba(91,96,104,.16),transparent);border-left:3px solid var(--steel)}
+  .pane.audio .head{background:linear-gradient(90deg,rgba(176,138,46,.14),transparent);border-left:3px solid var(--mI)}
+  .pane .head .glyph{color:var(--grey)}
+  .pane .head .ttl{color:var(--bone);font-weight:600}
+  .pane .head .car{margin-left:auto;color:var(--grey);transition:.2s}
+  .pane.open .head .car{transform:rotate(90deg)}
+  .pane .body{display:none;padding:6px 14px 16px;font-size:13px;line-height:1.55;color:#d7d2c8}
+  .pane.open .body{display:block}
+  .note{color:var(--grey);font-size:12px;margin:6px 0 12px;line-height:1.5}
+  .block{position:relative;background:#0d0d0f;border:1px solid var(--edge);border-radius:3px;padding:12px 12px 12px;margin:10px 0;font-family:var(--mono);font-size:12px;line-height:1.5;color:#cfcabf;white-space:pre-wrap;word-break:break-word}
+  .block .lbl{display:block;font-size:10px;letter-spacing:.12em;color:var(--grey);text-transform:uppercase;margin-bottom:7px}
+  .copy{position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:10px;color:var(--grey);background:#141416;border:1px solid var(--edge);border-radius:2px;padding:3px 8px;cursor:pointer}
+  .copy:hover{color:var(--bone);border-color:var(--steel)}
+  .copy.done{color:#8fd18f;border-color:#3f6b3f}
+
+  .shot{border:1px solid var(--edge);border-radius:4px;margin:12px 0;overflow:hidden;background:var(--panel)}
+  .shot .sh-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer;user-select:none}
+  .shot.mA{border-left:3px solid var(--mA)}
+  .shot.mB{border-left:3px solid var(--mB)}
+  .shot.mI{border-left:3px solid var(--mI)}
+  .num{font-family:var(--mono);font-size:12px;color:var(--grey);min-width:26px}
+  .clause{font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--bone);line-height:1.3;flex:1}
+  .badges{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+  .b{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;padding:3px 6px;border-radius:2px;border:1px solid var(--edge);color:var(--grey);white-space:nowrap}
+  .b.tag{color:var(--oxblood-lit);border-color:rgba(122,22,14,.5)}
+  .b.mode{color:var(--bone)}
+  .b.eng{color:var(--steel)}
+  .b.anc{color:var(--gold-ghost)}
+  .car2{color:var(--grey);transition:.2s;font-family:var(--mono)}
+  .shot.open .car2{transform:rotate(90deg)}
+  .sh-body{display:none;padding:2px 14px 16px;border-top:1px solid var(--edge)}
+  .shot.open .sh-body{display:block}
+  .meta{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:11px;color:var(--grey);margin:12px 2px 2px}
+  .meta b{color:var(--bone);font-weight:500}
+
+  .trans{border:1px dashed var(--steel);border-left:3px solid var(--steel);border-radius:4px;margin:8px 0 8px 18px;background:#0e0e10}
+  .trans .sh-head{padding:9px 12px}
+  .trans .tname{font-family:var(--mono);font-size:11px;color:var(--steel);letter-spacing:.06em}
+  .trans .clause{flex:1;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--grey)}
+
+  .hidden{display:none !important}
+  footer{color:var(--grey);font-size:11px;font-family:var(--mono);text-align:center;padding:26px 0 8px;line-height:1.6}
+  @media(max-width:560px){h1.title{font-size:23px}.clause{font-size:13px}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">M-HYBRID v2.40 &nbsp;·&nbsp; <b>PENUMBRA</b> money-doc engine &nbsp;·&nbsp; Shein &nbsp;·&nbsp; CHUNK 2 — CH.1 THE MACHINE</div>
+    <h1 class="title">Chapter One: <span class="lit">The Machine That Reads Your Mind</span></h1>
+    <p class="usage">Per-scene generation table, body chapter 1 (the SETUP act of the Exposé). Tap any shot to expand its still / motion / audio prompts; each field copies clean. Reuse the two Chunk-1 anchors and the identical look-block — do not regenerate anchors. Evidence is now UNLOCKED (target 25–40% of body runtime on [INSERT]); one real prospectus insert is authored here, Mode-B collage recreations carry the rest of the receipt feel. All prompts fully realized per PART 25 / gate [A35].</p>
+    <div class="stamp">
+      <span class="chip">PALETTE · <b>Track 2 Oxblood #7A160E</b></span>
+      <span class="chip">ARCHETYPE · <b>C Exposé</b> (setup act)</span>
+      <span class="chip">RECIPE · <b>R3</b> dom · R2 turn · R1 stinger</span>
+      <span class="chip">CHAPTER BED · <b>tense/driving</b> (rotated off hook's foreboding)</span>
+      <span class="chip">CUT-PACE · <b>B</b> (investigative), reveals spike <b>D</b></span>
+      <span class="chip">LOOPS · <b>2 planted</b> (test · factories)</span>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="wrap">
+    <div class="filters">
+      <button class="fbtn on" data-f="all">All</button>
+      <button class="fbtn" data-f="mA">Mode A</button>
+      <button class="fbtn" data-f="mB">Mode B</button>
+      <button class="fbtn" data-f="mI">Insert</button>
+      <button class="fbtn" data-f="tr">Transitions</button>
+    </div>
+    <span class="count"><b id="cnum">9</b> shots · 2 transitions</span>
+    <button class="exportbtn" id="exportAll">Copy entire clip table</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- CONTINUITY PANEL -->
+  <section class="pane cont open" id="paneCont">
+    <div class="head"><span class="glyph">◆</span><span class="ttl">CONTINUITY / SAMENESS</span><span class="car">›</span></div>
+    <div class="body">
+      <p class="note"><b>Carry-over from Chunk 1.</b> Same two anchors, same look-block, same master grade — this chapter must cut seamlessly against the hook. (1) REUSE the locked Chunk-1 anchors (do NOT regenerate). (2) Paste the SHARED LOOK-BLOCK verbatim into every still. (3) Deliver 1920×1080; upscale to 4K in Resolve after delivery. (4) ONE master-grade adjustment layer over all clips, matched to Chunk 1. (5) Run the playback test across the Chunk-1→Chunk-2 seam for accent/grade drift.</p>
+
+      <div class="block"><span class="lbl">Shared look-block (paste verbatim into every still)</span><button class="copy">Copy</button>LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+
+      <div class="block"><span class="lbl">Anchor frames (REUSE from Chunk 1 — do not regenerate)</span><button class="copy">Copy</button>MODE-A ANCHOR (cinematic hero): a lone silhouetted figure from behind under a single oxblood overhead key, standing before a towering dark wall of stacked, unbranded parcel-boxes receding into haze — the "machine" made physical. Establishes key direction, grain, vignette, oxblood-on-near-black for all Mode-A shots.
+
+MODE-B ANCHOR (kinetic-editorial): the hero numeral "$5" extruded in dark brushed metal on near-black, single studio key raking left-to-right, oxblood emissive rim on the edge stroke, soft contact shadow, shallow DoF. Establishes the machined-metal hero-number register for all Mode-B data shots.</div>
+
+      <div class="block"><span class="lbl">Master grade recipe (identical to Chunk 1)</span><button class="copy">Copy</button>MASTER GRADE (one adjustment layer, all clips): upscale to 4K FIRST in Resolve, then grade. Lift crushed near-black to #0B0B0C, protect warm-bone highlights. Oxblood #7A160E qualifier on the accent only (never global). Desaturate everything outside the accent ~ -25. Custom film-emulation LUT at 50–70% strength. Add ~6% grain post-upscale, vignette ~18%, subtle halation on the oxblood. Deliver 1080p master @24fps; 4K is the upscaled post step.</div>
+    </div>
+  </section>
+
+  <!-- AUDIO PANEL -->
+  <section class="pane audio open" id="paneAudio">
+    <div class="head"><span class="glyph">♪</span><span class="ttl">Chapter Master Audio Bed — CH.1 THE MACHINE</span><span class="car">›</span></div>
+    <div class="body">
+      <p class="note"><b>How to use this audio.</b> Chapter bed rotates to a NEW tonal family (tense/driving) — never repeat the hook's foreboding family in a consecutive chapter (Part 10.1). Lay the master bed under the whole chapter, then apply the per-shot duck/swell/silence map one line at a time. Voice always wins. Body chapters are capped at ONE [SILENT] vacuum — spent here on the chapter-end stinger [15].</p>
+
+      <div class="block"><span class="lbl">Master music bed (Ch.1)</span><button class="copy">Copy</button>[MUSIC: tense/driving — pulsing rhythmic ostinato + muted synth-bass + a ticking clock-like percussive pulse under an evolving low drone. Mood: relentless, mechanical, accelerating — the sound of a machine that never sleeps. Tempo: ~92 BPM driving. Arc: enters clean off the chapter card → pulse builds through the scale-escalation beats → tightens and adds a sub-riser through the LATR figures → swells at the "before lunch" land → thins to near-silence at the [SILENT] before the chapter-end stinger. Duck -15dB under VO.]</div>
+
+      <div class="block"><span class="lbl">Duck / swell / silence automation map</span><button class="copy">Copy</button>07  bed enters clean off the chapter card; pulse low; piano-less, mechanical.
+08  ostinato tightens on the buckle "Shein doesn't guess"; small sub-tick on "guess."
+09  pulse steady under the test description; loop-plant, hold tension.
+10  sub-drop + light-leak wash on the land "winners" (R2 audacity hit).
+11  [INSERT] real prospectus: duck music -12dB, source/UI audio breathes ~1.5s, then out; riser re-enters on the 4,700 figure.
+12  riser peaks; sub-boom lands on "year" (H&M comparison snap).
+13  pulse drives under the factories/3-day figures; loop-plant "the factories."
+14  bed swells warm-then-wrong under "looks like a gift"; tension held, no hard hit.
+T-14→15  downshift-into-silence under the DIP-TO-BLACK (music tail cut).
+15  [SILENT] 0.5s scored vacuum → sub-boom slam on the stinger land "paid"; then downshift into the chapter card.</div>
+    </div>
+  </section>
+
+  <!-- SHOTS -->
+  <div id="shots">
+
+    <article class="trans" data-tr="1">
+      <div class="sh-head">
+        <span class="num">T</span>
+        <span class="tname">T-Ch1 OPEN · CHAPTER-TITLE CARD</span>
+        <span class="clause">20f · scored SFX-drop → Doppler rush</span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+        <div class="block"><span class="lbl">Transition brief — HyperFrames Path 3</span><button class="copy">Copy</button>CHAPTER-TITLE CARD (HF Path 3). 20f @24fps, 1920×1080. Carries over from the Chunk-1 T-05→06 card: the "CHAPTER ONE — THE MACHINE" card resolves and the first shot (07) rises out of it on a slight Doppler rush into the vast interior. Transform/opacity only. Named easing expo-out. AUDIO: the scored SFX-drop already fired on the card in Chunk 1; here the tense/driving chapter bed enters CLEAN as shot 07 rises — no new whoosh, just the bed arriving. Matched S-tier boundary (14.6.5 / 18.2b). [Placed at the head of this chunk to mark the seam; if Chunk 1 already renders the card, this row is the hand-off note only.]</div>
+      </div>
+    </article>
+
+    <!-- 07 -->
+    <article class="shot mA" data-mode="mA">
+      <div class="sh-head">
+        <span class="num">07</span>
+        <span class="clause">To understand how a dress got that cheap, you have to understand what Shein actually is — because it isn't really a clothing brand. It's a machine for reading your mind.</span>
+        <span class="badges">
+          <span class="b tag">UNDER</span><span class="b mode">MODE A</span><span class="b eng">Omni</span><span class="b anc">A-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Cinematic photoreal, A-anchor, strict 16:9. A colossal dark server-hall-meets-warehouse interior seen from a low vantage, the "machine" made physical — endless racks of stacked unbranded parcel boxes on one side dissolving into haze, and on the other a wall of faint glowing screens too far to read, a single human silhouette dwarfed at the base of it all, seen from behind, face never visible. The space reads as one vast organism, not a room. COMPOSITION: low horizon line so the racks and screen-wall tower and rise; the lone silhouette as a deep foreground-to-mid anchor lower-centre so the eye travels near-to-far and reads true scale; generous negative space in the hazy dark above; atmospheric layering with distinct near/mid/far planes; title-safe inner 90%. LIGHTING/LENS: a single motivated oxblood #7A160E overhead key pooling down onto the silhouette and the nearest rack — the accent owns the nearest subject — cool ~4300K wash dying into the far screen-wall depth; 35mm equivalent, shallow DoF, film grain, volumetric haze thickening with distance, faint chromatic aberration at the edges. NEGATIVE: no visible face, no recognizable real person, no brand marks or logos, no glossy CG, no flat vector, no paper, no watermark, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Gemini Omni (S-tier v2.40, pull-back+crane reveal)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent compound trajectory (12.6.6): a slow, almost uncomfortably slow dolly PULL-BACK ~7% WHILE a shallow crane-up ~3%, easing in and settling gently, never linear — the grandeur-workhorse reveal (12.6.4 S-tier). Shallow DoF held, natural motion blur on every plane, film grain and heavy vignette breathing throughout.
+
+[Subject] The lone human silhouette holds anchored at the base, a slow living-still breath in the shoulders (12.6.4 A-tier living-still, subordinate to the camera move); it stays small and unmoving as the space grows around it.
+
+[Action] As the camera pulls back and lifts, the true scale of the hall reveals itself in real time — more racks resolve out of the haze, the screen-wall extends further than first read, the silhouette shrinks against it. The oxblood overhead key holds rock-steady; only the surrounding void expands.
+
+[Context] Volumetric haze drifts laterally at a different rate than the pull-back, deepening the parallax (A-tier parallax depth); dust suspended in the oxblood key light.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (pull-back WHILE crane-up, simultaneous, never phased). Amplitude within the 3–8% ambient band, no discrete impact — this is an establishing/awe beat, sustained. Duration 5.5s at 24fps to match the dwell. Settle: widest framing, full scale read, held. SILENT render — no music, no voice, no SFX baked in (audio designed in the edit).
+
+LOCK: the silhouette, racks, screen-wall and every layer identical to the first frame — face never resolves, no morphing, no new elements, no style or palette drift, no motion at the frame edge the title-safe crop would clip (leave pull-back headroom), no constant/linear speed. Ends HELD cuttable, no fade.</div>
+<div class="block"><span class="lbl">Motion — Variant B · Gemini Omni (S-tier v2.40, lateral parallax drift)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent trajectory: a slow LATERAL PARALLAX DRIFT left-to-right ~5% (12.6.4 S-tier, the mesmeric move — best under calm narration), camera gliding on a level plane, shallow DoF, natural motion blur, grain and vignette alive.
+
+[Subject] The lone silhouette holds anchored, a barely-perceptible breath the only subject motion; it slides across frame as the parallax separates the planes behind it.
+
+[Action] As the camera glides, the foreground rack edge slides past faster than the mid-ground racks, which slide past faster than the far screen-wall — three depth planes separating cleanly (A-tier parallax depth); the oxblood key rakes almost imperceptibly across the silhouette's shoulder as the angle shifts.
+
+[Context] Haze drifts independently, thin and slow, never obscuring the oxblood key; suspended dust in the light.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (lateral drift only, camera-plane). Amplitude within 3–8% ambient, no discrete impact. Duration 5.5s at 24fps to match the dwell. Settle: held mid-drift in a cuttable state. SILENT render — no music, no voice, no SFX baked in.
+
+LOCK: all planes identical to the first frame — face never resolves, no morphing, no warp, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD, no fade. (Alt to V1's pull-back: use this if the chapter opens on a calmer register and you want the pull-back saved for a later, bigger reveal — never two identical consecutive moves across the seam from Chunk 1.)</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: tense/driving chapter bed enters clean off the chapter card, pulsing ostinato low, duck -15dB] · [SFX: a low mechanical room-tone hum + faint distant server-fan drone (scene sound), sub-pressure bed under the pull-back] · [SCENE-SFX: sparse, felt-not-heard low rumble of a vast space]. Voice wins throughout; no hit — this is an UNDER establishing beat.</div>
+        <div class="meta">Dwell <b>5.5s</b> · Tag <b>UNDER</b> · Mode <b>A</b> · Engine <b>Omni</b> · Anchor <b>A</b></div>
+      </div>
+    </article>
+
+    <!-- 08 -->
+    <article class="shot mB" data-mode="mB">
+      <div class="sh-head">
+        <span class="num">08</span>
+        <span class="clause">Every other fashion company on Earth makes a bet. They design a season, manufacture it in bulk, ship it to stores, and pray they guessed right. Shein doesn't guess.</span>
+        <span class="badges">
+          <span class="b tag">LAND: guess</span><span class="b mode">MODE B</span><span class="b eng">HF-P1 / Claude Design</span><span class="b anc">B-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Dimensional lit editorial / machined-metal hero on near-black, strict 16:9. B-anchor. SUBJECT: a split hero composition — on the left, a single dark brushed-metal die (a gambling die) mid-tumble frozen on its edge, cold graphite, no glow; on the right, dominant and larger, a machined-metal all-seeing lens/eye form (a camera-iris fused with an eye) extruded with real depth, an oxblood #7A160E emissive ring glowing from its aperture. Between them, small warm-bone caps, write the text "THEY GUESS. IT DOESN'T." in clean extra-condensed type. COMPOSITION: die lower-left on the thirds and visually subordinate; the oxblood-lit iris-eye centre-right filling ~55% of frame, the clear hero; the caption band lower-centre; deep negative space; distinct near/mid/far depth layers for parallax; title-safe inner 90%. CONSTRUCTION: single studio key raking left-to-right across both metal forms, oxblood emissive owning the iris aperture only (the die stays cold, unlit), soft contact shadows beneath both, faint specular glint on the bevels, shallow DoF. TEXT: write the text "THEY GUESS. IT DOESN'T." in warm-bone #EDE8DD extra-condensed caps, min height ~8% of frame, high contrast. NEGATIVE: no flat vector, no warped/invented text, no photoreal environment, no glossy CG, no watermark, no brand marks, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · HyperFrames P1</span><button class="copy">Copy</button>----- BEGIN VERBATIM HYPERFRAMES TEMPLATE -----
+Find and work in the HyperFrames project: the folder that contains an "hf-scenes"
+directory with index.html and a package.json whose scripts include "render:fast".
+If the current directory isn't it, locate it (search for hf-scenes/index.html).
+Tell me the path you're using, then cd into hf-scenes.
+SETUP IF NEEDED (fresh machine / phone — run only if these aren't ready):
+- If node_modules is missing or `npx hyperframes --version` fails: run `npm install`.
+- If a render complains there's no browser: run `npx hyperframes browser ensure`.
+- Sanity check: `npx hyperframes doctor` — Node, FFmpeg, and Chrome must be OK
+  (FFmpeg/whisper/TTS/Docker being "optional/missing" is fine).
+WHAT TO MAKE:
+[[ SHOT 08 — Mode B Path 1 — "they guess, it doesn't". Iris-open + land. Seven-block S-tier brief. ]]
+
+1) CANVAS + TIMING: 1920x1080, 24fps. TOTAL DURATION 3.2s = 77 frames. Ground hex #0B0B0C inlined.
+   Warm-bone type #EDE8DD. Accent = deep oxblood #7A160E (emissive iris ring only, never flat fill).
+   Graphite die/depth #3A3A3E. Everything scheduled against 77f. (STANDALONE: all hex inlined here,
+   no "Track-2 theme" pointer.)
+
+2) ENGINE DECLARATION: GSAP timelines for ALL motion; do NOT use CSS `transition` or default
+   easing anywhere. Compositor-safe only — transform/opacity preferred, clip-path permitted for the
+   iris aperture reveal; NEVER letterSpacing/width/height/top/left. Deterministic mulberry32-seeded
+   dust, no Math.random/Date.now. Text is real DOM strings, never an image of text.
+
+3) HERO BUILD (named z-layers; ≥80%-width hero via the iris cluster):
+   z1 — machined iris/eye hero, dark brushed-metal #C9C4BA face + machined bevel; SIZE LOCK the
+        iris cluster spans ~55% width, centre-right, its optical centre on the right third.
+   z2 — oxblood #7A160E emissive aperture ring on z1 (asymmetric inner glow, a real emissive rim).
+   z3 — graphite gambling die, cold #3A3A3E, lower-left, subordinate, no glow, frozen on its edge.
+   z4 — warm-bone caption "THEY GUESS. IT DOESN'T." lower-centre, real DOM string.
+   z5 — mulberry32 dust on near-black; z6 — vignette + grain overlay.
+   Depth order for parallax: z5(back) &lt; z3 &lt; z1 &lt; z2 &lt; z4 &lt; z6(front).
+
+4) MOTION TIMELINE (frame 0 -&gt; 77, every beat has ms window + frame range + NAMED curve;
+   full-duration coverage, no dead tail):
+   • 0-500ms (f0-12)  ESTABLISH: die z3 tumbling-settle rotate 8deg-&gt;0 back.out (it lands, a guess
+       committed); iris z1 holds; dust z5 drift sine.inOut; container ambient push 1.000-&gt;1.008
+       sine.inOut.
+   • 500-1400ms (f12-34)  APERTURE OPEN (matte reveal): oxblood ring z2 irises open via clip-path
+       0-&gt;full over 900ms power4.out — the machine "opens its eye"; a specular glint travels the
+       iris bevel power2.out simultaneously.
+   • 1400-1550ms (f34-37)  RACK-SNAP / LAND (sync frame 34): iris ring z2 snaps to full emissive,
+       a discrete impact push-through on the iris cluster 1.00-&gt;1.11-&gt;1.00 back.out (sanctioned
+       land impulse, then returns); die z3 dims a hair as the eye dominates.
+   • 1550-1700ms (f37-41)  CAPTION SETTLE: z4 caption fades 0-&gt;1 power2.out and rests; ≥4
+       SIMULTANEOUS moves already fired in the 1400-1700ms window: iris-snap + impact push-through +
+       glint tail + die-dim + caption-in. One focal event (the iris), others subordinate.
+   • 1700-2900ms (f41-70)  SUSTAINED (no dead air): ambient push 1.008-&gt;1.05 sine.inOut (within cap),
+       oxblood ring breathes ±6% opacity sine.inOut, dust continues, die z3 holds cold.
+   • 2900-3200ms (f70-77)  EXIT: HOLD razor-sharp &amp; cuttable — motion done, dust + grain still live
+       (not frozen). NO fade; editor hard-cuts on any final frame.
+
+5) AWE MECHANICS + AUDIO SYNC: 14.1 levers fired = TRUE KINETIC SCALE (the iris opening + impact)
+   + DEPTH PARALLAX (z-layers). ONE sync frame = f34 (1400ms, the iris snap/land). BIND audio: a low
+   sub-thud + a soft mechanical iris-close whoosh lands on f34, matched to the eye locking open —
+   NOT a bright whoosh. Stated identically in timeline and audio block.
+
+6) GRADE PASS: film grain ~6% moving, vignette ~18%, faint edge chromatic aberration, subtle bloom
+   on the oxblood iris ring only — CSS/shader overlay so it sits in the Mode A photoreal world.
+
+7) LOCK / NEGATIVES + EXIT: title-safe inner 90%; caption stamps clean (no layout shift); no
+   default/linear easing on any beat; ONE trajectory per plane; hero iris cluster ≥55% width;
+   oxblood on the aperture only; no glitch/neon/rainbow. EXIT = HOLD not fade (the cut is the exit).
+BUILD RULES (keep the render fast AND valid — follow exactly):
+- Create a NEW .html composition in hf-scenes. Do NOT overwrite index.html.
+- Canvas 1920x1080. Root element carries data-composition-id, data-width="1920",
+  data-height="1080", data-fps="24", data-start="0", data-duration="3.2".
+- Keep duration short — total frames (fps x duration) is the #1 render cost.
+- Load GSAP from its CDN &lt;script&gt;. Create the timeline { paused: true } and register:
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main-video"] = tl;
+- Motion = compositor-safe properties: transform (x / y / scale / opacity / rotation) is the
+  preferred default; clip-path, mask, and stroke-dashoffset are also permitted for the fill /
+  reveal / draw mechanisms the tiers require (liquid-fill, matte reveal, line-draw, area-fill,
+  bar-build, sankey). NEVER animate letterSpacing, width, height, top, or left — they snap under
+  frame-seek capture and fail strict lint. Hold those static.
+- Deterministic ONLY: no Math.random, no Date.now, no network. Seed noise with a small
+  PRNG (mulberry32).
+- Easing: power3.out entrances, ease:"none" for linear sweeps, sine.inOut for drift.
+WORKFLOW (use the tuned fast flags; don't invent your own):
+1. Write the composition file.
+2. Validate + fast-render in one step (strict fails on lint errors):
+   npx hyperframes render -c shein_08_iris.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/shein_08_iris.mp4
+   Fix every error, re-run, then SHOW me the MP4.
+3. Only when I say it's final: re-render with -q high (drop -f 24) for delivery.
+----- END VERBATIM HYPERFRAMES TEMPLATE -----</div>
+<div class="block"><span class="lbl">Motion — Variant B · Claude Design (full build)</span><button class="copy">Copy</button>CLAUDE DESIGN — full co-equal Mode B build brief (v2.39). Canvas 1920×1080 @24fps, strict 16:9.
+TOTAL DURATION 3.2s = 77 frames, stated up front.
+
+ITERATION STEP (unique-to-Design, mandatory): build the layout on the canvas → SHOW the still frame
+first (die lower-left, oxblood-lit iris-eye centre-right ~55% width, caption "THEY GUESS. IT DOESN'T."
+lower-centre) → refine layout / type weight / oxblood glow intensity live → ONLY THEN animate the
+timeline. Name the export path off the canvas at the end.
+
+HERO ON CANVAS (dimensional lit editorial, NOT flat vector / NOT paper / NOT photoreal): the machined
+iris/eye in brushed-dark-metal with a machined bevel, single studio key raking L→R, oxblood #7A160E
+emissive aperture ring (emissive rim, never flat fill), soft contact shadow, specular glint, shallow-DoF
+layered depth. Named depth layers: FAR dust/void · MID the cold graphite die (subordinate, unlit) ·
+NEAR the iris cluster hero. SIZE LOCK: iris cluster ≥55% frame width, its optical centre on the right
+third. Caption in warm-bone #EDE8DD extra-condensed caps.
+
+MOTION (same frame-0-to-END ms→frame timeline, NAMED easing keyframes, no default/linear tween,
+full-duration coverage): 0–500ms die tumble-settle 8°→0° (ease back.out); 500–1400ms iris aperture
+matte-reveal open (power4.out) + specular glint travel; 1400–1550ms iris snaps full emissive with a
+LAND push-through to ~1.11 then settle (bold amplitude, sanctioned land); 1550–1700ms caption
+fade-in + die dims — ≥4 SIMULTANEOUS moves at the land (iris-snap · push-through · glint · die-dim ·
+caption-in); 1700–2900ms sustained ambient push to ~1.05 + oxblood ring breathe ±6% (no dead air);
+2900–3200ms HOLD, dust/grain live, HOLD-not-fade exit.
+
+MECHANISM (6.2.1/6.2.3): matte reveal (the iris aperture) + extrude-grow (the land push-through).
+AWE LEVER (14.1): true kinetic scale + depth parallax. AUDIO SYNC: bind the sub-thud + iris-close
+whoosh to f34 (1400ms), the eye locking open, on no VO word (this beat's land is visual, VO is UNDER).
+GRADE PASS: grain ~6%, vignette ~18%, faint chromatic aberration, bloom on the oxblood ring only, to
+match Mode A. PALETTE: Part 0.5 Track-2 — oxblood the ONLY non-neutral, as emissive rim/edge.
+EXPORT: alpha (transparent film / PNG-sequence or alpha MP4) for compositing under the master grade.
+PHYSICS NOTE: no rigid-body/fluid sim needed here (choreographed keyframe motion only), so it stays
+in Design's lane; if you later want a real shattering die, route THAT mechanism to Blender/HyperFrames.</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: ostinato tightens under "Shein doesn't guess", duck -15dB] · [SFX: a low sub-thud + soft mechanical iris-close whoosh on f34 as the eye locks open (matched to the iris snap, NOT a bright whoosh); a small die-settle click on the tumble land] · music ducks so "guess" reads clean. Voice wins on "guess."</div>
+        <div class="meta">Dwell <b>3.2s</b> · Tag <b>LAND: guess</b> · Mode <b>B</b> · Engine <b>HF-P1 / Claude Design</b> · Anchor <b>B</b></div>
+      </div>
+    </article>
+
+    <!-- 09 -->
+    <article class="shot mA" data-mode="mA">
+      <div class="sh-head">
+        <span class="num">09</span>
+        <span class="clause">Instead, it makes a hundred of something. Sometimes two hundred. It throws that tiny batch onto the app, and then it watches — who clicks, who lingers, who buys.</span>
+        <span class="badges">
+          <span class="b tag">UNDER</span><span class="b mode">MODE A</span><span class="b eng">Omni</span><span class="b anc">A-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Cinematic photoreal, A-anchor, strict 16:9. A single small run of identical garments — a short row of maybe a dozen identical dresses on a rail, lit by a hard oxblood key, floating in a vast dark void; above and around them, faint out-of-focus rectangles of cold glowing light suggest phone screens watching, like eyes in the dark, never resolved. The dozen garments read as a specimen under observation. COMPOSITION: the small garment rail as a deep foreground anchor lower-left on the thirds, sharp; the field of soft glowing screen-rectangles receding high and far into haze, deliberately unresolved; low horizon, deep atmospheric layering, generous negative dark space; title-safe inner 90%. LIGHTING/LENS: motivated oxblood #7A160E key raking across the small rail of garments — the accent owns the nearest subject — cool ~4300K glow from the distant screen-field dying into depth; 50mm equivalent, shallow DoF, film grain, volumetric haze, faint chromatic aberration at edges. NEGATIVE: no visible face, no recognizable real person, no readable screen content, no brand marks or logos, no glossy CG, no flat vector, no paper, no watermark, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Gemini Omni (S-tier v2.40, push-in tension-build)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent trajectory: a slow PUSH-IN ~5% toward the small garment rail (12.6.4 S-tier — the fundamental tension-build move; per 12.6.5 this beat BUILDS toward the "winners" land in shot 10, so the release/pull-back is saved for the cut, not spent here). Eased in with a gentle deceleration into the hold, never linear; shallow DoF tightening slightly as we approach, natural motion blur, grain and vignette alive.
+
+[Subject] The dozen identical garments hold anchored on the rail; the nearest sways a barely-perceptible 1-2 degrees as if just hung (A-tier living-still), the oxblood sheen crawling across the fabric.
+
+[Action] As the camera pushes in, the field of cold screen-rectangles behind falls further into soft blur (isolation deepening with proximity); the oxblood key intensifies almost imperceptibly on the garments — the specimen brought under closer observation.
+
+[Context] Volumetric haze drifts slowly through the distant screen-field, unrelated to the push; suspended dust in the oxblood key.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (push-in only, no lateral, no pull-back). Amplitude within 3-8% ambient, no discrete impact — sustained tension-build. Duration 4.5s at 24fps to match the dwell. Settle: tighter on the garments, screen-field fully soft, held — unresolved, handing tension to the cut. SILENT render — no music, no voice, no SFX baked in.
+
+LOCK: garments, rail, screen-field and every layer identical to the first frame — no face, no readable screens, no morphing, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD tight and cuttable, no fade.</div>
+<div class="block"><span class="lbl">Motion — Variant B · Gemini Omni (S-tier v2.40, drift + rack focus)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent compound trajectory (12.6.6): a slow LATERAL PARALLAX DRIFT right ~4% WHILE a gentle RACK FOCUS (12.6.4 S-tier, zero-warp) that starts with the distant screen-field faintly sharp and racks focus forward onto the garment rail until the dresses snap crisp and the screens fall soft. Shallow DoF, natural motion blur, grain and vignette alive.
+
+[Subject] The dozen garments hold anchored; one slow micro-sway as focus arrives on them (A-tier living-still).
+
+[Action] As focus racks forward and the camera drifts, the cold screen-rectangles slide past in parallax behind, blurring out — attention physically moving FROM the watching screens TO the watched product; the oxblood key holds constant on the garments as they resolve.
+
+[Context] Haze drifts independently through the far screen-field; suspended dust.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (drift WHILE rack, simultaneous). Amplitude within 3-8% ambient, no discrete impact. Duration 4.5s at 24fps. Settle: garments crisp, screens soft, held. SILENT render — no music, no voice, no SFX baked in. (Alt to V1's push-in: the rack-focus version if you prefer "the eyes opening on the specimen" to a proximity build; both feed the shot-10 land.)
+
+LOCK: all planes identical to the first frame except FOCUS — no face, no readable screens, no morphing, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD, no fade.</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: pulse steady under the test description, tension held, duck -15dB] · [SFX: faint rhythmic UI-blip low in the bed as unseen clicks register (scene sound, sparse), a low sub-pressure hum under the push] · [SCENE-SFX: distant screen-field electrical hum]. Voice wins throughout; loop-plant "the test", no hard hit.</div>
+        <div class="meta">Dwell <b>4.5s</b> · Tag <b>UNDER</b> · Mode <b>A</b> · Engine <b>Omni</b> · Anchor <b>A</b></div>
+      </div>
+    </article>
+
+    <!-- 10 -->
+    <article class="shot mB" data-mode="mB">
+      <div class="sh-head">
+        <span class="num">10</span>
+        <span class="clause">The clothes are the experiment. You are the lab. And the ones that win the test get made by the tens of thousands, in a matter of days.</span>
+        <span class="badges">
+          <span class="b tag">LAND: winners</span><span class="b mode">MODE B</span><span class="b eng">Blender / HF-P1</span><span class="b anc">B-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Dimensional lit editorial / machined-metal hero on near-black, strict 16:9. B-anchor. SUBJECT: a hero laboratory microscope-slide form rendered in machined dark metal and glass, extruded with real depth, held horizontal centre-frame; trapped under the glass, tiny and specimen-like, a single human figure silhouette (the shopper as the subject of study), lit from beneath by a cold clinical light; and rising off the slide, an oxblood #7A160E emissive data-graph line spiking upward — the "winner" being selected. Small warm-bone caps beneath, write the text "THE CLOTHES ARE THE EXPERIMENT. YOU ARE THE LAB." COMPOSITION: the metal slide as the horizontal hero spanning ~80% frame width, centred; the specimen-silhouette at its centre; the oxblood spike-line rising upper-right; caption lower-centre; deep negative space, distinct depth layers, title-safe inner 90%. CONSTRUCTION: single studio key raking across the metal slide, oxblood emissive owning the rising graph-line only, cold clinical under-light on the specimen, soft contact shadow, specular glint on the glass bevel, shallow DoF, layers at distinct depths. TEXT: write the text "THE CLOTHES ARE THE EXPERIMENT. YOU ARE THE LAB." in warm-bone #EDE8DD extra-condensed caps, min height ~8% of frame, high contrast. NEGATIVE: no visible face, no recognizable real person, no flat vector, no warped/invented text, no photoreal environment, no glossy CG, no watermark, no brand marks, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Blender (full build — true 3D + glass/emissive)</span><button class="copy">Copy</button>BLENDER — full co-equal Mode B build brief (v2.32). Scene units 1920×1080 @24fps, strict 16:9.
+TOTAL DURATION 3.0s = 72 frames, stated up front.
+
+HERO AS REAL 3D GEOMETRY: the microscope-slide hero built as actual extruded/beveled mesh — a dark
+brushed-metal frame + a glass slide plate (real transparent/refractive material), SIZE LOCK spanning
+~80% frame width, centred, horizontal. The trapped specimen-silhouette a simple low-poly human form
+under the glass, cold clinical under-light. The oxblood #7A160E data-spike a thin emissive mesh line.
+PBR MATERIAL: metal metalness ~0.9 / roughness ~0.35 matching the 6.2 machined-metal register; glass
+with real refraction; the oxblood the ONLY non-neutral, as an EMISSIVE material on the spike-line
+(never a flat fill). LIGHTING: ONE directional key raking L→R + a rim light on the metal edge + the
+cold clinical under-light on the specimen; soft contact shadow on the ground plane.
+
+MOTION on F-curves, NON-LINEAR Bezier interpolation (never LINEAR/CONSTANT), same ms→frame timeline,
+full-duration coverage, no dead tail:
+  • 0–600ms (f0–14)  the slide settles into frame, a slow ambient camera push 1.000→1.010 (Bezier
+      ease-in-out); specimen under-light fades up.
+  • 600–1500ms (f14–36)  the oxblood spike-line GROWS upward along the graph (mesh line-draw /
+      scale-Z build, power-style Bezier ease-out) — the "winner" emerging from the data.
+  • 1500–1650ms (f36–40)  LAND (sync frame 36, on the VO word "winners"): the spike snaps to full
+      emissive with a discrete impact push-through on the whole slide 1.00→1.12→1.00 (Bezier
+      overshoot-and-settle, sanctioned land amplitude above the ambient cap, then returns); a 6-unit
+      camera-shake damping out; caption locks in. ≥4 SIMULTANEOUS moves in this window: spike-snap +
+      impact push-through + camera-shake + emissive bloom + caption settle. One focal event.
+  • 1650–2600ms (f40–62)  SUSTAINED: ambient push 1.01→1.05 (Bezier), oxblood spike emissive
+      breathes ±5%, specimen under-light holds — no dead air.
+  • 2600–3000ms (f62–72)  EXIT: HOLD, all motion settled, HOLD-not-fade (editor hard-cuts).
+MECHANISM (6.2.3): the emergent data-spike = line-draw/area-build; the impact = extrude-grow land.
+AWE LEVER (14.1): true kinetic scale (the specimen-under-glass reveal + impact). ENGINE: Cycles for
+the glass refraction + emissive bloom (or EEVEE with screen-space refraction if render time matters).
+AUDIO SYNC: bind a deep sub-boom + light-leak bloom wash to f36 (the "winners" land) — sub-boom, NOT a
+bright whoosh; camera-shake sub-rumble tail after. RENDER with alpha (transparent film) for compositing
+under the master grade. Obeys one-trajectory, named-easing (Bezier, no linear), audio-synced-land,
+size-lock, HOLD-not-fade.</div>
+<div class="block"><span class="lbl">Motion — Variant B · HyperFrames P1</span><button class="copy">Copy</button>----- BEGIN VERBATIM HYPERFRAMES TEMPLATE -----
+Find and work in the HyperFrames project: the folder that contains an "hf-scenes"
+directory with index.html and a package.json whose scripts include "render:fast".
+If the current directory isn't it, locate it (search for hf-scenes/index.html).
+Tell me the path you're using, then cd into hf-scenes.
+SETUP IF NEEDED (fresh machine / phone — run only if these aren't ready):
+- If node_modules is missing or `npx hyperframes --version` fails: run `npm install`.
+- If a render complains there's no browser: run `npx hyperframes browser ensure`.
+- Sanity check: `npx hyperframes doctor` — Node, FFmpeg, and Chrome must be OK
+  (FFmpeg/whisper/TTS/Docker being "optional/missing" is fine).
+WHAT TO MAKE:
+[[ SHOT 10 — Mode B Path 1 — "you are the lab", R2 audacity LAND on "winners". Seven-block S-tier brief. ]]
+
+1) CANVAS + TIMING: 1920x1080, 24fps. TOTAL DURATION 3.0s = 72 frames. Ground #0B0B0C inlined;
+   type #EDE8DD; accent oxblood #7A160E EMISSIVE (the rising spike-line only, never flat fill);
+   graphite slide/depth #3A3A3E. All beats scheduled against 72f. (STANDALONE: hex inlined.)
+
+2) ENGINE DECLARATION: GSAP only; no CSS `transition`, no default easing. Compositor-safe —
+   transform/opacity + stroke-dashoffset for the spike-line draw + clip-path for the under-light
+   reveal; NEVER width/height/top/left/letterSpacing. Deterministic mulberry32 dust/grain; no
+   Math.random/Date.now. Caption is a real DOM string.
+
+3) HERO BUILD (named z-layers; ≥80%-width hero slide):
+   z1 — the microscope-slide hero, dark brushed-metal frame + a semi-transparent glass plate,
+        SIZE LOCK ~80% frame width, centred horizontal.
+   z2 — the specimen-silhouette (simple human form) trapped under z1's glass, cold clinical
+        under-light (a soft cool radial behind it).
+   z3 — the oxblood #7A160E emissive data-spike line rising upper-right (stroke-dashoffset draw).
+   z4 — warm-bone caption "THE CLOTHES ARE THE EXPERIMENT. YOU ARE THE LAB." lower-centre, DOM string.
+   z5 — mulberry32 dust; z6 — vignette + grain overlay.
+   Depth: z5(back) &lt; z2 &lt; z1 &lt; z3 &lt; z4 &lt; z6(front).
+
+4) MOTION TIMELINE (frame 0 -&gt; 72, ms + frames + NAMED curve each; full coverage, no dead tail):
+   • 0-600ms (f0-14)  SETTLE: slide z1 ambient push 1.000-&gt;1.010 sine.inOut; under-light z2 fades
+       0-&gt;1 power2.out; dust z5 drift.
+   • 600-1500ms (f14-36)  SPIKE-DRAW (matte/line reveal): oxblood z3 draws upward stroke-dashoffset
+       full-&gt;0 over 900ms power4.out — the winner emerging; specular glint travels the slide bevel.
+   • 1500-1650ms (f36-40)  LAND (SYNC FRAME 36, on "winners"): z3 spike snaps full emissive; a
+       discrete impact push-through on z1 1.00-&gt;1.12-&gt;1.00 back.out (sanctioned, then returns); 6px
+       camera-shake damps power2.out; caption z4 locks 0-&gt;1 power2.out. &gt;=4 SIMULTANEOUS moves in this
+       ~250ms: spike-snap + impact push-through + camera-shake + emissive bloom + caption-in.
+   • 1650-2600ms (f40-62)  SUSTAINED: ambient push 1.01-&gt;1.05 sine.inOut; oxblood spike breathes
+       +/-5% opacity sine.inOut; dust continues — no dead air.
+   • 2600-3000ms (f62-72)  EXIT: HOLD cuttable, spike razor-sharp, oxblood live, grain live. NO fade.
+
+5) AWE MECHANICS + AUDIO SYNC: 14.1 levers = TRUE KINETIC SCALE (the impact land) + STAGGERED
+   ASSEMBLY (the spike-draw). ONE sync frame = f36 (1500ms). BIND audio: deep sub-boom + light-leak
+   bloom wash + camera-shake sub-rumble tail ALL land on f36, on "winners" — sub-boom, NOT a bright
+   whoosh. Stated identically in timeline + audio block.
+
+6) GRADE PASS: ~6% moving grain, vignette ~18%, edge chromatic aberration, oxblood halation bloom on
+   the spike only, CSS/shader overlay matched to Mode A.
+
+7) LOCK / NEGATIVES + EXIT: inner 90%; caption stamps clean, no layout shift; no default/linear
+   easing; ONE trajectory per plane (the impact is ONE impulse); hero slide &gt;=80% width; oxblood on
+   the spike only; no glitch/neon/rainbow. EXIT = HOLD not fade.
+BUILD RULES (keep the render fast AND valid — follow exactly):
+- Create a NEW .html composition in hf-scenes. Do NOT overwrite index.html.
+- Canvas 1920x1080. Root element carries data-composition-id, data-width="1920",
+  data-height="1080", data-fps="24", data-start="0", data-duration="3.0".
+- Keep duration short — total frames (fps x duration) is the #1 render cost.
+- Load GSAP from its CDN &lt;script&gt;. Create the timeline { paused: true } and register:
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main-video"] = tl;
+- Motion = compositor-safe properties: transform (x / y / scale / opacity / rotation) is the
+  preferred default; clip-path, mask, and stroke-dashoffset are also permitted for the fill /
+  reveal / draw mechanisms the tiers require (liquid-fill, matte reveal, line-draw, area-fill,
+  bar-build, sankey). NEVER animate letterSpacing, width, height, top, or left — they snap under
+  frame-seek capture and fail strict lint. Hold those static.
+- Deterministic ONLY: no Math.random, no Date.now, no network. Seed noise with a small
+  PRNG (mulberry32).
+- Easing: power3.out entrances, ease:"none" for linear sweeps, sine.inOut for drift.
+WORKFLOW (use the tuned fast flags; don't invent your own):
+1. Write the composition file.
+2. Validate + fast-render in one step (strict fails on lint errors):
+   npx hyperframes render -c shein_10_lab.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/shein_10_lab.mp4
+   Fix every error, re-run, then SHOW me the MP4.
+3. Only when I say it's final: re-render with -q high (drop -f 24) for delivery.
+----- END VERBATIM HYPERFRAMES TEMPLATE -----</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: bed thins to a held sub-drop under the flip, then sub-riser into the land, duck -15dB] · [SFX: deep sub-boom + light-leak bloom wash on "winners" (sub-boom, NOT a bright whoosh); camera-shake sub-rumble tail; a faint clinical UI-tick as the spike locks] · music ducks so the word reads clean. Voice wins on "winners." (R2 audacity: awe + anger fire together — the mechanism IS the injustice.)</div>
+        <div class="meta">Dwell <b>3.0s</b> · Tag <b>LAND: winners</b> · Mode <b>B</b> · Engine <b>Blender / HF-P1</b> · Anchor <b>B</b></div>
+      </div>
+    </article>
+
+    <!-- 11 -->
+    <article class="shot mI" data-mode="mI">
+      <div class="sh-head">
+        <span class="num">11</span>
+        <span class="clause">They call it LATR — Large-scale Automated Test-and-Reorder. In the first quarter of 2026, Shein's own IPO prospectus admitted the scale of it: an average of four thousand, seven hundred new designs. Not a month. Not a week. A day.</span>
+        <span class="badges">
+          <span class="b tag">INSERT: data</span><span class="b mode">INSERT</span><span class="b eng">DO NOT GENERATE</span><span class="b anc">—</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Source note — DO NOT GENERATE</span><button class="copy">Copy</button>REAL SOURCE INSERT — the first BODY proof-insert (evidence now unlocked; this substantiates the LATR / 4,700-designs-a-day claim). Use licensed/fair-use footage or a rebuilt Mode-B document card of SHEIN's 2026 IPO draft prospectus / regulatory filing showing the on-demand model + product-volume disclosure. VERIFIED FIGURES to display (web-grounded, IPO-window 2025–2026): the model is named LATR — Large-scale Automated Test-and-Reorder; the draft prospectus reported an average of ~4,700 new designs per day across Shein's brand portfolio in Q1 2026; initial micro-batches of ~100–200 units per style; &gt;300,000 new products per year. Drift-card treatment: if rebuilt as a Mode-B document card, apply the look-block, oxblood emissive on the key figure "4,700 / DAY", slow drift + grain, a faint document/paper-foley credibility beat. If real footage/screencap: ~2s dwell, source/UI audio breathes under a -12dB music duck; the fidelity drop is the "this is real" cue. VERIFY the exact prospectus figure + wording against the filing before publish (figures move between draft and final).</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[INSERT-AUDIO: source/UI breathes ~1.5s under duck] — music ducks -12dB, filing/newsroom or document-foley source audio surfaces thin (the fidelity drop is the "this is real" cue), then the riser re-enters on the 4,700 figure. No SFX over the source; a single soft document/paper-foley credibility tick permitted as the card settles.</div>
+        <div class="meta">Dwell <b>2.0s</b> · Tag <b>INSERT: data</b> · Mode <b>INSERT</b> · Engine <b>—</b> · Anchor <b>—</b></div>
+      </div>
+    </article>
+
+    <!-- 12 -->
+    <article class="shot mB" data-mode="mB">
+      <div class="sh-head">
+        <span class="num">12</span>
+        <span class="clause">For comparison, H&amp;M — one of the biggest fast-fashion names in the world — releases around four and a half thousand new products in an entire year. Shein does that before lunch.</span>
+        <span class="badges">
+          <span class="b tag">LAND: year</span><span class="b mode">MODE B</span><span class="b eng">Remotion / HF-P1</span><span class="b anc">B-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Dimensional lit editorial / machined-metal hero on near-black, strict 16:9. B-anchor. SUBJECT: a brutal scale comparison rendered as two machined-metal bars/towers on near-black — a TINY cold graphite bar labelled small, write the text "H&amp;M · 4,500 / YEAR" in warm-bone caps beside it; and a COLOSSAL oxblood-lit tower dwarfing it, so tall it exceeds the frame top, write the text "SHEIN · 4,700 / DAY" in warm-bone caps at its base. The height gap IS the shock. COMPOSITION: the tiny H&amp;M bar lower-left on the thirds as the deep foreground-scale anchor; the vast SHEIN tower rising centre-right beyond the top edge (low horizon so it towers), generous negative dark space; distinct depth layers; title-safe inner 90% for the labels (the tower itself may exceed frame top by design). CONSTRUCTION: single studio key raking across both metal forms, oxblood #7A160E emissive rim owning the giant SHEIN tower only (the H&amp;M bar stays cold graphite, unlit), soft contact shadows, specular glint on bevels, shallow DoF, layers at distinct depths. TEXT: write the text "H&amp;M · 4,500 / YEAR" and "SHEIN · 4,700 / DAY" in warm-bone #EDE8DD extra-condensed caps, min height ~8% of frame, high contrast. NEGATIVE: no flat vector, no warped/invented text, no photoreal environment, no glossy CG, no watermark, no brand logos (plain unbranded type only), nothing at frame edge except the intentionally-exceeding tower.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Remotion (full build — parametric bar-build)</span><button class="copy">Copy</button>REMOTION — full co-equal Mode B build brief. Composition id "shein_12_scale"; durationInFrames 66 @ fps 24 (2.75s); 1920×1080, strict 16:9. TOTAL DURATION stated up front: 2.75s = 66 frames.
+
+HERO BUILD as React components: a small cold-graphite bar (H&amp;M) and a colossal oxblood-rimmed tower
+(SHEIN) that exceeds the frame top; warm-bone labels as text components. SIZE LOCK: the SHEIN tower
+is the ≥80%-height hero, its base on the right third. Theme imported from the Part 0.5 Track-2 palette
+(ground #0B0B0C, warm-bone #EDE8DD, accent oxblood #7A160E) — inlined as constants, not a bare pointer.
+
+MOTION via useCurrentFrame() + interpolate() with NAMED Easing (GSAP curves mapped to Easing.*),
+same ms→frame timeline, full-duration coverage, no dead tail:
+  • f0–10 (0–420ms)  both bars present at base height; ambient scale 1.000→1.008 Easing.inOut(sine).
+  • f10–34 (420–1420ms)  BAR-BUILD: the H&amp;M bar grows to its (tiny) final height quickly and stops;
+      the SHEIN tower grows upward past the frame top over the full window, Easing.out(power4) — the
+      relentless climb that doesn't stop where H&amp;M's does.
+  • f34–40 (1420–1670ms)  LAND (sync frame 34, on VO word "year"): the tower's oxblood rim ignites
+      full emissive; a discrete impact push-through on the whole comp 1.00→1.11→1.00 Easing.out(back)
+      (sanctioned land, then settles); labels lock in. ≥4 SIMULTANEOUS moves: tower-rim-ignite +
+      impact push-through + H&amp;M-bar dim + label lock + a subtle grain kick.
+  • f40–60 (1670–2500ms)  SUSTAINED: ambient scale 1.008→1.04 Easing.inOut(sine); oxblood rim
+      breathes ±5%; no dead air.
+  • f60–66 (2500–2750ms)  HOLD, motion settled, HOLD-not-fade exit.
+MECHANISM (6.2.3): bar-build/area-build. AWE LEVER (14.1): true kinetic scale (the height gap +
+impact). AUDIO SYNC: bind a deep sub-boom to f34 on "year". RENDER with alpha where it composites.
+NEVER CSS transitions / linear. Obeys one-trajectory, named-easing, audio-synced-land, size-lock,
+HOLD-not-fade.</div>
+<div class="block"><span class="lbl">Motion — Variant B · HyperFrames P1</span><button class="copy">Copy</button>----- BEGIN VERBATIM HYPERFRAMES TEMPLATE -----
+Find and work in the HyperFrames project: the folder that contains an "hf-scenes"
+directory with index.html and a package.json whose scripts include "render:fast".
+If the current directory isn't it, locate it (search for hf-scenes/index.html).
+Tell me the path you're using, then cd into hf-scenes.
+SETUP IF NEEDED (fresh machine / phone — run only if these aren't ready):
+- If node_modules is missing or `npx hyperframes --version` fails: run `npm install`.
+- If a render complains there's no browser: run `npx hyperframes browser ensure`.
+- Sanity check: `npx hyperframes doctor` — Node, FFmpeg, and Chrome must be OK
+  (FFmpeg/whisper/TTS/Docker being "optional/missing" is fine).
+WHAT TO MAKE:
+[[ SHOT 12 — Mode B Path 1 — H&amp;M-vs-Shein scale gap, LAND on "year". Seven-block S-tier brief. ]]
+
+1) CANVAS + TIMING: 1920x1080, 24fps. TOTAL DURATION 2.75s = 66 frames. Ground #0B0B0C inlined;
+   type #EDE8DD; accent oxblood #7A160E EMISSIVE (SHEIN tower rim only); graphite H&amp;M bar #3A3A3E.
+   All beats scheduled against 66f. (STANDALONE: hex inlined.)
+
+2) ENGINE DECLARATION: GSAP only; no CSS `transition`, no default easing. Compositor-safe —
+   transform/opacity + clip-path for the bar-grow mask; NEVER width/height/top/left/letterSpacing
+   (grow via scaleY on a bottom-anchored transform-origin, not height). Deterministic mulberry32;
+   no Math.random/Date.now. Labels are real DOM strings.
+
+3) HERO BUILD (named z-layers; ≥80%-height hero tower):
+   z1 — the colossal SHEIN tower, dark brushed-metal, bottom-anchored transform-origin, SIZE LOCK
+        so at full scale it exceeds the frame top; base on the right third.
+   z2 — oxblood #7A160E emissive rim on the tower's leading edge.
+   z3 — the tiny cold-graphite H&amp;M bar, lower-left, subordinate, no glow.
+   z4 — warm-bone labels "H&amp;M · 4,500 / YEAR" and "SHEIN · 4,700 / DAY", DOM strings.
+   z5 — mulberry32 dust; z6 — vignette + grain overlay.
+   Depth: z5(back) &lt; z3 &lt; z1 &lt; z2 &lt; z4 &lt; z6(front).
+
+4) MOTION TIMELINE (frame 0 -&gt; 66, ms + frames + NAMED curve; full coverage, no dead tail):
+   • 0-420ms (f0-10)  BASE: both bars at seed height; ambient push 1.000-&gt;1.008 sine.inOut.
+   • 420-1420ms (f10-34)  BAR-BUILD: z3 (H&amp;M) scaleY grows to its tiny final fast (power3.out) and
+       STOPS; z1 (SHEIN) scaleY grows past the frame top over the full window power4.out — the climb
+       that doesn't stop; specular glint travels z1's edge.
+   • 1420-1580ms (f34-38)  LAND (SYNC FRAME 34, on "year"): z2 rim ignites 0-&gt;full expo.out; discrete
+       impact push-through on the comp 1.00-&gt;1.11-&gt;1.00 back.out (sanctioned); z3 dims a hair; labels
+       z4 lock. &gt;=4 SIMULTANEOUS: rim-ignite + impact push-through + H&amp;M-dim + label-lock + grain kick.
+   • 1580-2500ms (f38-60)  SUSTAINED: ambient push 1.008-&gt;1.04 sine.inOut; oxblood rim breathes +/-5%;
+       dust continues — no dead air.
+   • 2500-2750ms (f60-66)  EXIT: HOLD cuttable, tower razor-sharp, oxblood live, grain live. NO fade.
+
+5) AWE MECHANICS + AUDIO SYNC: 14.1 levers = TRUE KINETIC SCALE (the height gap + impact). ONE sync
+   frame = f34 (1420ms). BIND audio: deep sub-boom on f34, on "year" — sub-boom, NOT a bright whoosh;
+   sub-rumble tail. Stated identically in timeline + audio block.
+
+6) GRADE PASS: ~6% moving grain, vignette ~18%, edge chromatic aberration, oxblood halation bloom on
+   the tower rim only, CSS/shader overlay matched to Mode A.
+
+7) LOCK / NEGATIVES + EXIT: inner 90% for labels (tower may exceed top by design); labels stamp clean;
+   no default/linear easing; ONE trajectory per plane; hero tower &gt;=80% height; oxblood on the tower
+   rim only; no glitch/neon/rainbow. EXIT = HOLD not fade.
+BUILD RULES (keep the render fast AND valid — follow exactly):
+- Create a NEW .html composition in hf-scenes. Do NOT overwrite index.html.
+- Canvas 1920x1080. Root element carries data-composition-id, data-width="1920",
+  data-height="1080", data-fps="24", data-start="0", data-duration="2.75".
+- Keep duration short — total frames (fps x duration) is the #1 render cost.
+- Load GSAP from its CDN &lt;script&gt;. Create the timeline { paused: true } and register:
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main-video"] = tl;
+- Motion = compositor-safe properties: transform (x / y / scale / opacity / rotation) is the
+  preferred default; clip-path, mask, and stroke-dashoffset are also permitted for the fill /
+  reveal / draw mechanisms the tiers require (liquid-fill, matte reveal, line-draw, area-fill,
+  bar-build, sankey). NEVER animate letterSpacing, width, height, top, or left — they snap under
+  frame-seek capture and fail strict lint. Hold those static.
+- Deterministic ONLY: no Math.random, no Date.now, no network. Seed noise with a small
+  PRNG (mulberry32).
+- Easing: power3.out entrances, ease:"none" for linear sweeps, sine.inOut for drift.
+WORKFLOW (use the tuned fast flags; don't invent your own):
+1. Write the composition file.
+2. Validate + fast-render in one step (strict fails on lint errors):
+   npx hyperframes render -c shein_12_scale.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/shein_12_scale.mp4
+   Fix every error, re-run, then SHOW me the MP4.
+3. Only when I say it's final: re-render with -q high (drop -f 24) for delivery.
+----- END VERBATIM HYPERFRAMES TEMPLATE -----</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: riser peaks under the comparison, duck -15dB] · [SFX: deep sub-boom on "year" as the tower rim ignites (sub-boom, NOT a bright whoosh); sub-rumble tail; a dry mechanical ratchet under the tower climb] · music ducks so "year" reads clean. Voice wins on "year." The dry aside "before lunch" lands in the settle, unscored.</div>
+        <div class="meta">Dwell <b>2.75s</b> · Tag <b>LAND: year</b> · Mode <b>B</b> · Engine <b>Remotion / HF-P1</b> · Anchor <b>B</b></div>
+      </div>
+    </article>
+
+    <!-- 13 -->
+    <article class="shot mA" data-mode="mA">
+      <div class="sh-head">
+        <span class="num">13</span>
+        <span class="clause">A new design can go from a sketch on a screen to a garment in your cart in as little as three days — a process that takes traditional brands three to four weeks. Six thousand factories, wired directly into an algorithm that never sleeps.</span>
+        <span class="badges">
+          <span class="b tag">UNDER</span><span class="b mode">MODE A</span><span class="b eng">Omni</span><span class="b anc">A-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Cinematic photoreal, A-anchor, strict 16:9. An impossibly vast grid of identical small factory windows glowing in the dark — a single monolithic dark structure, hundreds of lit cells stacked and receding, each a tiny workroom, the whole face wired together by faint glowing filament-lines that converge toward a single bright oxblood node high in the frame, like a nervous system feeding a brain. The building reads as one organism, never sleeping. COMPOSITION: low horizon so the wired structure towers; a deep foreground anchor (the near corner edge of the structure, sharp, lower-left) so the eye travels near-to-far; the oxblood convergence-node high upper-right in generous negative dark space; atmospheric layering, haze between the depth planes; title-safe inner 90%. LIGHTING/LENS: hundreds of tiny cool ~4300K window-lights receding into haze, all faint; ONE motivated oxblood #7A160E key owning the convergence-node and the filament-lines feeding it — the accent owns the "brain"; 35mm equivalent, shallow DoF, film grain, volumetric haze, faint chromatic aberration at edges. NEGATIVE: no visible faces, no recognizable real people, no brand marks or logos, no readable signage, no glossy CG, no flat vector, no paper, no watermark, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Gemini Omni (S-tier v2.40, pull-back+drift reveal)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent compound trajectory (12.6.6): a slow PULL-BACK ~6% WHILE a gentle lateral DRIFT ~3%, easing in and settling, never linear — the scale of the wired structure updating in real time. Shallow DoF, natural motion blur on every plane, film grain and heavy vignette breathing.
+
+[Subject] The convergence-node hero holds anchored high-right, its oxblood glow pulsing almost imperceptibly like a heartbeat (A-tier living-still on an inanimate hero — the "brain" breathing); the filament-lines hold their paths.
+
+[Action] As the camera pulls back and drifts, more window-cells resolve out of the haze and the true extent of the structure reveals itself; the faint filament-lines read as flowing toward the node (a slow directional shimmer along them, ambient not camera); the oxblood node holds steady intensity.
+
+[Context] Volumetric haze drifts between the depth planes at its own rate (parallax depth); suspended dust in the oxblood key.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (pull-back WHILE drift, simultaneous, never phased). Amplitude within 3-8% ambient, no discrete impact — sustained. Duration 5.0s at 24fps to match the dwell. Settle: widest framing, full structure and node read, held. SILENT render — no music, no voice, no SFX baked in.
+
+LOCK: structure, window-cells, filament-lines, node and every layer identical to the first frame — no faces, no readable signage, no morphing, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD cuttable, no fade.</div>
+<div class="block"><span class="lbl">Motion — Variant B · Gemini Omni (S-tier v2.40, push-in on the node)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent trajectory: a slow PUSH-IN ~5% toward the oxblood convergence-node (12.6.4 S-tier tension-build), easing in with a gentle deceleration into the hold, never linear; shallow DoF tightening as we approach, natural motion blur, grain and vignette alive.
+
+[Subject] The convergence-node hero grows fractionally larger in frame, its oxblood glow pulsing like a heartbeat (A-tier living-still); the filament-lines feeding it read more clearly as we close in.
+
+[Action] As the camera pushes toward the node, the surrounding window-grid falls further into soft blur (isolation on the "brain"); the filament-lines carry a slow directional shimmer of flow toward the node (ambient); the oxblood intensifies almost imperceptibly.
+
+[Context] Haze drifts slowly through the far window-grid, unrelated to the push; suspended dust.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (push-in only). Amplitude within 3-8% ambient, no discrete impact. Duration 5.0s at 24fps. Settle: tighter on the node, grid soft, held. SILENT render — no music, no voice, no SFX baked in. (Alt to V1's pull-back: use the push-in if you want the chapter to CLOSE IN on the "brain" here rather than reveal scale — never two identical consecutive moves against shot 07's pull-back.)
+
+LOCK: node, filament-lines, window-grid and every layer identical to the first frame — no faces, no morphing, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD, no fade.</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: pulse drives under the factories/3-day figures, mechanical and relentless, duck -15dB] · [SFX: a low rhythmic mechanical throb synced to the node pulse (scene sound), faint electrical filament-hum, sub-pressure bed] · [SCENE-SFX: vast distant industrial room-tone]. Voice wins throughout; loop-plant "the factories", no hard hit (UNDER).</div>
+        <div class="meta">Dwell <b>5.0s</b> · Tag <b>UNDER</b> · Mode <b>A</b> · Engine <b>Omni</b> · Anchor <b>A</b></div>
+      </div>
+    </article>
+
+    <!-- 14 -->
+    <article class="shot mA" data-mode="mA">
+      <div class="sh-head">
+        <span class="num">14</span>
+        <span class="clause">And here's the part that should stop you cold: from the outside, the machine looks like a gift. Endless choice. Impossible prices. Something new every single hour. It looks like Shein figured out how to give you everything for almost nothing.</span>
+        <span class="badges">
+          <span class="b tag">LAND: nothing</span><span class="b mode">MODE A</span><span class="b eng">Omni</span><span class="b anc">A-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Cinematic photoreal, A-anchor, strict 16:9. A single beautiful garment presented like an offering — a stunning dress on a lone stand, catching a warm inviting glow, seeming to float in a dark space, with a soft cascade of more garments implied fading into the shadows behind it as if endless abundance; but the warm glow is unmistakably oxblood-tinged, not golden — beautiful and wrong at once. The frame should read as a gift on first glance and as a warning on second. COMPOSITION: the hero dress centre, slightly low so it feels presented/offered; a deep foreground anchor (the edge of the stand, sharp, lower-centre); the abundance fading into deep atmospheric layers behind; generous negative dark space; low horizon; title-safe inner 90%. LIGHTING/LENS: a single motivated oxblood #7A160E key washing the hero dress in a glow that first reads warm/inviting then reads like blood-light — the accent owns the offered garment — cool ~4300K void swallowing the abundance behind; 50mm equivalent, shallow DoF, film grain, volumetric haze, faint chromatic aberration. NEGATIVE: no visible face, no recognizable real person, no brand marks or logos, no price tags with readable text, no glossy CG, no flat vector, no paper, no watermark, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · Gemini Omni (S-tier v2.40, seductive push-in, warm-to-wrong)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent trajectory: a very slow PUSH-IN ~4% toward the offered dress (12.6.4 S-tier; a gentle, seductive approach that matches "looks like a gift" before the turn), easing in and settling, never linear; shallow DoF, natural motion blur, grain and heavy vignette breathing.
+
+[Subject] The hero dress holds anchored, a barely-perceptible living-still sway as if breathing in the glow (A-tier living-still); the oxblood key washing it.
+
+[Action] As the camera eases in, the oxblood glow on the dress shifts almost imperceptibly from reading warm/inviting toward reading like blood-light — the same light, curdling — while the abundance behind stays swallowed in soft dark. The beauty holds; the wrongness creeps (a slow ambient temperature-feel shift in the accent, NOT a colour change that breaks the palette — the oxblood stays #7A160E, only its emotional read shifts via subtle intensity/contrast breathing).
+
+[Context] Volumetric haze drifts slowly behind; suspended dust in the oxblood key.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (push-in only). Amplitude within 3-8% ambient, NO discrete impact — this is a building turn beat, tension rises but does NOT land here (the land is the stinger, shot 15). Duration 4.5s at 24fps to match the dwell. Settle: closer on the dress, glow at its most "wrong", held unresolved. SILENT render — no music, no voice, no SFX baked in.
+
+LOCK: dress, stand, abundance and every layer identical to the first frame — no face, no morphing, no new elements, no palette drift (oxblood stays #7A160E, only its intensity/read breathes), nothing clipped at the title-safe edge, no linear speed. Ends HELD unresolved, no fade — tension handed to the stinger.</div>
+<div class="block"><span class="lbl">Motion — Variant B · Gemini Omni (S-tier v2.40, shallow cinematic arc)</span><button class="copy">Copy</button>First frame is the attached still.
+
+[Cinematography] One coherent trajectory: a slow LATERAL CINEMATIC ARC ~15° shallow (12.6.4 S-tier — "this deserves study"; kept shallow per the arc-warp caution, subject simple/rigid), gliding around the offered dress, easing in and out, never linear; shallow DoF, natural motion blur, grain and vignette alive.
+
+[Subject] The hero dress holds anchored as the camera arcs, a slow living-still sway; the oxblood key rakes across it as the angle shifts, revealing its form in the round.
+
+[Action] As the arc moves, the abundance behind parallax-shifts (planes separating), and the oxblood glow reads warm from one angle and blood-wrong from the next — the turn expressed through the moving light on a held object rather than a push. The beauty and the warning trade places as we move.
+
+[Context] Haze drifts independently behind; suspended dust.
+
+12.6.2 rules: uncomfortably slow · eased not ramped · ONE coherent trajectory (shallow arc only). Amplitude within 3-8% ambient (the arc is a camera path, not subject motion), no discrete impact — building turn, no land here. Duration 4.5s at 24fps. Settle: arc rests at the "wrong" angle, held. SILENT render — no music, no voice, no SFX baked in. (Alt to V1's push-in: the arc if you want the turn to feel like "studying" the gift and finding the flaw; higher render care needed — keep the dress rigid, arc shallow.)
+
+LOCK: dress, stand, abundance identical to the first frame — no face, no morphing, no warp on the arc, no new elements, no palette drift, nothing clipped at the title-safe edge, no linear speed. Ends HELD, no fade.</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[MUSIC: bed swells warm-then-wrong under "looks like a gift", the tense/driving pulse briefly softening to something almost beautiful before curdling, duck -15dB] · [SFX: a soft warm shimmer that sours into a low unease-tone under the glow (scene/atmos), pressure hum bed] · NOTE: "LAND: nothing" — the tag marks a deliberate NON-hit; there is NO SFX slam on any word here. The tension builds UP into the [SILENT] vacuum of shot 15; it does not resolve. Voice wins throughout; nothing lands on "nothing."</div>
+        <div class="meta">Dwell <b>4.5s</b> · Tag <b>LAND: nothing</b> · Mode <b>A</b> · Engine <b>Omni</b> · Anchor <b>A</b></div>
+      </div>
+    </article>
+
+    <article class="trans" data-tr="1">
+      <div class="sh-head">
+        <span class="num">T</span>
+        <span class="tname">T-14→15 · DIP-TO-BLACK</span>
+        <span class="clause">14f · downshift-into-silence (into the stinger)</span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+        <div class="block"><span class="lbl">Transition brief — HyperFrames Path 3</span><button class="copy">Copy</button>DIP-TO-BLACK / BLACK-FIELD DUST (HF Path 3). 14f @24fps, 1920×1080. The warm-then-wrong glow of shot 14 collapses inward to a point and the frame dips fully to #000 for ~5f, faint black-field dust motes drifting; then shot 15 (the stinger) rises out of black straight into its 0.5s SILENT vacuum. Transform/opacity only. Named easing expo-in on the collapse. AUDIO: downshift-into-silence — the tense/driving bed cut to a scored vacuum, no whoosh; this hands directly into shot 15's [SILENT] before the "paid" slam. Matched S-tier boundary move (14.6.5 / 18.2b).</div>
+      </div>
+    </article>
+
+    <!-- 15 -->
+    <article class="shot mB" data-mode="mB">
+      <div class="sh-head">
+        <span class="num">15</span>
+        <span class="clause">But a machine this efficient doesn't run on nothing. It runs on something. And to see what that something is, you have to follow it — out of the app, out of the warehouse, all the way down to the factory floor.</span>
+        <span class="badges">
+          <span class="b tag">SILENT → LAND: paid</span><span class="b mode">MODE B</span><span class="b eng">HF-P1 / Claude Design</span><span class="b anc">B-anchor</span>
+        </span>
+        <span class="car2">›</span>
+      </div>
+      <div class="sh-body">
+<div class="block"><span class="lbl">Still prompt — Nano Banana Pro / 2</span><button class="copy">Copy</button>Dimensional lit editorial / machined-metal hero on near-black, strict 16:9. B-anchor. SUBJECT: a single machined-metal price tag hero, extruded with real depth, hanging on a thread centre-frame — but where the price should read, the tag is cracking open, an oxblood #7A160E emissive light bleeding out of the fracture from inside, as if the true cost is burning through the surface. Beneath, small warm-bone caps, write the text "SOMETHING HAS TO PAY THE DIFFERENCE." COMPOSITION: the cracking price-tag hero centred, filling ~60% of frame, the fracture running diagonal with oxblood light bleeding from the seam; caption lower-centre; deep negative dark space; distinct depth layers; title-safe inner 90%. CONSTRUCTION: single studio key raking across the metal tag, oxblood emissive owning the fracture-seam only (the accent bleeds from inside the metal), graphite depth behind, heavy contact shadow, specular glint on the bevel, shallow DoF. TEXT: write the text "SOMETHING HAS TO PAY THE DIFFERENCE." in warm-bone #EDE8DD extra-condensed caps, min height ~8% of frame, high contrast. NEGATIVE: no flat vector, no warped/invented text, no photoreal environment, no glossy CG, no watermark, no brand marks, nothing at frame edge.
+
+LOOK-BLOCK — cinematic money-doc, Track-2 OXBLOOD. Deep near-black ground #0B0B0C; warm-bone type #EDE8DD; ONE accent = deep oxblood #7A160E authored as in-scene key/rim/edge on the hero subject; graphite/ash #3A3A3E cold depth secondary. 35–85mm equiv, shallow DoF. Grain ~6%, heavy vignette, faint chromatic aberration. Cool base ~4300K falloff, warm oxblood ~2600K accent. Filmic grade — never glossy CG, never flat vector, never paper. 1920×1080, 16:9, title-safe inner 90%.</div>
+<div class="block"><span class="lbl">Motion — Variant A · HyperFrames P1</span><button class="copy">Copy</button>----- BEGIN VERBATIM HYPERFRAMES TEMPLATE -----
+Find and work in the HyperFrames project: the folder that contains an "hf-scenes"
+directory with index.html and a package.json whose scripts include "render:fast".
+If the current directory isn't it, locate it (search for hf-scenes/index.html).
+Tell me the path you're using, then cd into hf-scenes.
+SETUP IF NEEDED (fresh machine / phone — run only if these aren't ready):
+- If node_modules is missing or `npx hyperframes --version` fails: run `npm install`.
+- If a render complains there's no browser: run `npx hyperframes browser ensure`.
+- Sanity check: `npx hyperframes doctor` — Node, FFmpeg, and Chrome must be OK
+  (FFmpeg/whisper/TTS/Docker being "optional/missing" is fine).
+WHAT TO MAKE:
+[[ SHOT 15 — Mode B Path 1 — chapter-end STINGER (R1 trapdoor), SILENT -&gt; LAND on "paid". Seven-block S-tier brief. ]]
+
+1) CANVAS + TIMING: 1920x1080, 24fps. TOTAL DURATION 3.4s = 82 frames. Ground #0B0B0C inlined;
+   type #EDE8DD; accent oxblood #7A160E EMISSIVE (light inside the fracture only, never flat fill);
+   graphite depth #3A3A3E. Opens with a 0.5s (f0-12) SILENT vacuum. All beats scheduled against 82f.
+   (STANDALONE: hex inlined.)
+
+2) ENGINE DECLARATION: GSAP only; no CSS `transition`, no default easing. Compositor-safe —
+   transform/opacity + clip-path for the crack-seam mask; NEVER width/height/top/left/letterSpacing.
+   Deterministic mulberry32 shards/grain; no Math.random/Date.now. Caption is a real DOM string.
+
+3) HERO BUILD (named z-layers; &gt;=60%-width hero tag):
+   z1 — the machined price-tag hero on a thread, dark brushed-metal, SIZE LOCK ~60% frame width,
+        centred, hanging.
+   z2 — a clip-path CRACK SEAM running diagonally through z1 (hairline, hidden at f0).
+   z3 — oxblood #7A160E emissive gradient BEHIND the seam (revealed as the crack opens — light from
+        inside the metal).
+   z4 — warm-bone caption "SOMETHING HAS TO PAY THE DIFFERENCE." lower-centre, DOM string.
+   z5 — mulberry32 metal-dust; z6 — vignette + grain overlay.
+   Depth: z5(back) &lt; z1 &lt; z3(through seam) &lt; z2 &lt; z4 &lt; z6(front).
+
+4) MOTION TIMELINE (frame 0 -&gt; 82, ms + frames + NAMED curve; full coverage, no dead tail):
+   • 0-500ms (f0-12)  SILENT VACUUM: tag z1 hangs dead-still, a near-imperceptible thread-sway
+       0.5deg sine.inOut; NO other motion; music/SFX at near-zero (the loudest silence before the hit).
+   • 500-1450ms (f12-35)  TENSION HOLD: ambient push 1.000-&gt;1.030 sine.inOut; a sub-drone building
+       (audio); the tag holds solid; dust z5 drifts.
+   • 1450-1600ms (f35-38)  SHATTER-SEAM LAND (SYNC FRAME 35, on VO word "paid"): clip-path crack z2
+       snaps open 0-&gt;full 120ms power4.in; oxblood z3 floods out of the seam 0-&gt;full expo.out;
+       discrete impact push-through 1.03-&gt;1.12-&gt;1.03 back.out (sanctioned land, then returns); 6px
+       camera-shake damps power2.out; caption z4 locks 0-&gt;1. &gt;=4 SIMULTANEOUS moves in this ~250ms:
+       crack-open + oxblood bloom + impact push-through + camera-shake + caption-in + grain kick.
+   • 1600-2900ms (f38-70)  AFTERMATH: oxblood glow z3 settles to a steady deep #7A160E; rim breathes
+       +/-5% sine.inOut; ambient push 1.03-&gt;1.06 sine.inOut; dust continues — no dead air.
+   • 2900-3400ms (f70-82)  EXIT: HOLD cuttable, cracked tag razor-sharp, oxblood live, grain live. NO
+       fade — editor cuts on a held frame into transition T-15-&gt;Ch2 (DIP-TO-BLACK).
+
+5) AWE MECHANICS + AUDIO SYNC: 14.1 levers = TRUE KINETIC SCALE (the imposed fracture) + SHADER
+   TRANSITION feel (the oxblood bloom). ONE sync frame = f35 (1450ms). BIND audio: [SILENT] vacuum
+   f0-12, then low sub-boom slam + light-leak bloom wash + camera-shake sub-rumble tail ALL land on
+   f35, on "paid" — sub-boom, NOT a bright whoosh. Stated identically in timeline + audio block.
+
+6) GRADE PASS: ~6% moving grain, vignette ~18%, edge chromatic aberration, oxblood halation bloom on
+   the seam only, CSS/shader overlay matched to Mode A.
+
+7) LOCK / NEGATIVES + EXIT: inner 90%; caption stamps clean, no layout shift; no default/linear easing;
+   ONE trajectory per plane (the impact is ONE impulse); hero tag &gt;=60% width; oxblood on the seam
+   only; no glitch/neon/rainbow. EXIT = HOLD not fade (cuts into DIP-TO-BLACK).
+BUILD RULES (keep the render fast AND valid — follow exactly):
+- Create a NEW .html composition in hf-scenes. Do NOT overwrite index.html.
+- Canvas 1920x1080. Root element carries data-composition-id, data-width="1920",
+  data-height="1080", data-fps="24", data-start="0", data-duration="3.4".
+- Keep duration short — total frames (fps x duration) is the #1 render cost.
+- Load GSAP from its CDN &lt;script&gt;. Create the timeline { paused: true } and register:
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main-video"] = tl;
+- Motion = compositor-safe properties: transform (x / y / scale / opacity / rotation) is the
+  preferred default; clip-path, mask, and stroke-dashoffset are also permitted for the fill /
+  reveal / draw mechanisms the tiers require (liquid-fill, matte reveal, line-draw, area-fill,
+  bar-build, sankey). NEVER animate letterSpacing, width, height, top, or left — they snap under
+  frame-seek capture and fail strict lint. Hold those static.
+- Deterministic ONLY: no Math.random, no Date.now, no network. Seed noise with a small
+  PRNG (mulberry32).
+- Easing: power3.out entrances, ease:"none" for linear sweeps, sine.inOut for drift.
+WORKFLOW (use the tuned fast flags; don't invent your own):
+1. Write the composition file.
+2. Validate + fast-render in one step (strict fails on lint errors):
+   npx hyperframes render -c shein_15_stinger.html -f 24 -q draft -w auto --gpu --browser-gpu --strict -o renders/shein_15_stinger.mp4
+   Fix every error, re-run, then SHOW me the MP4.
+3. Only when I say it's final: re-render with -q high (drop -f 24) for delivery.
+----- END VERBATIM HYPERFRAMES TEMPLATE -----</div>
+<div class="block"><span class="lbl">Motion — Variant B · Claude Design (full build)</span><button class="copy">Copy</button>CLAUDE DESIGN — full co-equal Mode B build brief (v2.39). Canvas 1920×1080 @24fps, strict 16:9.
+TOTAL DURATION 3.4s = 82 frames, with a 0.5s SILENT vacuum at the head (f0–12), stated up front.
+
+ITERATION STEP (mandatory): build on the canvas → SHOW the still (machined price-tag hero ~60% width,
+diagonal fracture, oxblood bleeding from the seam, caption "SOMETHING HAS TO PAY THE DIFFERENCE."
+lower-centre) → refine tag proportions / fracture path / oxblood bleed intensity live → ONLY THEN
+animate. Name the export path off the canvas.
+
+HERO ON CANVAS (dimensional lit editorial, NOT flat/paper/photoreal): brushed-dark-metal price tag on
+a thread, machined bevel, single studio key, oxblood #7A160E EMISSIVE bleeding from the fracture-seam
+(emissive, never flat fill), heavy contact shadow, specular glint, shallow-DoF depth. Named depth
+layers: FAR dust/void · MID the tag body · NEAR the caption. SIZE LOCK: tag ≥60% frame width, centred.
+
+MOTION (same frame-0-to-END ms→frame timeline, NAMED easing keyframes, no default/linear tween, full
+coverage): f0–12 SILENT vacuum — tag dead-still, 0.5° thread-sway only, audio near-zero; f12–35
+tension hold + ambient push 1.00→1.03; f35–38 LAND on "paid" — fracture snaps open (power4.in) +
+oxblood floods from seam (expo.out) + impact push-through to ~1.12 then settle (bold amplitude,
+sanctioned) + camera-shake + caption lock — ≥4 SIMULTANEOUS moves at the land; f38–70 aftermath,
+oxblood settles + rim breathe ±5% + ambient push to ~1.06 (no dead air); f70–82 HOLD-not-fade exit
+(cuts into the DIP-TO-BLACK).
+MECHANISM (6.2.1/6.2.3): the fracture = matte/clip reveal; the bloom = shader-feel; the impact =
+extrude-grow land. NOTE: this is choreographed keyframe motion (a clip-path fracture, not a true
+rigid-body shatter) so it stays in Design's lane; if you want REAL shattering metal shards, route that
+specific mechanism to Blender/HyperFrames instead of faking it.
+AWE LEVER (14.1): true kinetic scale + shader-transition feel. AUDIO SYNC: [SILENT] f0–12, then bind
+sub-boom + light-leak bloom + camera-shake rumble to f35 on "paid". GRADE: grain ~6%, vignette ~18%,
+aberration, oxblood halation on the seam only. PALETTE: Track-2, oxblood the only non-neutral, emissive.
+EXPORT: alpha (transparent film) for compositing under the master grade. HOLD-not-fade exit.</div>
+<div class="block"><span class="lbl">Audio spec</span><button class="copy">Copy</button>[SILENT] 0.5s scored vacuum — music to near-zero, no SFX, the loudest silence right before the hit · then [SFX: low sub-boom slam + light-leak bloom wash on "paid," camera-shake sub-rumble tail] (sub-boom, NOT a bright whoosh). The chapter-end stinger LANDS on "paid" then the frame cuts to DIP-TO-BLACK into Chapter 2. Voice wins; the boom lands WITH "paid," not over it. (R1 trapdoor: the promise of the machine collapses into the human cost the next chapter pays off.)</div>
+        <div class="meta">Dwell <b>3.4s</b> · Tag <b>SILENT → LAND: paid</b> · Mode <b>B</b> · Engine <b>HF-P1 / Claude Design</b> · Anchor <b>B</b></div>
+      </div>
+    </article>
+
+  </div>
+</div>
+
+<footer>
+  M-HYBRID v2.40 · Shein · Chunk 2 (Ch.1 The Machine) · 9 shots + 2 transitions · 1920×1080 @24fps 16:9 · all prompts fully realized per PART 25 / [A35]<br>
+  Oxblood #7A160E · Exposé (C) · R3-dominant (rise of the machine) · R2 audacity turn · R1 chapter-end stinger · evidence unlocked
+</footer>
+
+<script>
+(function(){
+  // collapsible panes + shots
+  document.querySelectorAll('.pane .head').forEach(h=>{
+    h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+  });
+  document.querySelectorAll('.shot .sh-head, .trans .sh-head').forEach(h=>{
+    h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+  });
+
+  // copy buttons
+  function flash(btn){const o=btn.textContent;btn.textContent='Copied';btn.classList.add('done');setTimeout(()=>{btn.textContent=o;btn.classList.remove('done');},1400);}
+  function copyText(t,btn){
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>flash(btn)).catch(()=>fallback(t,btn));}
+    else fallback(t,btn);
+  }
+  function fallback(t,btn){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');flash(btn);}catch(e){}document.body.removeChild(ta);}
+  document.querySelectorAll('.copy').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const block=btn.closest('.block');
+      const txt=block.cloneNode(true);
+      txt.querySelectorAll('.copy,.lbl').forEach(n=>n.remove());
+      copyText(txt.textContent.trim(),btn);
+    });
+  });
+
+  // filters
+  const fbtns=document.querySelectorAll('.fbtn');
+  const shots=document.querySelectorAll('.shot');
+  const transes=document.querySelectorAll('.trans');
+  fbtns.forEach(b=>b.addEventListener('click',()=>{
+    fbtns.forEach(x=>x.classList.remove('on'));b.classList.add('on');
+    const f=b.dataset.f;let n=0;
+    shots.forEach(s=>{
+      const show = (f==='all')||(f===s.dataset.mode);
+      s.classList.toggle('hidden',!show);if(show)n++;
+    });
+    transes.forEach(t=>{
+      const show=(f==='all')||(f==='tr');
+      t.classList.toggle('hidden',!show);
+    });
+    document.getElementById('cnum').textContent = (f==='tr') ? '0' : n;
+  }));
+
+  // export all
+  document.getElementById('exportAll').addEventListener('click',function(){
+    let out='M-HYBRID v2.39 — SHEIN — CHUNK 1 (HOOK) — CLIP TABLE\n';
+    out+='Palette: Track 2 Oxblood #7A160E | Archetype C Expose | Recipe R2>R1>R4 | Hook Irony-lock | Cut B->D\n\n';
+    document.querySelectorAll('.pane').forEach(p=>{
+      out+='=== '+p.querySelector('.ttl').textContent+' ===\n';
+      p.querySelectorAll('.block').forEach(bl=>{
+        const c=bl.cloneNode(true);c.querySelectorAll('.copy').forEach(n=>n.remove());
+        out+=c.textContent.trim()+'\n\n';
+      });
+    });
+    document.querySelectorAll('.shot, .trans').forEach(s=>{
+      const num=s.querySelector('.num').textContent.trim();
+      const cl=s.querySelector('.clause').textContent.trim();
+      out+='----- SHOT '+num+' -----\n'+cl+'\n';
+      s.querySelectorAll('.block').forEach(bl=>{
+        const lbl=bl.querySelector('.lbl')?bl.querySelector('.lbl').textContent.trim():'';
+        const c=bl.cloneNode(true);c.querySelectorAll('.copy,.lbl').forEach(n=>n.remove());
+        out+='['+lbl+']\n'+c.textContent.trim()+'\n\n';
+      });
+    });
+    copyText(out,this);
+  });
+})();
+</script>
+</body>
+</html>
