@@ -1,0 +1,27 @@
+{
+  "name": "hyperframes-timeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "snapshot": "hyperframes snapshot",
+    "render": "hyperframes render",
+    "render:alt": "hyperframes render --variables '{\"ground\":\"#0d1420\",\"ink\":\"#c8ff3d\"}' -o renders/hyperframes-timeline-alt.mp4",
+    "cloud": "hyperframes cloud render --fps=30 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=30 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/hyperframes-timeline.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get",
+    "beats": "hyperframes beats",
+    "publish": "hyperframes publish"
+  },
+  "devDependencies": {
+    "hyperframes": "0.8.34"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "three": "^0.181.2"
+  }
+}

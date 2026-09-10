@@ -1,0 +1,1712 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"ground","type":"color","label":"Ground","default":"#0a0a0a"},
+    {"id":"ink","type":"color","label":"Ink (accent)","default":"#3CE6AC"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>HyperFrames — Write HTML. Render video.</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      /* ---------- fonts (bundled woff2, no network) ---------- */
+      @font-face {
+        font-family: "HF Display";
+        src: url("assets/fonts/display-700.woff2") format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "HF Body";
+        src: url("assets/fonts/body-400.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "HF Body";
+        src: url("assets/fonts/body-500.woff2") format("woff2");
+        font-weight: 500;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "HF Body";
+        src: url("assets/fonts/body-600.woff2") format("woff2");
+        font-weight: 600;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "HF Mono";
+        src: url("assets/fonts/mono-400.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "HF Mono";
+        src: url("assets/fonts/mono-500.woff2") format("woff2");
+        font-weight: 500;
+        font-display: block;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        /* the two composition variables re-skin the entire journey */
+        --ground: #0a0a0a;
+        --ink: #3ce6ac;
+        --cyan: #00e3ff; /* used ONLY in the final CTA gradient */
+
+        /* greyscale text hierarchy (frame.md) */
+        --t0: #fafafa;
+        --t1: #a1a1aa;
+        /* frame.md muted tier is #71717a (~4.1:1 on near-black); nudged to
+           meet the framework's enforced WCAG AA 4.5:1 contrast gate */
+        --t2: #909099;
+
+        /* borders / glass */
+        --border: rgba(250, 250, 250, 0.1);
+        --border-2: rgba(250, 250, 250, 0.18);
+        --glass-bg: rgba(250, 250, 250, 0.045);
+        --glass-bg-2: rgba(250, 250, 250, 0.07);
+        --glass-border: rgba(250, 250, 250, 0.14);
+        --glass-blur: 18px;
+        --glass-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+        --radius: 14px;
+        --radius-sm: 9px;
+
+        --font-display: "HF Display", system-ui, sans-serif;
+        --font-body: "HF Body", system-ui, sans-serif;
+        --font-mono: "HF Mono", ui-monospace, monospace;
+
+        --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+        font-family: var(--font-body);
+        color: var(--t0);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      /* ground wash — very subtle, keeps it from being dead flat, no hue */
+      #stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          120% 90% at 50% 44%,
+          rgba(255, 255, 255, 0.028) 0%,
+          rgba(255, 255, 255, 0) 60%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ---------- persistent chrome: faint ink grid (~8%) ---------- */
+      #grid {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.08;
+        background-image:
+          linear-gradient(var(--ink) 1px, transparent 1px),
+          linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+        background-size: 84px 84px;
+        mask-image: radial-gradient(130% 100% at 50% 50%, #000 55%, transparent 100%);
+        -webkit-mask-image: radial-gradient(130% 100% at 50% 50%, #000 55%, transparent 100%);
+      }
+
+      /* ---------- viewport + moving world ---------- */
+      #viewport {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        overflow: hidden;
+      }
+      #dolly {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        will-change: transform;
+      }
+      .plane {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 15800px;
+        height: 1080px;
+        will-change: transform;
+      }
+      #plane-back {
+        z-index: 1;
+      }
+      #plane-mid {
+        z-index: 2;
+      }
+      #plane-fore {
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      /* ---------- the wire (persistent element 1) ---------- */
+      #wire-svg {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 15800px;
+        height: 1080px;
+        overflow: visible;
+      }
+      #wire {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 3;
+        stroke-linecap: round;
+      }
+      #wire-glow {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 8;
+        opacity: 0.16;
+        filter: blur(5px);
+      }
+      .lane {
+        fill: none;
+        stroke: var(--t2);
+        stroke-width: 2;
+        opacity: 0.55;
+      }
+
+      /* ---------- protagonist clip chip (persistent element 3) ---------- */
+      #chip {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 40;
+        width: 150px;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg-2);
+        border: 1px solid var(--ink);
+        box-shadow:
+          0 0 0 1px rgba(60, 230, 172, 0.12),
+          0 14px 34px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        font-family: var(--font-mono);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+      #chip .chip-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #chip .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ink);
+        box-shadow: 0 0 10px var(--ink);
+        flex: none;
+      }
+      #chip .chip-name {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--t0);
+        letter-spacing: 0.01em;
+      }
+      #chip .chip-meta {
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--t1);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+
+      /* ---------- region primitives ---------- */
+      .region {
+        position: absolute;
+        top: 0;
+        height: 1080px;
+        will-change: transform;
+      }
+      .eyebrow {
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 15px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--t2);
+      }
+      .mono {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
+      }
+      .display {
+        font-family: var(--font-display);
+        font-weight: 700;
+        color: var(--t0);
+        line-height: 0.92;
+        letter-spacing: -0.01em;
+      }
+      .lead {
+        color: var(--t1);
+        font-size: 26px;
+        font-weight: 400;
+        line-height: 1.35;
+      }
+      .accent {
+        color: var(--ink);
+      }
+
+      /* glass surface used across the world */
+      .glass {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        box-shadow: var(--glass-shadow);
+      }
+
+      /* ===== Region: TYPE ===== */
+      #r-type {
+        left: 260px;
+        width: 1480px;
+      }
+      #code-card {
+        position: absolute;
+        left: 40px;
+        top: 372px;
+        width: 1180px;
+        padding: 34px 40px;
+        border-radius: var(--radius);
+        background: rgba(250, 250, 250, 0.028);
+        border: 1px solid var(--border);
+      }
+      #code-card .fname {
+        font-family: var(--font-mono);
+        font-size: 15px;
+        color: var(--t2);
+        margin-bottom: 20px;
+        letter-spacing: 0.04em;
+      }
+      #code {
+        font-family: var(--font-mono);
+        font-weight: 400;
+        font-size: 30px;
+        line-height: 1.65;
+        color: var(--t1);
+        white-space: pre-wrap;
+        min-height: 160px;
+      }
+      #code .tag {
+        color: var(--t0);
+      }
+      #code .attr {
+        color: var(--ink);
+      }
+      #code .fn {
+        color: var(--t0);
+      }
+      #code .cursor {
+        display: inline-block;
+        width: 15px;
+        height: 30px;
+        transform: translateY(5px);
+        background: var(--ink);
+        margin-left: 2px;
+      }
+      #type-display {
+        position: absolute;
+        left: 44px;
+        top: 150px;
+        font-size: 150px;
+      }
+
+      /* ===== Region: MOUNT ===== */
+      #r-mount {
+        left: 1960px;
+        width: 1520px;
+      }
+      .track-chip {
+        position: absolute;
+        width: 250px;
+        padding: 13px 16px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .track-chip .tc-name {
+        font-family: var(--font-body);
+        font-weight: 500;
+        font-size: 17px;
+        color: var(--t0);
+      }
+      .track-chip .tc-meta {
+        margin-top: 6px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--t1);
+      }
+      .track-chip.is-active {
+        border-color: var(--ink);
+        box-shadow: 0 0 0 1px rgba(60, 230, 172, 0.14);
+      }
+
+      /* ===== Region: MEASURE ===== */
+      #r-measure {
+        left: 3560px;
+        width: 1560px;
+      }
+      #bars {
+        position: absolute;
+        left: 60px;
+        top: 300px;
+        width: 720px;
+        height: 340px;
+        display: flex;
+        align-items: flex-end;
+        gap: 22px;
+      }
+      .bar {
+        flex: 1;
+        transform-origin: 50% 100%;
+        border-radius: 4px 4px 0 0;
+        background: linear-gradient(180deg, var(--t1), var(--t2));
+        position: relative;
+      }
+      .bar.hot {
+        background: linear-gradient(180deg, var(--ink), rgba(60, 230, 172, 0.35));
+      }
+      .bar .blabel {
+        position: absolute;
+        bottom: -30px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--t2);
+      }
+      #hero-count {
+        position: absolute;
+        left: 840px;
+        top: 322px;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        font-size: 150px;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        line-height: 0.9;
+      }
+      #hero-count-label {
+        position: absolute;
+        left: 844px;
+        top: 486px;
+        width: 560px;
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 22px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--t0);
+      }
+      .measure-sub {
+        position: absolute;
+        font-family: var(--font-mono);
+        font-size: 20px;
+        color: var(--t1);
+      }
+
+      /* ===== Region: EVERYWHERE ===== */
+      #r-every {
+        left: 5220px;
+        width: 1760px;
+      }
+      #worldmap {
+        position: absolute;
+        left: 0;
+        top: 150px;
+        width: 1760px;
+        height: 760px;
+        opacity: 0.9;
+      }
+      .dot {
+        fill: var(--t2);
+      }
+      .pulse {
+        fill: var(--ink);
+      }
+      .pulse-ring {
+        fill: none;
+        stroke: var(--ink);
+        stroke-width: 2;
+      }
+      .region-pin {
+        position: absolute;
+        font-family: var(--font-mono);
+        font-size: 15px;
+        color: var(--t0);
+        white-space: nowrap;
+      }
+      .region-pin .rp-dot {
+        color: var(--ink);
+      }
+      #map-kicker {
+        position: absolute;
+        left: 60px;
+        top: 792px;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        font-size: 30px;
+        letter-spacing: 0.08em;
+        color: var(--t0);
+      }
+      #map-kicker .accent {
+        color: var(--ink);
+      }
+
+      /* ===== Region: MATERIAL ===== */
+      #r-material {
+        left: 7060px;
+        width: 1880px;
+      }
+      #footage {
+        position: absolute;
+        left: 640px;
+        top: 250px;
+        width: 620px;
+        height: 620px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #141414;
+        border: 1px solid var(--border);
+      }
+      #footage .subject {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(38% 44% at 50% 34%, #3a3a3d 0%, #232326 60%, #1a1a1c 100%);
+      }
+      #footage .silhouette {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 300px;
+        height: 470px;
+        transform: translateX(-50%);
+        background: linear-gradient(180deg, #4a4a4e, #2a2a2d);
+        border-radius: 150px 150px 0 0;
+        clip-path: path(
+          "M150,20 C210,20 236,70 236,120 C236,160 214,182 214,206 C266,226 300,300 300,470 L0,470 C0,300 34,226 86,206 C86,182 64,160 64,120 C64,70 90,20 150,20 Z"
+        );
+      }
+      #matte-bg {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(60% 60% at 50% 40%, #26262a, #131315);
+        will-change: transform, opacity;
+      }
+      #kw-plate {
+        position: absolute;
+        left: -40px;
+        top: 300px;
+        width: 1400px;
+        text-align: center;
+        z-index: -1;
+      }
+      .kw {
+        display: inline-block;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 200px;
+        line-height: 0.9;
+        color: var(--t0);
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+      .kw.hot {
+        color: var(--ink);
+      }
+      #lower-third {
+        position: absolute;
+        left: 560px;
+        top: 792px;
+        z-index: 5;
+        padding: 14px 20px;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg-2);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+      #lower-third .lt-name {
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 22px;
+        color: var(--t0);
+      }
+      #lower-third .lt-role {
+        margin-top: 3px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--ink);
+        letter-spacing: 0.04em;
+      }
+
+      /* ===== Region: SURFACE ===== */
+      #r-surface {
+        left: 8960px;
+        width: 1720px;
+      }
+      .inspector {
+        position: absolute;
+        width: 330px;
+        padding: 20px 22px;
+        border-radius: var(--radius);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        box-shadow: var(--glass-shadow);
+      }
+      .inspector .ins-title {
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--t1);
+        margin-bottom: 14px;
+      }
+      .inspector .ins-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 17px;
+        padding: 7px 0;
+        border-top: 1px solid var(--border);
+      }
+      .inspector .ins-row .k {
+        color: var(--t1);
+      }
+      .inspector .ins-row .v {
+        color: var(--t0);
+      }
+      .inspector .ins-row .v.accent {
+        color: var(--ink);
+      }
+      .swatch {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        background: var(--ink);
+        vertical-align: -2px;
+        margin-right: 7px;
+      }
+
+      /* ===== Region: RHYTHM ===== */
+      #r-rhythm {
+        left: 10680px;
+        width: 1760px;
+      }
+      .beat-card {
+        position: absolute;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 16px 18px;
+        will-change: transform, opacity;
+        opacity: 0;
+      }
+      .beat-card .bc-k {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--t1);
+        letter-spacing: 0.05em;
+      }
+      .beat-card .bc-v {
+        margin-top: 6px;
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 22px;
+        color: var(--t0);
+      }
+
+      /* ===== Region: DEPTH ===== */
+      #r-depth {
+        left: 12420px;
+        width: 1760px;
+      }
+      #three-layer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1760px;
+        height: 1080px;
+        display: block;
+      }
+      .axis-readout {
+        position: absolute;
+        font-family: var(--font-mono);
+        font-size: 16px;
+        color: var(--t1);
+        opacity: 0;
+      }
+      .axis-readout .accent {
+        color: var(--ink);
+      }
+
+      /* ===== Region: RENDER ===== */
+      #r-render {
+        left: 14160px;
+        width: 1640px;
+      }
+      #render-chip {
+        position: absolute;
+        left: 300px;
+        top: 430px;
+        width: 300px;
+        height: 200px;
+        border-radius: var(--radius);
+        border: 1px dashed var(--border-2);
+        background: rgba(250, 250, 250, 0.02);
+        display: grid;
+        place-items: center;
+      }
+      #render-chip .rc-label {
+        font-family: var(--font-mono);
+        font-size: 15px;
+        color: var(--t2);
+        letter-spacing: 0.08em;
+      }
+      #render-slot {
+        position: absolute;
+        left: 300px;
+        top: 430px;
+        width: 300px;
+        height: 200px;
+      }
+
+      /* ---------- final CTA (screen-fixed lockup) ---------- */
+      #cta {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+        opacity: 0;
+      }
+      #cta .cta-inner {
+        text-align: center;
+      }
+      #cta-title {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 132px;
+        line-height: 0.94;
+        /* the ONE mint->cyan gradient in the whole film */
+        background: linear-gradient(96deg, var(--ink) 0%, var(--cyan) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+      }
+      #cta-install {
+        margin-top: 34px;
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 26px;
+        color: var(--t0);
+        padding: 15px 26px;
+        border-radius: var(--radius);
+        border: 1px solid var(--glass-border);
+        background: var(--glass-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+      }
+      #cta-install .prompt {
+        color: var(--ink);
+        margin-right: 12px;
+      }
+
+      /* ---------- confetti (seeded, 2-frame hold) ---------- */
+      #confetti {
+        position: absolute;
+        inset: 0;
+        z-index: 55;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      #confetti .cpiece {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 16px;
+        border-radius: 2px;
+        will-change: transform, opacity;
+        opacity: 0;
+      }
+
+      /* ---------- iris / mural (Surface seam) ---------- */
+      #mural {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        opacity: 0;
+        pointer-events: none;
+        /* grayscale motion-trail mural, duotoned live by the two variables */
+        background:
+          repeating-linear-gradient(
+            118deg,
+            rgba(255, 255, 255, 0.05) 0px,
+            rgba(255, 255, 255, 0.05) 2px,
+            transparent 2px,
+            transparent 26px
+          ),
+          repeating-linear-gradient(
+            62deg,
+            rgba(255, 255, 255, 0.035) 0px,
+            rgba(255, 255, 255, 0.035) 2px,
+            transparent 2px,
+            transparent 40px
+          ),
+          radial-gradient(60% 80% at 30% 40%, rgba(255, 255, 255, 0.06), transparent 60%),
+          radial-gradient(50% 70% at 78% 66%, rgba(255, 255, 255, 0.05), transparent 60%);
+        /* clip to the iris circle (radius driven by --iris) */
+        -webkit-mask-image: radial-gradient(
+          circle at 50% 50%,
+          #000 calc(var(--iris, 0) * 1px),
+          transparent calc(var(--iris, 0) * 1px + 2px)
+        );
+        mask-image: radial-gradient(
+          circle at 50% 50%,
+          #000 calc(var(--iris, 0) * 1px),
+          transparent calc(var(--iris, 0) * 1px + 2px)
+        );
+      }
+      #mural .duotone {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: screen;
+        background: radial-gradient(80% 90% at 45% 45%, var(--ink), transparent 70%);
+        opacity: 0.22;
+      }
+      #mural .duotone2 {
+        position: absolute;
+        inset: 0;
+        mix-blend-mode: multiply;
+        background: linear-gradient(180deg, transparent, var(--ground));
+        opacity: 0.5;
+      }
+      #iris-ring {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 4;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 50%;
+        border: 2px solid var(--ink);
+        box-shadow:
+          0 0 24px 4px rgba(60, 230, 172, 0.5),
+          inset 0 0 18px rgba(60, 230, 172, 0.3);
+        opacity: 0;
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+
+      /* ---------- ruler chrome (persistent element 2) ---------- */
+      #ruler {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 46px;
+        z-index: 50;
+        background: linear-gradient(180deg, rgba(10, 10, 10, 0.9), rgba(10, 10, 10, 0.4));
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      #ruler-ticks {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 46px;
+      }
+      #ruler .tick {
+        position: absolute;
+        bottom: 0;
+        width: 1px;
+        height: 8px;
+        background: var(--t2);
+        opacity: 0.6;
+      }
+      #ruler .tick.major {
+        height: 15px;
+        opacity: 0.9;
+      }
+      #ruler .tlabel {
+        position: absolute;
+        top: 6px;
+        transform: translateX(4px);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--t2);
+      }
+      #playhead {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 2px;
+        height: 46px;
+        background: var(--ink);
+        box-shadow: 0 0 10px var(--ink);
+      }
+      #playhead::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -4px;
+        width: 10px;
+        height: 10px;
+        background: var(--ink);
+        clip-path: polygon(0 0, 100% 0, 50% 100%);
+      }
+      #timecode {
+        position: absolute;
+        right: 20px;
+        top: 13px;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        font-size: 18px;
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.06em;
+      }
+      #ruler-label {
+        position: absolute;
+        left: 20px;
+        top: 15px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--t2);
+        letter-spacing: 0.18em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="60"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="60" data-track-index="1">
+        <div id="grid"></div>
+
+        <!-- mural revealed by the iris (screen-fixed) -->
+        <div id="mural">
+          <div class="duotone"></div>
+          <div class="duotone2"></div>
+        </div>
+        <div id="iris-ring"></div>
+
+        <div id="viewport">
+          <div id="dolly" data-layout-allow-overflow>
+            <!-- BACK parallax plane -->
+            <div id="plane-back" class="plane" data-layout-allow-overflow></div>
+
+            <!-- MID plane: wire + regions + chip -->
+            <div id="plane-mid" class="plane" data-layout-allow-overflow>
+              <svg id="wire-svg" viewBox="0 0 15800 1080" preserveAspectRatio="none">
+                <path id="wire-glow" d=""></path>
+                <path id="lane-a" class="lane" d=""></path>
+                <path id="lane-b" class="lane" d=""></path>
+                <path id="wire" d=""></path>
+              </svg>
+
+              <!-- TYPE -->
+              <div id="r-type" class="region">
+                <div class="display" id="type-display" style="opacity: 0">WRITE HTML.</div>
+                <div id="code-card">
+                  <div class="fname mono">clip.html</div>
+                  <div id="code"></div>
+                </div>
+              </div>
+
+              <!-- MOUNT -->
+              <div id="r-mount" class="region">
+                <div class="eyebrow" id="mount-eyebrow" style="position: absolute; left: 60px; top: 214px; opacity: 0">
+                  Mount
+                </div>
+                <div class="display" id="mount-title" style="position: absolute; left: 58px; top: 246px; font-size: 76px; opacity: 0">
+                  <span style="display: block; line-height: 1.08">Three tracks,</span><span style="display: block; line-height: 1.08">one timeline.</span>
+                </div>
+              </div>
+
+              <!-- MEASURE -->
+              <div id="r-measure" class="region">
+                <div class="eyebrow" id="measure-eyebrow" style="position: absolute; left: 60px; top: 214px; opacity: 0">
+                  Measure
+                </div>
+                <div id="bars"></div>
+                <div id="hero-count">0</div>
+                <div id="hero-count-label">Catalog blocks</div>
+                <div class="measure-sub" id="measure-sub-1" style="left: 844px; top: 556px; opacity: 0">
+                  19 <span style="color: var(--t2)">agent skills</span>
+                </div>
+                <div class="measure-sub" id="measure-sub-2" style="left: 844px; top: 596px; opacity: 0">
+                  7 <span style="color: var(--t2)">runtime adapters</span>
+                </div>
+              </div>
+
+              <!-- EVERYWHERE -->
+              <div id="r-every" class="region">
+                <div class="eyebrow" id="every-eyebrow" style="position: absolute; left: 60px; top: 110px; opacity: 0">
+                  Everywhere
+                </div>
+                <svg id="worldmap" viewBox="0 0 1760 760" preserveAspectRatio="none"></svg>
+                <div id="map-kicker" style="opacity: 0">
+                  Cloud render <span class="accent">·</span> Lambda + Cloud Run
+                </div>
+              </div>
+
+              <!-- MATERIAL -->
+              <div id="r-material" class="region">
+                <div class="eyebrow" id="material-eyebrow" style="position: absolute; left: 60px; top: 214px; opacity: 0">
+                  Material
+                </div>
+                <div id="kw-plate"></div>
+                <div id="footage">
+                  <div id="matte-bg"></div>
+                  <div class="subject"></div>
+                  <div class="silhouette"></div>
+                </div>
+                <div id="lower-third" data-layout-allow-overlap style="opacity: 0">
+                  <div class="lt-name">Rendered on the timeline</div>
+                  <div class="lt-role">Footage · auto-proxy · matte</div>
+                </div>
+              </div>
+
+              <!-- SURFACE -->
+              <div id="r-surface" class="region">
+                <div class="inspector" id="ins-1" style="left: 120px; top: 300px; opacity: 0">
+                  <div class="ins-title">Easing</div>
+                  <div class="ins-row"><span class="k">ease</span><span class="v accent mono">power3.out</span></div>
+                  <div class="ins-row"><span class="k">duration</span><span class="v mono">0.6s</span></div>
+                </div>
+                <div class="inspector" id="ins-2" style="left: 690px; top: 470px; opacity: 0">
+                  <div class="ins-title">Token</div>
+                  <div class="ins-row"><span class="k">--ink</span><span class="v mono"><span class="swatch"></span>#3CE6AC</span></div>
+                  <div class="ins-row"><span class="k">--ground</span><span class="v mono">#0a0a0a</span></div>
+                </div>
+                <div class="inspector" id="ins-3" style="left: 1200px; top: 330px; opacity: 0">
+                  <div class="ins-title">Output</div>
+                  <div class="ins-row"><span class="k">fps</span><span class="v accent mono">30</span></div>
+                  <div class="ins-row"><span class="k">frame</span><span class="v mono">1920×1080</span></div>
+                </div>
+              </div>
+
+              <!-- RHYTHM -->
+              <div id="r-rhythm" class="region">
+                <div class="eyebrow" id="rhythm-eyebrow" style="position: absolute; left: 60px; top: 150px; opacity: 0">
+                  Rhythm
+                </div>
+              </div>
+
+              <!-- DEPTH -->
+              <div id="r-depth" class="region">
+                <canvas id="three-layer" width="1760" height="1080"></canvas>
+                <div class="axis-readout" id="axis-x" style="left: 250px; top: 360px">x <span class="accent">01.24</span></div>
+                <div class="axis-readout" id="axis-y" style="left: 250px; top: 392px">y <span class="accent">-0.86</span></div>
+                <div class="axis-readout" id="axis-z" style="left: 250px; top: 424px">z <span class="accent">02.10</span></div>
+              </div>
+
+              <!-- RENDER -->
+              <div id="r-render" class="region">
+                <div id="render-chip"><div class="rc-label mono">RENDER</div></div>
+                <div id="render-slot"></div>
+                <div class="mono" id="render-note" data-layout-allow-overlap style="position: absolute; left: 300px; top: 664px; font-size: 18px; color: var(--t1); width: 640px; opacity: 0">
+                  Identical on every render.
+                </div>
+              </div>
+            </div>
+
+            <!-- FORE parallax plane -->
+            <div id="plane-fore" class="plane" data-layout-allow-overflow></div>
+          </div>
+        </div>
+
+        <!-- protagonist chip lives above the world, positioned onto the wire each frame -->
+        <div id="chip-mover" style="position: absolute; inset: 0; z-index: 42; pointer-events: none">
+          <div id="chip" data-layout-allow-overlap data-layout-allow-overflow>
+            <div class="chip-row"><span class="dot"></span><span class="chip-name">clip</span></div>
+            <div class="chip-meta">start 0 · dur 4</div>
+          </div>
+        </div>
+
+        <div id="confetti"></div>
+
+        <!-- final CTA lockup -->
+        <div id="cta">
+          <div class="cta-inner">
+            <div id="cta-title"><span style="display: block">Write HTML.</span><span style="display: block">Render video.</span></div>
+            <div id="cta-install"><span class="prompt mono">npx</span><span class="mono">skills add heygen-com/hyperframes</span></div>
+          </div>
+        </div>
+
+        <!-- ruler chrome -->
+        <div id="ruler">
+          <div id="ruler-label">TIMELINE</div>
+          <div id="ruler-ticks"></div>
+          <div id="playhead"></div>
+          <div id="timecode">00:00 / 01:00</div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+/* HyperFrames promo — one continuous camera journey along the wire.
+   Single paused GSAP timeline registered at window.__timelines["main"].
+   Everything time-derived (playhead, chip-on-wire, depth) is driven from one
+   clock tween's onUpdate so it is correct at every seeked frame. */
+(function () {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  /* ---------- composition variables (ground / ink) ---------- */
+  const vars =
+    (window.__hyperframes &&
+      window.__hyperframes.getVariables &&
+      window.__hyperframes.getVariables()) ||
+    {};
+  const GROUND = vars.ground || "#0a0a0a";
+  const INK = vars.ink || "#3CE6AC";
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty("--ground", GROUND);
+  rootStyle.setProperty("--ink", INK);
+
+  /* ---------- deterministic helpers ---------- */
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0;
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const smooth = (a) => a * a * (3 - 2 * a);
+  function piecewise(kfs, t) {
+    // kfs: [[time,value],...] ascending; smoothstep interpolation
+    if (t <= kfs[0][0]) return kfs[0][1];
+    if (t >= kfs[kfs.length - 1][0]) return kfs[kfs.length - 1][1];
+    for (let i = 0; i < kfs.length - 1; i++) {
+      const [t0, v0] = kfs[i];
+      const [t1, v1] = kfs[i + 1];
+      if (t >= t0 && t <= t1) {
+        const a = t1 === t0 ? 0 : (t - t0) / (t1 - t0);
+        return v0 + (v1 - v0) * smooth(a);
+      }
+    }
+    return kfs[kfs.length - 1][1];
+  }
+
+  const WORLD_W = 15800;
+  const BASE = 640; // wire baseline (world y)
+
+  /* ---------- ruler chrome ---------- */
+  (function buildRuler() {
+    const ticks = $("#ruler-ticks");
+    for (let s = 0; s <= 60; s++) {
+      const x = (s / 60) * 1920;
+      const tick = document.createElement("div");
+      tick.className = "tick" + (s % 5 === 0 ? " major" : "");
+      tick.style.left = x + "px";
+      ticks.appendChild(tick);
+      if (s % 10 === 0 && s <= 50) {
+        const lab = document.createElement("div");
+        lab.className = "tlabel";
+        lab.style.left = x + "px";
+        lab.textContent = ("0" + Math.floor(s / 60)).slice(-2) + ":" + ("0" + (s % 60)).slice(-2);
+        ticks.appendChild(lab);
+      }
+    }
+  })();
+
+  /* ---------- the wire (one continuous path) ---------- */
+  const wireEl = $("#wire");
+  const wireGlow = $("#wire-glow");
+  (function buildWire() {
+    let d = `M 120 ${BASE} L 5400 ${BASE}`;
+    // Everywhere: arc up over the map and back down
+    d += ` C 5650 ${BASE} 5820 330 6100 330 C 6380 330 6560 ${BASE} 6820 ${BASE}`;
+    d += ` L 10760 ${BASE}`;
+    // Rhythm: the wire becomes a waveform
+    for (let x = 10800; x <= 12400; x += 40) {
+      const y = BASE + Math.sin((x - 10800) / 88) * 66;
+      d += ` L ${x} ${y.toFixed(1)}`;
+    }
+    d += ` L 12640 ${BASE} L ${WORLD_W - 80} ${BASE}`;
+    wireEl.setAttribute("d", d);
+    wireGlow.setAttribute("d", d);
+    // Mount lanes (split into three tracks, then merge)
+    $("#lane-a").setAttribute(
+      "d",
+      "M 2060 640 C 2220 640 2280 556 2520 556 L 3000 556 C 3240 556 3300 640 3440 640",
+    );
+    $("#lane-b").setAttribute(
+      "d",
+      "M 2060 640 C 2220 640 2280 724 2520 724 L 3000 724 C 3240 724 3300 640 3440 640",
+    );
+  })();
+
+  const wireLen = wireEl.getTotalLength();
+  wireEl.style.strokeDasharray = wireLen;
+  wireGlow.style.strokeDasharray = wireLen;
+  // start undrawn (grows during Type)
+  wireEl.style.strokeDashoffset = wireLen;
+  wireGlow.style.strokeDashoffset = wireLen;
+
+  function lenAtX(targetX) {
+    let lo = 0,
+      hi = wireLen;
+    for (let i = 0; i < 22; i++) {
+      const mid = (lo + hi) / 2;
+      const p = wireEl.getPointAtLength(mid);
+      if (p.x < targetX) lo = mid;
+      else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  /* ---------- parallax decor (back slow / fore fast) ---------- */
+  (function decor() {
+    const back = $("#plane-back");
+    const fore = $("#plane-fore");
+    const rng = mulberry32(7);
+    // back: faint far motes
+    for (let i = 0; i < 120; i++) {
+      const el = document.createElement("div");
+      const sz = 2 + rng() * 3;
+      el.style.cssText = `position:absolute;left:${(rng() * WORLD_W) | 0}px;top:${(90 + rng() * 900) | 0}px;width:${sz}px;height:${sz}px;border-radius:50%;background:rgba(250,250,250,0.06)`;
+      back.appendChild(el);
+    }
+    // fore: sparse near vertical ticks that streak past
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement("div");
+      const h = 20 + rng() * 46;
+      el.style.cssText = `position:absolute;left:${(rng() * WORLD_W) | 0}px;top:${(120 + rng() * 840) | 0}px;width:2px;height:${h | 0}px;background:rgba(250,250,250,0.05)`;
+      fore.appendChild(el);
+    }
+  })();
+
+  /* ---------- Measure bars ---------- */
+  const barVals = [0.42, 0.6, 0.5, 0.78, 0.66, 1.0];
+  (function buildBars() {
+    const bars = $("#bars");
+    for (let i = 0; i < 6; i++) {
+      const b = document.createElement("div");
+      b.className = "bar" + (i === 5 ? " hot" : "");
+      b.setAttribute("data-layout-allow-overflow", "");
+      b.style.height = barVals[i] * 340 + "px";
+      const lab = document.createElement("div");
+      lab.className = "blabel";
+      lab.textContent = ("0" + (i + 1)).slice(-2);
+      b.appendChild(lab);
+      bars.appendChild(b);
+    }
+  })();
+
+  /* ---------- Mount track chips ---------- */
+  const mountChips = [];
+  (function buildMountChips() {
+    const region = $("#r-mount");
+    const data = [
+      { name: "audio", meta: "data-track-index 0", x: 470, y: 470 },
+      { name: "video", meta: "data-track-index 1", x: 470, y: 556 },
+      { name: "clip", meta: "data-start 0 · dur 4", x: 470, y: 642, active: true },
+    ];
+    data.forEach((d) => {
+      const c = document.createElement("div");
+      c.className = "track-chip" + (d.active ? " is-active" : "");
+      c.style.left = d.x + "px";
+      c.style.top = d.y + "px";
+      c.innerHTML = `<div class="tc-name">${d.name}</div><div class="tc-meta">${d.meta}</div>`;
+      region.appendChild(c);
+      mountChips.push(c);
+    });
+  })();
+
+  /* ---------- Everywhere: dotted map + arc + pulses ---------- */
+  const pulseData = [
+    { x: 470, y: 300, label: "US-EAST-1", lx: 400, ly: 210 },
+    { x: 900, y: 250, label: "EU-WEST-1", lx: 850, ly: 160 },
+    { x: 1250, y: 430, label: "AP-SOUTH-1", lx: 1180, ly: 344 },
+  ];
+  (function buildMap() {
+    const svg = $("#worldmap");
+    const NS = "http://www.w3.org/2000/svg";
+    const rng = mulberry32(21);
+    // loose dotted landmass field
+    for (let gx = 40; gx < 1720; gx += 26) {
+      for (let gy = 40; gy < 720; gy += 26) {
+        const n = Math.sin(gx * 0.006) * Math.cos(gy * 0.009) + Math.sin(gy * 0.013 + gx * 0.004);
+        if (n > 0.15 && rng() > 0.25) {
+          const c = document.createElementNS(NS, "circle");
+          c.setAttribute("cx", gx + (rng() * 6 - 3));
+          c.setAttribute("cy", gy + (rng() * 6 - 3));
+          c.setAttribute("r", 1.7);
+          c.setAttribute("class", "dot");
+          svg.appendChild(c);
+        }
+      }
+    }
+    // great-circle arc across the map (visual echo of the wire)
+    const arc = document.createElementNS(NS, "path");
+    arc.setAttribute("d", "M 300 470 C 620 120 1080 120 1420 380");
+    arc.setAttribute("fill", "none");
+    arc.setAttribute("stroke", "var(--ink)");
+    arc.setAttribute("stroke-width", "2.5");
+    arc.setAttribute("id", "map-arc");
+    svg.appendChild(arc);
+    // pulses
+    pulseData.forEach((p, i) => {
+      const ring = document.createElementNS(NS, "circle");
+      ring.setAttribute("cx", p.x);
+      ring.setAttribute("cy", p.y);
+      ring.setAttribute("r", 8);
+      ring.setAttribute("class", "pulse-ring");
+      ring.setAttribute("id", "pring-" + i);
+      ring.style.opacity = "0";
+      svg.appendChild(ring);
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", p.x);
+      dot.setAttribute("cy", p.y);
+      dot.setAttribute("r", 6);
+      dot.setAttribute("class", "pulse");
+      dot.setAttribute("id", "pdot-" + i);
+      dot.style.opacity = "0";
+      svg.appendChild(dot);
+      // label chip (HTML for crisp mono type)
+      const lab = document.createElement("div");
+      lab.className = "region-pin mono";
+      lab.id = "pin-" + i;
+      lab.setAttribute("data-layout-allow-overlap", "");
+      lab.style.left = 0 + (p.lx / 1760) * 1760 + "px";
+      lab.style.top = 150 + (p.ly / 760) * 760 + "px";
+      lab.style.opacity = "0";
+      lab.innerHTML = `<span class="rp-dot">●</span> ${p.label}`;
+      $("#r-every").appendChild(lab);
+    });
+    const mapArc = $("#map-arc");
+    const al = mapArc.getTotalLength();
+    mapArc.style.strokeDasharray = al;
+    mapArc.style.strokeDashoffset = al;
+  })();
+
+  /* ---------- Material: keyword plate (word-synced, behind subject) ---------- */
+  // spoken (neutral, real) line — keywords derived from it
+  const MATERIAL_WORDS = ["FRAMES", "BECOME", "FOOTAGE"];
+  const MATERIAL_HOT = new Set([0, 2]);
+  (function buildKw() {
+    const plate = $("#kw-plate");
+    MATERIAL_WORDS.forEach((w, i) => {
+      const el = document.createElement("div");
+      el.className = "kw" + (MATERIAL_HOT.has(i) ? " hot" : "");
+      el.id = "kw-" + i;
+      el.setAttribute("data-layout-allow-overlap", "");
+      el.textContent = w;
+      el.style.position = "absolute";
+      el.style.left = "0";
+      el.style.right = "0";
+      el.style.top = i * 210 + "px";
+      plate.appendChild(el);
+    });
+  })();
+
+  /* ---------- Rhythm beat cards ---------- */
+  const beatCards = [];
+  (function buildBeats() {
+    const region = $("#r-rhythm");
+    const cards = [
+      { k: "lyric", v: "on the grid", x: 220, y: 300, w: 260 },
+      { k: "photo", v: "▦ frame", x: 560, y: 720, w: 210 },
+      { k: "chart", v: "▂▅▇▃", x: 900, y: 300, w: 200 },
+      { k: "lyric", v: "in time", x: 1180, y: 700, w: 220 },
+      { k: "beat", v: "kick", x: 1440, y: 320, w: 180 },
+      { k: "photo", v: "▦ cut", x: 720, y: 470, w: 200 },
+      { k: "chart", v: "peak", x: 1300, y: 500, w: 190 },
+    ];
+    cards.forEach((c, i) => {
+      const el = document.createElement("div");
+      el.className = "beat-card";
+      el.id = "beat-" + i;
+      el.style.left = c.x + "px";
+      el.style.top = c.y + "px";
+      el.style.width = c.w + "px";
+      el.innerHTML = `<div class="bc-k mono">${c.k}</div><div class="bc-v">${c.v}</div>`;
+      region.appendChild(el);
+      beatCards.push(el);
+    });
+  })();
+
+  /* ---------- confetti (seeded mulberry32, seed 42) ---------- */
+  const CONF_N = 90;
+  const confPieces = [];
+  (function buildConfetti() {
+    const wrap = $("#confetti");
+    const rng = mulberry32(42);
+    const cols = ["var(--ink)", "var(--t0)", "var(--t1)", "var(--t2)"];
+    for (let i = 0; i < CONF_N; i++) {
+      const el = document.createElement("div");
+      el.className = "cpiece";
+      el.style.background = cols[(rng() * cols.length) | 0];
+      wrap.appendChild(el);
+      const ang = -Math.PI / 2 + (rng() - 0.5) * 2.4; // fan upward
+      const spd = 520 + rng() * 720;
+      confPieces.push({
+        el,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        spin: (rng() - 0.5) * 900,
+        delay: rng() * 0.12,
+      });
+    }
+  })();
+  const CONF_START = 58.0;
+  const G = 1500;
+  function renderConfetti(t) {
+    if (t < CONF_START - 0.02) {
+      for (const p of confPieces) p.el.style.opacity = "0";
+      return;
+    }
+    const raw = t - CONF_START;
+    // step every 2 frames (30fps) -> stop-motion hold
+    const ts = Math.floor(raw * 15) / 15;
+    for (const p of confPieces) {
+      const lt = ts - p.delay;
+      if (lt < 0) {
+        p.el.style.opacity = "0";
+        continue;
+      }
+      const x = 960 + p.vx * lt;
+      const y = 560 + p.vy * lt + 0.5 * G * lt * lt;
+      const rot = p.spin * lt;
+      p.el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)`;
+      p.el.style.opacity = lt > 1.5 ? Math.max(0, 1 - (lt - 1.5) / 0.5).toFixed(2) : "1";
+    }
+  }
+
+  /* ---------- Depth: deterministic coil (placeholder — swapped to Three.js) ---------- */
+  const dctx = $("#three-layer").getContext("2d");
+  function renderDepth(localT, present) {
+    dctx.clearRect(0, 0, 1760, 1080);
+    if (!present) return;
+    const cx = 880,
+      cy = 540;
+    const turns = 3.2;
+    const N = 260;
+    dctx.lineWidth = 3;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2 * turns + localT * 0.5;
+      const rad = 40 + i * 0.9;
+      const x = cx + Math.cos(a) * rad;
+      const y = cy - 200 + i * 1.4 + Math.sin(a) * rad * 0.32;
+      const shade = 0.25 + 0.55 * (0.5 + 0.5 * Math.cos(a));
+      if (i === 0) {
+        dctx.beginPath();
+        dctx.moveTo(x, y);
+      } else {
+        dctx.lineTo(x, y);
+      }
+      if (i % 8 === 0) {
+        dctx.strokeStyle = `rgba(250,250,250,${(shade * 0.5).toFixed(3)})`;
+        dctx.stroke();
+        dctx.beginPath();
+        dctx.moveTo(x, y);
+      }
+    }
+    dctx.strokeStyle = "rgba(250,250,250,0.28)";
+    dctx.stroke();
+  }
+
+  /* ---------- move chip into the mid plane so it shares the wire transform ---------- */
+  const chip = $("#chip");
+  $("#plane-mid").appendChild(chip);
+  chip.style.zIndex = "40";
+
+  const chipKfs = [
+    [0, 1000], [4.6, 1000], [6.2, 1320], [9.6, 2700], [13.0, 2760],
+    [16.0, 4400], [20.0, 4460], [22.6, 6100], [27.0, 6180], [31.0, 8000],
+    [37.5, 8080], [40.5, 9900], [44.0, 9970], [45.8, 11600], [51.0, 11680],
+    [52.6, 13300], [55.5, 13320], [57.6, 14980], [60, 14980],
+  ];
+  function renderChip(t) {
+    const x = piecewise(chipKfs, t);
+    const p = wireEl.getPointAtLength(lenAtX(x));
+    chip.style.transform = `translate(${(p.x - 75).toFixed(1)}px, ${(p.y - 32).toFixed(1)}px)`;
+  }
+
+  /* ---------- Type region: per-character code typing ---------- */
+  const codeEl = $("#code");
+  const CODE_HTML =
+    '<span class="tag">&lt;div class="clip" data-start="0" data-duration="4"&gt;</span>\n' +
+    '<span class="fn">gsap.timeline({ paused: true });</span>';
+  const CODE_PLAIN = codeEl ? '<div class="clip" data-start="0" data-duration="4">\ngsap.timeline({ paused: true });' : "";
+  // build a plain-text reference for char counting
+  const plainRef = '<div class="clip" data-start="0" data-duration="4">\ngsap.timeline({ paused: true });';
+  function renderType(t) {
+    // type from t=0.4 to t=3.8
+    const a = Math.max(0, Math.min(1, (t - 0.4) / 3.4));
+    const n = Math.floor(a * plainRef.length);
+    const shown = plainRef.slice(0, n);
+    // simple syntax coloring: attributes in mint
+    let html = shown
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/(data-[a-z]+="[^"]*")/g, '<span class="attr">$1</span>');
+    const cursor = a < 1 ? '<span class="cursor"></span>' : "";
+    codeEl.innerHTML = html + cursor;
+  }
+
+  /* =======================================================================
+     MASTER TIMELINE
+     ======================================================================= */
+  const tl = gsap.timeline({ paused: true });
+
+  // one clock tween drives everything time-derived (seek-safe at every frame)
+  const clock = { t: 0 };
+  const playhead = $("#playhead");
+  const timecode = $("#timecode");
+  tl.to(clock, {
+    t: 60,
+    duration: 60,
+    ease: "none",
+    onUpdate: () => {
+      const t = clock.t;
+      playhead.style.left = ((t / 60) * 1920).toFixed(2) + "px";
+      const ss = Math.min(59, Math.floor(t));
+      timecode.textContent = "00:" + ("0" + ss).slice(-2) + " / 01:00";
+      renderChip(t);
+      renderConfetti(t);
+      const inDepth = t >= 51.5 && t <= 56.2;
+      renderDepth(t - 53, inDepth);
+      renderType(t);
+    },
+  }, 0);
+
+  /* ----- camera dolly (parallax planes share keyframe times) ----- */
+  const mid = $("#plane-mid");
+  const back = $("#plane-back");
+  const fore = $("#plane-fore");
+  const dolly = $("#dolly");
+  const K_BACK = 0.62,
+    K_FORE = 1.5;
+  function screenX(cx) {
+    return 960 - cx;
+  }
+  // initial framing on Type
+  gsap.set(mid, { x: screenX(1000) });
+  gsap.set(back, { x: screenX(1000) * K_BACK });
+  gsap.set(fore, { x: screenX(1000) * K_FORE });
+
+  function sweep(atT, dur, cx, ease) {
+    const mx = screenX(cx);
+    tl.to(mid, { x: mx, duration: dur, ease: ease || "power2.inOut" }, atT);
+    tl.to(back, { x: mx * K_BACK, duration: dur, ease: ease || "power2.inOut" }, atT);
+    tl.to(fore, { x: mx * K_FORE, duration: dur, ease: ease || "power2.inOut" }, atT);
+  }
+  sweep(6.2, 3.4, 2700); // -> Mount
+  sweep(13.0, 3.0, 4400); // -> Measure
+  sweep(20.0, 2.6, 6100); // -> Everywhere
+  sweep(27.0, 4.0, 8000); // -> Material
+  sweep(37.5, 3.0, 9900); // -> Surface (through iris)
+  sweep(44.0, 1.8, 11400); // -> Rhythm (enter)
+  sweep(45.8, 5.2, 11950, "none"); // drift across Rhythm (keeps moving)
+  sweep(51.0, 1.6, 13300); // -> Depth
+  sweep(55.5, 2.1, 15000, "power3.out"); // -> Render, settle
+
+  // descent during Everywhere (ground falls away) + push-ins
+  tl.to(dolly, { y: 70, duration: 2.4, ease: "power2.inOut" }, 21.5);
+  tl.to(dolly, { y: 0, duration: 2.0, ease: "power2.inOut" }, 25.5);
+  // Depth descent following the wire down then back up
+  tl.to(dolly, { y: 120, duration: 1.6, ease: "power2.inOut" }, 52.6);
+  tl.to(dolly, { y: 0, duration: 1.6, ease: "power2.inOut" }, 54.4);
+  // push-ins
+  gsap.set(dolly, { transformOrigin: "960px 540px" });
+  tl.to(dolly, { scale: 1.06, duration: 4.0, ease: "power1.inOut" }, 30.5);
+  tl.to(dolly, { scale: 1.0, duration: 2.5, ease: "power1.inOut" }, 37.0);
+  tl.to(dolly, { scale: 1.05, duration: 2.0, ease: "power2.out" }, 56.0);
+
+  /* ----- wire draws in during Type (baseline grows into timeline) ----- */
+  tl.to([wireEl, wireGlow], { strokeDashoffset: 0, duration: 3.6, ease: "power1.inOut" }, 3.4);
+
+  /* ----- persistent chip fades onto the wire ----- */
+  tl.fromTo(chip, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 4.5);
+
+  /* ================= REGION 1 — TYPE ================= */
+  tl.fromTo("#type-display", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.6)" }, 4.2);
+
+  /* ================= REGION 2 — MOUNT ================= */
+  tl.fromTo("#mount-eyebrow", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 9.4);
+  tl.fromTo("#mount-title", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, 9.6);
+  tl.fromTo(["#lane-a", "#lane-b"], { opacity: 0 }, { opacity: 0.55, duration: 0.4 }, 9.3);
+  mountChips.forEach((c, i) => {
+    tl.fromTo(c, { opacity: 0, x: 90 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 9.9 + i * 0.4);
+  });
+
+  /* ================= REGION 3 — MEASURE ================= */
+  tl.fromTo("#measure-eyebrow", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5, ease: "power2.out" }, 15.6);
+  $$("#bars .bar").forEach((b, i) => {
+    tl.fromTo(b, { scaleY: 0 }, { scaleY: 1, duration: 0.55, ease: "power3.out" }, 16.0 + i * 0.16);
+  });
+  const hero = { n: 0 };
+  const heroEl = $("#hero-count");
+  tl.to(hero, {
+    n: 50,
+    duration: 1.8,
+    ease: "power2.out",
+    onUpdate: () => {
+      heroEl.textContent = Math.round(hero.n);
+    },
+    onComplete: () => {
+      heroEl.textContent = "50+";
+    },
+  }, 16.4);
+  // spring bump on completion
+  tl.fromTo(heroEl, { scale: 1 }, { scale: 1.12, duration: 0.16, ease: "back.out(3)" }, 18.2);
+  tl.to(heroEl, { scale: 1, duration: 0.4, ease: "power2.out" }, 18.36);
+  tl.fromTo("#measure-sub-1", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 18.6);
+  tl.fromTo("#measure-sub-2", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }, 18.9);
+
+  /* ================= REGION 4 — EVERYWHERE ================= */
+  tl.fromTo("#every-eyebrow", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5 }, 22.2);
+  tl.to("#map-arc", { strokeDashoffset: 0, duration: 1.6, ease: "power1.inOut" }, 22.0);
+  pulseData.forEach((p, i) => {
+    const at = 23.0 + i * 0.5;
+    tl.fromTo("#pdot-" + i, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)", transformOrigin: "center" }, at);
+    tl.fromTo("#pring-" + i, { opacity: 0.7, attr: { r: 6 } }, { opacity: 0, attr: { r: 26 }, duration: 0.9, ease: "power2.out" }, at);
+    tl.fromTo("#pin-" + i, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, at + 0.15);
+  });
+  tl.fromTo("#map-kicker", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 24.6);
+
+  /* ================= REGION 5 — MATERIAL ================= */
+  tl.fromTo("#material-eyebrow", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5 }, 31.4);
+  // 1) background peels away along travel BEFORE they speak
+  tl.to("#matte-bg", { x: 680, opacity: 0, duration: 0.9, ease: "power2.in" }, 32.2);
+  tl.fromTo("#lower-third", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, 32.6);
+  // 2) THEN keywords slam in word-synced behind the cutout
+  const kwAt = [33.4, 34.6, 35.8];
+  MATERIAL_WORDS.forEach((w, i) => {
+    tl.fromTo("#kw-" + i, { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.24, ease: "back.out(2.2)" }, kwAt[i]);
+    tl.to("#kw-" + i, { opacity: 0, duration: 0.3 }, kwAt[i] + 1.2);
+  });
+
+  /* ================= REGION 6 — SURFACE (iris seam) ================= */
+  // iris ring + mural reveal as the camera pushes through, 37.5 -> 40.5
+  const iris = { r: 0 };
+  const irisRing = $("#iris-ring");
+  const mural = $("#mural");
+  tl.set(mural, { opacity: 1 }, 37.6);
+  tl.fromTo(irisRing, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 37.6);
+  tl.to(iris, {
+    r: 1300,
+    duration: 2.6,
+    ease: "power2.inOut",
+    onUpdate: () => {
+      mural.style.setProperty("--iris", iris.r.toFixed(1));
+      const d = iris.r * 2;
+      irisRing.style.width = d + "px";
+      irisRing.style.height = d + "px";
+      irisRing.style.marginLeft = -iris.r + "px";
+      irisRing.style.marginTop = -iris.r + "px";
+    },
+  }, 37.6);
+  tl.to(irisRing, { opacity: 0, duration: 0.5 }, 40.2);
+  // inspectors settle in
+  tl.fromTo("#ins-1", { opacity: 0, y: 30, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6, ease: "power2.out" }, 40.8);
+  tl.fromTo("#ins-2", { opacity: 0, y: 30, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6, ease: "power2.out" }, 41.2);
+  tl.fromTo("#ins-3", { opacity: 0, y: 30, filter: "blur(10px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6, ease: "power2.out" }, 41.6);
+  // mural exits by fading (never slides)
+  tl.to(mural, { opacity: 0, duration: 1.0, ease: "power1.in" }, 43.6);
+
+  /* ================= REGION 7 — RHYTHM ================= */
+  tl.fromTo("#rhythm-eyebrow", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.5 }, 45.6);
+  // beat grid — provisional even grid until real `hyperframes beats` lands
+  const beatTimes = [46.2, 46.9, 47.6, 48.3, 49.0, 49.7, 50.4]; // >= 6 hits
+  beatCards.forEach((c, i) => {
+    const at = beatTimes[i % beatTimes.length];
+    tl.fromTo(c, { opacity: 0, scale: 0.7, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: 0.18, ease: "back.out(2.4)" }, at);
+    tl.to(c, { scale: 1.0, duration: 0.12 }, at + 0.18);
+  });
+  // waveform pulse on beats
+  beatTimes.forEach((bt) => {
+    tl.fromTo(wireEl, { strokeWidth: 3 }, { strokeWidth: 5, duration: 0.08, ease: "power2.out" }, bt);
+    tl.to(wireEl, { strokeWidth: 3, duration: 0.22, ease: "power2.out" }, bt + 0.08);
+  });
+
+  /* ================= REGION 8 — DEPTH ================= */
+  tl.fromTo("#axis-x", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4 }, 53.4);
+  tl.fromTo("#axis-y", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4 }, 53.7);
+  tl.fromTo("#axis-z", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.4 }, 54.0);
+  tl.to(["#axis-x", "#axis-y", "#axis-z"], { opacity: 0, duration: 0.5 }, 55.6);
+
+  /* ================= REGION 9 — RENDER ================= */
+  // the protagonist chip snaps into the render slot (callback)
+  tl.fromTo("#render-chip", { opacity: 0.4, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power2.out" }, 57.2);
+  tl.fromTo("#render-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5 }, 58.2);
+  // CTA lockup (the one mint->cyan gradient) + stamp
+  tl.fromTo("#cta", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 58.4);
+  tl.fromTo("#cta-title", { scale: 0.92, y: 20 }, { scale: 1, y: 0, duration: 0.5, ease: "back.out(1.7)" }, 58.5);
+  tl.fromTo("#cta-install", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 59.0);
+
+  tl.seek(0);
+  window.__timelines["main"] = tl;
+})();
+
+    </script>
+  </body>
+</html>
