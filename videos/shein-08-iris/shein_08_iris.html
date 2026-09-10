@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHOT 08 — Iris — THEY GUESS. IT DOESN'T.</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      /* ============================================================
+         SHOT 08 — Mode B / Path 1 — "they guess, it doesn't"
+         GRAPHIC editorial iris. Flat vector idiom (Vox-style).
+         1920x1080 @ 24fps · 3.25s · 78 frames exactly.
+         Palette (all inlined):
+           ground        #0B0B0C
+           warm-bone     #EDE8DD
+           oxblood GLOW  #7A160E  (radial light ONLY — never a fill)
+           graphite      #3A3A3E  (die + iris ring linework)
+           near-black    #050506  (pupil disc)
+         NO metal / bevel / specular / 3D. Depth = flat layering + soft shadow.
+         ============================================================ */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0B0B0C;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0B0B0C; /* flat near-black ground */
+      }
+
+      /* ---------- z5 · deterministic dust specks on near-black ---------- */
+      #z5-dust {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .speck {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        border-radius: 50%;
+        background: #EDE8DD;
+        will-change: transform, opacity;
+      }
+
+      /* ---------- z3 · the die — flat graphic icon, lower-left ---------- */
+      #z3-die {
+        position: absolute;
+        left: 236px;
+        top: 742px;
+        width: 220px;
+        height: 220px;
+        z-index: 2;
+      }
+      .die-shadow {
+        position: absolute;
+        left: 20px;
+        top: 176px;
+        width: 168px;
+        height: 34px;
+        border-radius: 50%;
+        /* flat soft drop shadow so the die reads as resting */
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 72%);
+        opacity: 0;
+        will-change: opacity;
+      }
+      .die-face {
+        position: absolute;
+        left: 34px;
+        top: 20px;
+        width: 150px;
+        height: 150px;
+        border-radius: 22px;
+        background: #3A3A3E; /* graphite, solid flat fill */
+        will-change: transform, opacity;
+        opacity: 0;
+      }
+      .die-face svg {
+        display: block;
+      }
+
+      /* ---------- zWrap · invisible parent (iris centre origin) ----------
+         Holds z1 (rings + pupil) and z2 (glow). ALL scale lives HERE.
+         Centre of the 1080-box = iris centre = screen (1240, 540). */
+      #zWrap {
+        position: absolute;
+        left: 700px;
+        top: 0px;
+        width: 1080px;
+        height: 1080px;
+        z-index: 3;
+        transform-origin: 50% 50%; /* iris centre */
+        will-change: transform;
+      }
+
+      /* z1 · iris = flat concentric vector rings + solid pupil.
+         Animates OPACITY only (per-ring stagger); no transform. */
+      #z1-iris {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+      #z1-iris .ring {
+        fill: none;
+        stroke: #3A3A3E; /* graphite linework */
+      }
+      #z1-iris .pupil {
+        fill: #050506; /* solid near-black pupil disc */
+      }
+
+      /* z2 · oxblood GLOW — radial light behind the pupil.
+         Owns CLIP-PATH only (revealed 0->full from centre). No transform.
+         screen blend so the flat rings/pupil light up; blur = authored bloom. */
+      #z2-glow {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(122, 22, 14, 0.95) 0%,
+          rgba(122, 22, 14, 0.62) 20%,
+          rgba(122, 22, 14, 0.24) 44%,
+          rgba(122, 22, 14, 0.06) 60%,
+          rgba(122, 22, 14, 0) 70%
+        );
+        mix-blend-mode: screen;
+        filter: blur(7px); /* soft bloom on the oxblood glow ONLY */
+        clip-path: circle(0px at 50% 50%);
+        opacity: 0.86;
+        will-change: clip-path, opacity;
+      }
+
+      /* ---------- z4 · warm-bone caption, lower-centre ---------- */
+      #z4-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 916px;
+        text-align: center;
+        z-index: 4;
+        opacity: 0;
+        will-change: opacity;
+      }
+      #z4-caption .line {
+        display: inline-block;
+        color: #EDE8DD; /* warm-bone, high contrast */
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        font-weight: 700;
+        font-stretch: condensed;
+        font-size: 52px;
+        line-height: 1;
+        letter-spacing: 0.26em; /* static tracking — never animated */
+        text-transform: uppercase;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+      }
+
+      /* ---------- z6 · grade overlay (vignette + grain + faint CA) ---------- */
+      #z6-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        pointer-events: none;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        /* ~18% edge darkening */
+        background: radial-gradient(78% 72% at 50% 48%, rgba(0, 0, 0, 0) 52%, rgba(0, 0, 0, 0.30) 100%);
+      }
+      /* faint edge chromatic aberration — kept extremely subtle (no neon/rainbow) */
+      #ca {
+        position: absolute;
+        inset: 0;
+        box-shadow:
+          inset 2px 0 0 rgba(255, 40, 70, 0.035),
+          inset -2px 0 0 rgba(40, 170, 255, 0.035);
+      }
+      #grain {
+        position: absolute;
+        inset: -6%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        mix-blend-mode: overlay;
+        opacity: 0.06; /* ~6% film grain */
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-start="0"
+      data-duration="3.25"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.25" data-track-index="1">
+        <!-- z5 · dust (populated deterministically by script) -->
+        <div id="z5-dust" data-layout-allow-overflow></div>
+
+        <!-- z3 · die (flat graphic icon, subordinate) -->
+        <div id="z3-die" data-layout-allow-overflow>
+          <div class="die-shadow"></div>
+          <div class="die-face">
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              <!-- five flat pips (near-black) on the graphite face -->
+              <circle cx="38" cy="38" r="11" fill="#0B0B0C" />
+              <circle cx="112" cy="38" r="11" fill="#0B0B0C" />
+              <circle cx="75" cy="75" r="11" fill="#0B0B0C" />
+              <circle cx="38" cy="112" r="11" fill="#0B0B0C" />
+              <circle cx="112" cy="112" r="11" fill="#0B0B0C" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- zWrap · iris cluster (z1 rings/pupil + z2 glow) -->
+        <div id="zWrap" data-layout-allow-overflow>
+          <svg id="z1-iris" width="1080" height="1080" viewBox="0 0 1080 1080">
+            <!-- concentric graphite rings, outer -> inner (stagger order) -->
+            <circle class="ring" data-r="0" cx="540" cy="540" r="500" stroke-width="2.5" />
+            <circle class="ring" data-r="1" cx="540" cy="540" r="388" stroke-width="3" />
+            <circle class="ring" data-r="2" cx="540" cy="540" r="280" stroke-width="3.5" />
+            <circle class="ring" data-r="3" cx="540" cy="540" r="186" stroke-width="4" />
+            <!-- solid near-black pupil disc at centre -->
+            <circle class="pupil" cx="540" cy="540" r="118" />
+          </svg>
+          <div id="z2-glow" data-layout-allow-overflow></div>
+        </div>
+
+        <!-- z4 · caption -->
+        <div id="z4-caption">
+          <span class="line">THEY GUESS.&nbsp;&nbsp;IT DOESN'T.</span>
+        </div>
+
+        <!-- z6 · grade overlay -->
+        <div id="z6-overlay" data-layout-allow-overflow>
+          <div id="grain" data-layout-allow-overflow></div>
+          <div id="vignette"></div>
+          <div id="ca"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- frame helper (24fps) ----
+      const F = 1 / 24;
+      const fr = (n) => n * F;
+
+      // ---- deterministic PRNG (mulberry32) — no Math.random / Date.now ----
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x5e1808); // fixed seed => deterministic dust
+
+      // ---- build dust specks (z5) ----
+      const dustEl = document.querySelector("#z5-dust");
+      const specks = [];
+      const SPECK_COUNT = 52;
+      for (let i = 0; i < SPECK_COUNT; i++) {
+        const s = document.createElement("div");
+        s.className = "speck";
+        const x = rand() * 1920;
+        const y = rand() * 1080;
+        const scale = 0.5 + rand() * 1.6;
+        const baseOp = 0.06 + rand() * 0.20;
+        s.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        s.style.opacity = String(baseOp);
+        dustEl.appendChild(s);
+        specks.push({ el: s, x, y, scale, baseOp, seed: rand() });
+      }
+
+      // ---- master timeline (paused; hyperframes seeks it per frame) ----
+      const tl = gsap.timeline({ paused: true });
+
+      /* ============================================================
+         INITIAL STATES
+         ============================================================ */
+      gsap.set("#zWrap", { scale: 1.0 });
+      gsap.set(".die-face", { y: -30, rotation: 6, opacity: 0, transformOrigin: "50% 50%" });
+      gsap.set(".die-shadow", { opacity: 0 });
+      gsap.set("#z1-iris .ring", { opacity: 0.18 }); // dim outline, holds during ESTABLISH
+      gsap.set("#z3-die", { opacity: 1 });
+      gsap.set("#z4-caption", { opacity: 0 });
+
+      // z2 glow: clip-path driven via a proxy so the light "opens" from centre.
+      const glowEl = document.querySelector("#z2-glow");
+      const clip = { r: 0 };
+      const applyClip = () => {
+        glowEl.style.clipPath = `circle(${clip.r}px at 50% 50%)`;
+      };
+      applyClip();
+      gsap.set(glowEl, { opacity: 0.0 }); // hidden until the aperture begins
+
+      /* ============================================================
+         1 · ESTABLISH  0-500ms  (f0-12)
+         ============================================================ */
+      // die drops in + rotates back to rest (back.out)
+      tl.to(".die-face", { y: 0, rotation: 0, duration: fr(12), ease: "back.out(1.7)" }, 0);
+      tl.to(".die-face", { opacity: 1, duration: fr(7), ease: "power2.out" }, 0);
+      // die shadow fades to full power
+      tl.to(".die-shadow", { opacity: 1, duration: fr(12), ease: "power2.out" }, 0);
+      // zWrap ambient breath 1.000 -> 1.008
+      tl.to("#zWrap", { scale: 1.008, duration: fr(12), ease: "sine.inOut" }, 0);
+      // rings HOLD (no tween) — they sit at 0.18 through the establish beat.
+
+      /* ============================================================
+         2 · APERTURE OPEN  500-1450ms  (f12-35)  — matte reveal
+         ============================================================ */
+      // oxblood glow becomes visible and its clip circle opens 0 -> full
+      tl.set(glowEl, { opacity: 0.86 }, fr(12));
+      tl.to(
+        clip,
+        { r: 780, duration: fr(23), ease: "power4.out", onUpdate: applyClip },
+        fr(12)
+      );
+      // concentric rings fade up their opacity, tiny stagger outer -> inner
+      tl.to(
+        "#z1-iris .ring",
+        { opacity: 1.0, duration: fr(12), ease: "power2.out", stagger: fr(2.6) },
+        fr(12)
+      );
+
+      /* ============================================================
+         3 · LAND  1450-1600ms  (f35-38)  — SYNC FRAME 35
+         ============================================================ */
+      // glow opacity snaps to full
+      tl.to(glowEl, { opacity: 1.0, duration: fr(1), ease: "power2.out" }, fr(35));
+      // zWrap push-through: one impulse 1.008 -> 1.11 -> 1.008 (back.out on return)
+      tl.to("#zWrap", { scale: 1.11, duration: fr(1.5), ease: "power3.out" }, fr(35));
+      tl.to("#zWrap", { scale: 1.008, duration: fr(1.5), ease: "back.out(2.2)" }, fr(36.5));
+      // die dims as the eye dominates
+      tl.to("#z3-die", { opacity: 0.5, duration: fr(3), ease: "power2.out" }, fr(35));
+
+      /* ============================================================
+         4 · CAPTION  1600-1750ms  (f38-42)
+         (>=4 simultaneous across f35-42: glow-snap + push-through +
+          ring-stagger tail + die-dim + caption-in)
+         ============================================================ */
+      tl.to("#z4-caption", { opacity: 1.0, duration: fr(4), ease: "power2.out" }, fr(38));
+
+      /* ============================================================
+         5 · SUSTAINED  1750-2950ms  (f42-71)
+         ============================================================ */
+      // slow zWrap drift 1.008 -> 1.05
+      tl.to("#zWrap", { scale: 1.05, duration: fr(29), ease: "sine.inOut" }, fr(42));
+      // oxblood glow breathes +/-6% opacity
+      tl.to(glowEl, { opacity: 0.94, duration: fr(14.5), ease: "sine.inOut", yoyo: true, repeat: 1 }, fr(42));
+      // die holds dim (no tween).
+
+      /* ============================================================
+         6 · EXIT  2950-3250ms  (f71-78)  — HOLD, crisp & cuttable. NO fade.
+         zWrap holds 1.05; dust + grain stay live via the global loops below.
+         ============================================================ */
+
+      /* ============================================================
+         GLOBAL · dust drift (sine.inOut) + moving grain — full coverage
+         ============================================================ */
+      specks.forEach((sp) => {
+        const ampX = 6 + sp.seed * 16;
+        const ampY = 5 + (1 - sp.seed) * 14;
+        const dir = sp.seed > 0.5 ? 1 : -1;
+        tl.to(
+          sp,
+          {
+            x: sp.x + dir * ampX,
+            y: sp.y - ampY,
+            duration: fr(78),
+            ease: "sine.inOut",
+            onUpdate: () => {
+              sp.el.style.transform = `translate(${sp.x}px, ${sp.y}px) scale(${sp.scale})`;
+            },
+          },
+          0
+        );
+        // gentle twinkle in opacity, deterministic
+        tl.to(
+          sp.el,
+          {
+            opacity: sp.baseOp * (0.55 + sp.seed * 0.5),
+            duration: fr(26 + sp.seed * 20),
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: 2,
+          },
+          0
+        );
+      });
+
+      // moving grain (transform-only shifts across the whole clip)
+      tl.to("#grain", { x: 12, duration: fr(26), ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
+      tl.to("#grain", { y: -10, duration: fr(19), ease: "sine.inOut", yoyo: true, repeat: 3 }, 0);
+
+      // register for the renderer (id must match data-composition-id)
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
