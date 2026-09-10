@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>You Just Made This — HyperFrames</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      body {
+        font-family:
+          "SF Pro Display", "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+
+      /* ── Ambient field behind the terminal (beats 1–2) ─────────────── */
+      #bg-field {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(1200px 720px at 50% 42%, #101826 0%, #0a0e16 52%, #05070b 100%);
+      }
+      #bg-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(88, 166, 255, 0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(88, 166, 255, 0.045) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(1100px 660px at 50% 44%, #000 0%, transparent 78%);
+      }
+      #bg-glow {
+        position: absolute;
+        left: 50%;
+        top: 46%;
+        width: 1300px;
+        height: 820px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(56, 189, 248, 0.16) 0%,
+          rgba(56, 189, 248, 0) 70%
+        );
+      }
+
+      /* ── macOS terminal window ─────────────────────────────────────── */
+      .term-shell {
+        position: absolute;
+        left: 370px;
+        top: 200px;
+        width: 1180px;
+        height: 680px;
+      }
+      .term-face {
+        position: absolute;
+        inset: 0;
+        background: #16181d;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        box-shadow:
+          0 60px 140px rgba(0, 0, 0, 0.65),
+          0 2px 0 rgba(255, 255, 255, 0.05) inset;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .term-bar {
+        height: 62px;
+        flex: 0 0 62px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 0 26px;
+        background: linear-gradient(#2a2d34, #202329);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+      }
+      .term-dots {
+        display: flex;
+        gap: 12px;
+      }
+      .term-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+      }
+      .term-dot.r {
+        background: #ff5f57;
+      }
+      .term-dot.y {
+        background: #febc2e;
+      }
+      .term-dot.g {
+        background: #28c840;
+      }
+      .term-title {
+        flex: 1;
+        text-align: center;
+        margin-right: 44px; /* balance the dots */
+        font-size: 20px;
+        font-weight: 500;
+        color: #9aa3b0;
+        letter-spacing: 0.3px;
+        font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+      }
+      .term-body {
+        flex: 1 1 auto;
+        padding: 40px 46px;
+        font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+        font-size: 38px;
+        line-height: 1.5;
+        text-align: left; /* the injected .clip scene CSS centres text; override it */
+      }
+      .term-line {
+        position: relative;
+        white-space: nowrap; /* single line; do NOT use `pre` — it preserves the source indentation */
+        display: block;
+        text-align: left;
+      }
+      .term-prompt {
+        color: #28c840;
+        font-weight: 600;
+      }
+      .term-prompt .sym {
+        color: #58a6ff;
+      }
+      .term-cmd {
+        color: #e6edf3;
+        white-space: pre;
+      }
+      .term-cmd .npx {
+        color: #7ee787;
+      }
+      .term-cmd .ch {
+        display: inline-block;
+        white-space: pre;
+      }
+      .caret {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 6px;
+        height: 42px;
+        margin-top: 8px;
+        background: #e6edf3;
+        border-radius: 2px;
+        box-shadow: 0 0 10px rgba(230, 237, 243, 0.55);
+      }
+      /* static caret used inside the flying shard replicas */
+      .caret-static {
+        display: inline-block;
+        width: 6px;
+        height: 42px;
+        margin-left: 4px;
+        transform: translateY(8px);
+        background: #e6edf3;
+        border-radius: 2px;
+        box-shadow: 0 0 10px rgba(230, 237, 243, 0.55);
+        vertical-align: top;
+      }
+
+      /* ── Shatter layer (adapted vfx-shatter Voronoi, DOM + clip-path) ─ */
+      #shatter {
+        position: absolute;
+        left: 370px;
+        top: 200px;
+        width: 1180px;
+        height: 680px;
+      }
+      .shard {
+        position: absolute;
+        inset: 0;
+        will-change: transform, opacity;
+        backface-visibility: hidden;
+      }
+      .shard-face {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* impact flash at the moment of the shatter */
+      #impact {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          46% 42% at 50% 44%,
+          rgba(220, 240, 255, 0.9) 0%,
+          rgba(120, 190, 240, 0.25) 40%,
+          rgba(220, 240, 255, 0) 72%
+        );
+        opacity: 0;
+        mix-blend-mode: screen;
+      }
+
+      /* ── Beat 3: kinetic text on black ─────────────────────────────── */
+      #kinetic {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 26px;
+        opacity: 0;
+      }
+      .kline {
+        display: flex;
+        gap: 52px;
+        white-space: nowrap;
+      }
+      .kword {
+        display: inline-block;
+        color: #fff;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        line-height: 0.92;
+        will-change: transform, opacity, filter;
+      }
+      #kline1 .kword {
+        font-size: 138px;
+      }
+      #kline2 .kword {
+        font-size: 150px;
+      }
+      #kline2 {
+        text-shadow:
+          0 0 42px rgba(56, 189, 248, 0.35),
+          0 0 90px rgba(56, 189, 248, 0.18);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="8" data-track-index="1">
+        <div id="bg-field" data-layout-ignore></div>
+        <div id="bg-grid" data-layout-ignore></div>
+        <div id="bg-glow" data-layout-ignore></div>
+
+        <!-- Live terminal (beat 1) -->
+        <div class="term-shell" id="term" data-layout-allow-overflow>
+          <div class="term-face">
+            <div class="term-bar">
+              <div class="term-dots">
+                <span class="term-dot r"></span>
+                <span class="term-dot y"></span>
+                <span class="term-dot g"></span>
+              </div>
+              <div class="term-title">zsh — hyperframes</div>
+            </div>
+            <div class="term-body">
+              <div class="term-line">
+                <span class="term-prompt">~ <span class="sym">%</span> </span><span
+                  class="term-cmd"
+                  id="cmd"
+                ></span><span class="caret" id="caret"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shatter fragments (beat 2) — filled in by script -->
+        <div id="shatter" data-layout-ignore data-layout-allow-overflow></div>
+
+        <div id="impact" data-layout-ignore></div>
+
+        <!-- Kinetic text (beat 3) -->
+        <div id="kinetic" data-layout-allow-overflow>
+          <div class="kline" id="kline1">
+            <span class="kword">YOU</span>
+            <span class="kword">JUST</span>
+            <span class="kword">MADE</span>
+            <span class="kword">THIS</span>
+          </div>
+          <div class="kline" id="kline2">
+            <span class="kword">WITH</span>
+            <span class="kword">HYPERFRAMES.</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ── Beat timing (seconds) ───────────────────────────────────────
+      var CMD = "npx skills add heygen-com/hyperframes";
+      var TYPE_START = 0.5;
+      var PER = 0.06; // seconds per character
+      var TYPE_END = TYPE_START + CMD.length * PER;
+      var SHATTER = 4.0;
+      var TEXT_IN = 4.85;
+
+      // Terminal box (matches .term-shell / #shatter CSS)
+      var BOX = { x: 370, y: 200, w: 1180, h: 680 };
+
+      // ── Build the command as per-character spans (opacity-revealed) ──
+      var cmdEl = document.getElementById("cmd");
+      var chars = [];
+      for (var i = 0; i < CMD.length; i++) {
+        var span = document.createElement("span");
+        span.className = "ch";
+        if (i < 3) span.classList.add("npx"); // colour the `npx` binary
+        span.textContent = CMD[i];
+        cmdEl.appendChild(span);
+        chars.push(span);
+      }
+
+      // ── Seeded PRNG (mulberry32, seed 42) — adapted from vfx-shatter ─
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      var rng = mulberry32(42);
+
+      // ── Seed points, denser toward the impact centre ────────────────
+      var W = BOX.w;
+      var H = BOX.h;
+      var SHARD_COUNT = 46;
+      var seeds = [];
+      for (var s = 0; s < SHARD_COUNT; s++) {
+        var sx, sy;
+        if (s < SHARD_COUNT * 0.4) {
+          var a = rng() * Math.PI * 2;
+          var rad = rng() * 0.32;
+          sx = W * (0.5 + Math.cos(a) * rad);
+          sy = H * (0.5 + Math.sin(a) * rad);
+        } else {
+          sx = rng() * W;
+          sy = rng() * H;
+        }
+        seeds.push({ x: sx, y: sy });
+      }
+
+      // ── Voronoi cells via ray / half-plane intersection (from block) ─
+      function computeShards(seeds) {
+        var shards = [];
+        var ANGLES = 40;
+        for (var i = 0; i < seeds.length; i++) {
+          var cx = seeds[i].x;
+          var cy = seeds[i].y;
+          var verts = [];
+          for (var ai = 0; ai < ANGLES; ai++) {
+            var theta = (ai / ANGLES) * Math.PI * 2;
+            var dx = Math.cos(theta);
+            var dy = Math.sin(theta);
+            var minT = 1e9;
+            for (var j = 0; j < seeds.length; j++) {
+              if (j === i) continue;
+              var mx = (cx + seeds[j].x) * 0.5;
+              var my = (cy + seeds[j].y) * 0.5;
+              var nx = seeds[j].x - cx;
+              var ny = seeds[j].y - cy;
+              var denom = dx * nx + dy * ny;
+              if (denom <= 0.0001) continue;
+              var t = ((mx - cx) * nx + (my - cy) * ny) / denom;
+              if (t > 0.001 && t < minT) minT = t;
+            }
+            if (dx > 0) {
+              var tb = (W - cx) / dx;
+              if (tb > 0 && tb < minT) minT = tb;
+            }
+            if (dx < 0) {
+              var tb2 = -cx / dx;
+              if (tb2 > 0 && tb2 < minT) minT = tb2;
+            }
+            if (dy > 0) {
+              var tb3 = (H - cy) / dy;
+              if (tb3 > 0 && tb3 < minT) minT = tb3;
+            }
+            if (dy < 0) {
+              var tb4 = -cy / dy;
+              if (tb4 > 0 && tb4 < minT) minT = tb4;
+            }
+            if (minT < 1e8) verts.push({ x: cx + dx * minT, y: cy + dy * minT });
+          }
+          if (verts.length < 3) continue;
+          var ctX = 0, ctY = 0;
+          for (var v = 0; v < verts.length; v++) {
+            ctX += verts[v].x;
+            ctY += verts[v].y;
+          }
+          ctX /= verts.length;
+          ctY /= verts.length;
+          verts.sort(function (p, q) {
+            return Math.atan2(p.y - ctY, p.x - ctX) - Math.atan2(q.y - ctY, q.x - ctX);
+          });
+          shards.push({ cx: ctX, cy: ctY, verts: verts });
+        }
+        return shards;
+      }
+      var shardData = computeShards(seeds);
+
+      // ── Build a static replica of the terminal for the shard faces ──
+      // Cloned BEFORE the live chars are hidden, so it shows the fully
+      // typed command; its animated caret is swapped for a static one.
+      var replica = document.getElementById("term").cloneNode(true);
+      replica.removeAttribute("id");
+      var repCaret = replica.querySelector(".caret");
+      if (repCaret) repCaret.parentNode.removeChild(repCaret);
+      var repCmd = replica.querySelector(".term-cmd");
+      var staticCaret = document.createElement("span");
+      staticCaret.className = "caret-static";
+      repCmd.parentNode.insertBefore(staticCaret, repCmd.nextSibling);
+      var replicaHTML = replica.querySelector(".term-face").outerHTML;
+
+      // ── Materialise shards into #shatter ────────────────────────────
+      var shatterEl = document.getElementById("shatter");
+      var shardEls = [];
+      var shardVecs = [];
+      for (var k = 0; k < shardData.length; k++) {
+        var sd = shardData[k];
+        var pts = sd.verts
+          .map(function (p) {
+            return p.x.toFixed(1) + "px " + p.y.toFixed(1) + "px";
+          })
+          .join(", ");
+
+        var shard = document.createElement("div");
+        shard.className = "shard";
+        shard.style.clipPath = "polygon(" + pts + ")";
+        shard.style.webkitClipPath = "polygon(" + pts + ")";
+        shard.style.transformOrigin = sd.cx.toFixed(1) + "px " + sd.cy.toFixed(1) + "px";
+        shard.setAttribute("data-layout-allow-overflow", "");
+
+        var face = document.createElement("div");
+        face.className = "shard-face";
+        face.innerHTML = replicaHTML;
+        shard.appendChild(face);
+        shatterEl.appendChild(shard);
+        shardEls.push(shard);
+
+        // Fly-out vector: outward from the box centre through the centroid.
+        var fx = sd.cx - W * 0.5;
+        var fy = sd.cy - H * 0.5;
+        var len = Math.sqrt(fx * fx + fy * fy) + 0.001;
+        var ox = fx / len;
+        var oy = fy / len;
+        var dist = 520 + rng() * 620;
+        shardVecs.push({
+          x: ox * dist,
+          y: oy * dist * 0.75 - (140 + rng() * 160), // bias upward, gravity added below
+          fall: 520 + rng() * 420,
+          rot: (rng() - 0.5) * 220,
+          rise: 0.10 + (len / (W * 0.6)) * 0.10, // centre shards leave first
+        });
+      }
+
+      // ── Master timeline ─────────────────────────────────────────────
+      var tl = gsap.timeline({ paused: true });
+
+      function build() {
+        // BEAT 1 — terminal appears, then types character by character.
+        gsap.set("#shatter", { opacity: 1 });
+        gsap.set(shardEls, { autoAlpha: 0 });
+        gsap.set("#kinetic", { opacity: 0 });
+        gsap.set("#impact", { opacity: 0 });
+
+        tl.from(
+          "#term",
+          { opacity: 0, scale: 0.965, y: 14, duration: 0.42, ease: "power2.out" },
+          0,
+        );
+
+        // Caret + character reveal (adapted from code-typing's `typing`).
+        var line = document.querySelector(".term-line");
+        var caret = document.getElementById("caret");
+        var base = line.getBoundingClientRect();
+        var cmdRect = cmdEl.getBoundingClientRect();
+
+        gsap.set(chars, { opacity: 0 });
+        gsap.set(caret, {
+          x: cmdRect.left - base.left,
+          y: cmdRect.top - base.top,
+          opacity: 1,
+        });
+
+        for (var c = 0; c < chars.length; c++) {
+          var at = TYPE_START + c * PER;
+          var r = chars[c].getBoundingClientRect();
+          var isWs = CMD[c] === " ";
+          tl.to(chars[c], { opacity: 1, duration: isWs ? 0.01 : 0.11, ease: "power1.out" }, at);
+          // caret glides to just past each character's right edge (a small gap
+          // keeps the bar off the glyphs)
+          tl.to(
+            caret,
+            { x: r.right - base.left + 5, y: r.top - base.top, duration: PER, ease: "none" },
+            at,
+          );
+        }
+
+        // Hold on the blinking cursor until the shatter.
+        tl.to(
+          caret,
+          { opacity: 0, duration: 0.42, ease: "steps(1)", repeat: 2, yoyo: true },
+          TYPE_END + 0.06,
+        );
+
+        // BEAT 2 — the terminal shatters into fragments.
+        // Impact flash + hard cut from the live terminal to the shard field.
+        tl.to("#impact", { opacity: 1, duration: 0.05, ease: "none" }, SHATTER);
+        tl.to("#impact", { opacity: 0, duration: 0.5, ease: "power2.out" }, SHATTER + 0.05);
+        tl.set("#term", { opacity: 0 }, SHATTER);
+        tl.set(shardEls, { autoAlpha: 1 }, SHATTER);
+
+        // Each fragment flies out (outward + upward), tumbles, falls, fades.
+        for (var m = 0; m < shardEls.length; m++) {
+          var vec = shardVecs[m];
+          var t0 = SHATTER + vec.rise;
+          tl.to(
+            shardEls[m],
+            {
+              x: vec.x,
+              y: vec.y + vec.fall,
+              rotation: vec.rot,
+              duration: 0.9,
+              ease: "power2.in",
+            },
+            t0,
+          );
+          tl.to(
+            shardEls[m],
+            { opacity: 0, duration: 0.55, ease: "power1.in" },
+            t0 + 0.4,
+          );
+        }
+
+        // Ambient field falls to pure black as the glass clears.
+        tl.to(["#bg-field", "#bg-grid", "#bg-glow"], {
+          opacity: 0,
+          duration: 0.55,
+          ease: "power2.in",
+        }, SHATTER + 0.05);
+
+        // BEAT 3 — bold white kinetic text slams in, word by word.
+        tl.to("#kinetic", { opacity: 1, duration: 0.15, ease: "none" }, TEXT_IN);
+
+        var words = document.querySelectorAll("#kinetic .kword");
+        gsap.set(words, { opacity: 0, scale: 1.5, filter: "blur(4px)" });
+
+        var slamAt = [5.05, 5.23, 5.41, 5.59, 6.05, 6.32]; // 4 words + 2 words
+        words.forEach(function (w, wi) {
+          var when = slamAt[wi];
+          // hard, snappy slam: big → locked, fast decel (no lingering scale)
+          tl.to(
+            w,
+            {
+              opacity: 1,
+              scale: 1,
+              filter: "blur(0px)",
+              duration: 0.16,
+              ease: "power4.out",
+            },
+            when,
+          );
+        });
+
+        // Final subtle push-in on the locked phrase, holding to the end.
+        tl.to("#kinetic", { scale: 1.015, duration: 1.2, ease: "power1.out" }, 6.55);
+
+        // Pad to the full composition length.
+        tl.to({}, { duration: 8 }, 0);
+      }
+
+      // Build + register SYNCHRONOUSLY, right here at the end of <body>.
+      // Everything the build touches is parsed above this script, so layout
+      // (getBoundingClientRect for the caret) is available, and registering
+      // now — before the engine binds window.__timelines on DOMContentLoaded —
+      // guarantees the paused timeline is present and populated for every seek
+      // and layout sweep. Only system monospace fonts are used (no async web
+      // font), so glyph metrics are already final.
+      build();
+      window.__timelines["main"] = tl;
+      if (typeof window.__hfForceTimelineRebind === "function") {
+        window.__hfForceTimelineRebind();
+      }
+    </script>
+  </body>
+</html>
