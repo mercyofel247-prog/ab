@@ -7,6 +7,10 @@
     "check": "hyperframes check",
     "render": "hyperframes render -w 4",
     "render:draft": "hyperframes render -w 4 -q draft --resolution 1080p",
+    "cloud": "hyperframes cloud render --fps=30 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=30 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/data-beat-8-8t.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get",
     "publish": "hyperframes publish"
   },
   "devDependencies": {
