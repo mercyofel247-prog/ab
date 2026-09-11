@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>THEY GUESS. IT DOESN'T. — Oxblood Hero</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        /* Track-2 OXBLOOD look-block */
+        --black: #0b0b0c; /* deep near-black ground */
+        --ash: #3a3a3e; /* graphite / ash — cold depth secondary */
+        --ash-lo: #202024;
+        --ash-hi: #6a6a70; /* cool metal highlight (raking key) */
+        --ash-spec: #b9bcc4; /* hot specular on bevels */
+        --bone: #ede8dd; /* warm-bone type */
+        --ox: #7a160e; /* THE accent — deep oxblood, emissive only */
+        --ox-hot: #d24528; /* aperture hot core */
+        --ox-lo: #48100b;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        /* cool ~4300K falloff ground; the whole field stays near-black */
+        background:
+          radial-gradient(70% 60% at 63% 48%, #141417 0%, #101012 34%, #0c0c0e 62%, var(--black) 100%);
+      }
+
+      /* ===== depth scaffold: FAR / MID / NEAR layers for parallax ===== */
+      .layer {
+        position: absolute;
+        inset: 0;
+        will-change: transform;
+      }
+
+      /* -- FAR: cold graphite haze, sits deep behind both forms -- */
+      .far-haze {
+        position: absolute;
+        inset: -10%;
+        background:
+          radial-gradient(30% 26% at 66% 44%, rgba(58, 58, 62, 0.16) 0%, rgba(58, 58, 62, 0) 70%),
+          radial-gradient(26% 22% at 30% 70%, rgba(40, 40, 46, 0.14) 0%, rgba(40, 40, 46, 0) 72%);
+        mix-blend-mode: screen;
+        opacity: 0.8;
+        filter: blur(2px);
+      }
+
+      /* ================= THE DIE (lower-left, subordinate) ================= */
+      /* single dark brushed-metal die, frozen mid-tumble, balanced on an edge.
+         cold graphite, NO glow. pushed back a touch by shallow DoF. */
+      #die-scene {
+        position: absolute;
+        left: 30%;
+        top: 66%;
+        width: 300px;
+        height: 300px;
+        transform: translate(-50%, -50%) scale(0.92);
+        perspective: 1400px;
+        perspective-origin: 42% 42%;
+        filter: blur(0.9px) brightness(0.9); /* subordinate + slightly off the focal plane */
+      }
+
+      #die {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 190px;
+        height: 190px;
+        margin: -95px 0 0 -95px;
+        transform-style: preserve-3d;
+        /* frozen mid-tumble, resting on a lower edge */
+        transform: rotateX(-24deg) rotateY(38deg) rotateZ(-8deg);
+      }
+
+      .die-face {
+        position: absolute;
+        width: 190px;
+        height: 190px;
+        border-radius: 26px;
+        /* brushed graphite: fine vertical brushing over a cool metal gradient,
+           lit from the LEFT by the single raking key */
+        background:
+          repeating-linear-gradient(
+            92deg,
+            rgba(255, 255, 255, 0.05) 0px,
+            rgba(255, 255, 255, 0) 2px,
+            rgba(0, 0, 0, 0.05) 3px,
+            rgba(0, 0, 0, 0) 5px
+          ),
+          linear-gradient(112deg, #55555b 0%, #3d3d42 34%, #2b2b30 66%, #202024 100%);
+        box-shadow:
+          inset 3px 3px 5px rgba(200, 202, 210, 0.28),
+          inset -5px -6px 12px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(0, 0, 0, 0.5);
+      }
+
+      .pip {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        /* recessed, cold — dark wells, no colour, no glow */
+        background: radial-gradient(circle at 38% 34%, #17171a 0%, #0c0c0e 60%, #050506 100%);
+        box-shadow:
+          inset 2px 2px 3px rgba(0, 0, 0, 0.9),
+          inset -1px -1px 2px rgba(120, 122, 130, 0.25);
+      }
+
+      .face-front {
+        transform: translateZ(95px);
+      }
+      .face-right {
+        transform: rotateY(90deg) translateZ(95px);
+      }
+      .face-top {
+        transform: rotateX(90deg) translateZ(95px);
+      }
+
+      /* pip layouts via a 3x3 grid feel — absolute placement */
+      .p-tl { left: 34px;  top: 34px; }
+      .p-tr { right: 34px; top: 34px; }
+      .p-ml { left: 34px;  top: 80px; }
+      .p-mm { left: 80px;  top: 80px; }
+      .p-mr { right: 34px; top: 80px; }
+      .p-bl { left: 34px;  bottom: 34px; }
+      .p-br { right: 34px; bottom: 34px; }
+
+      /* die contact shadow */
+      .die-contact {
+        position: absolute;
+        left: 30%;
+        top: 78%;
+        width: 260px;
+        height: 64px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0) 72%);
+        filter: blur(6px);
+        pointer-events: none;
+      }
+
+      /* ================= THE IRIS-EYE (centre-right, HERO ~55%) ================= */
+      #iris-scene {
+        position: absolute;
+        left: 63.5%;
+        top: 47%;
+        width: 620px;
+        height: 620px;
+        transform: translate(-50%, -50%);
+      }
+
+      /* machined outer barrel — extruded metal, cool key from the left */
+      .barrel {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background:
+          /* machined knurl / facet ticks around the rim */
+          repeating-conic-gradient(
+            from 0deg,
+            rgba(255, 255, 255, 0.06) 0deg 1.4deg,
+            rgba(0, 0, 0, 0.16) 1.4deg 2.8deg
+          ),
+          radial-gradient(closest-side at 40% 36%, #6a6a70 0%, #46464c 42%, #2c2c31 72%, #1b1b1f 100%);
+        box-shadow:
+          inset 10px 12px 26px rgba(200, 204, 212, 0.16),
+          inset -18px -22px 44px rgba(0, 0, 0, 0.72),
+          0 40px 90px rgba(0, 0, 0, 0.6);
+      }
+
+      /* concentric machined steps stepping down into the aperture (real depth) */
+      .ring {
+        position: absolute;
+        border-radius: 50%;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .ring-1 {
+        width: 82%;
+        height: 82%;
+        background: radial-gradient(closest-side at 40% 36%, #5c5c62 0%, #3a3a3f 46%, #232327 78%, #16161a 100%);
+        box-shadow:
+          inset 8px 9px 18px rgba(190, 194, 204, 0.14),
+          inset -12px -14px 30px rgba(0, 0, 0, 0.72);
+      }
+
+      .ring-2 {
+        width: 66%;
+        height: 66%;
+        background: radial-gradient(closest-side at 40% 36%, #4c4c52 0%, #303035 48%, #1c1c20 100%);
+        box-shadow:
+          inset 6px 7px 14px rgba(180, 184, 194, 0.12),
+          inset -10px -12px 26px rgba(0, 0, 0, 0.78);
+      }
+
+      /* the emissive throat behind the blades — oxblood owns the aperture ONLY */
+      .throat {
+        width: 52%;
+        height: 52%;
+        background:
+          radial-gradient(50% 50% at 50% 50%,
+            var(--ox-hot) 0%,
+            var(--ox) 22%,
+            #5a1109 46%,
+            var(--ox-lo) 70%,
+            #170604 100%);
+        box-shadow: 0 0 60px 6px rgba(122, 22, 14, 0.55);
+      }
+
+      /* iris blades — a ring of machined leaves closing over the throat */
+      .blades {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 52%;
+        height: 52%;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        overflow: hidden;
+      }
+
+      .blade {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 50%;
+        height: 50%;
+        transform-origin: 0% 0%;
+        /* leaf shape: a slim metal blade angled across the opening */
+        clip-path: polygon(0% 0%, 118% 6%, 132% 92%, 8% 66%);
+        background: linear-gradient(120deg, #55555b 0%, #3a3a40 40%, #26262b 72%, #1a1a1e 100%);
+        border-top: 1px solid rgba(196, 200, 208, 0.22);
+        box-shadow: inset -6px -6px 12px rgba(0, 0, 0, 0.5);
+      }
+
+      /* central pupil / lens — dark glass with the oxblood catch-light */
+      .pupil {
+        width: 20%;
+        height: 20%;
+        background:
+          radial-gradient(40% 40% at 42% 38%, rgba(210, 69, 40, 0.55) 0%, rgba(122, 22, 14, 0.2) 40%, rgba(0, 0, 0, 0) 64%),
+          radial-gradient(closest-side at 50% 50%, #120303 0%, #070202 70%, #040101 100%);
+        box-shadow:
+          0 0 34px 4px rgba(122, 22, 14, 0.5),
+          inset 0 0 18px rgba(0, 0, 0, 0.9);
+      }
+
+      /* the emissive ring line right at the aperture lip */
+      .ap-ring {
+        width: 54%;
+        height: 54%;
+        background: transparent;
+        border: 2px solid rgba(210, 69, 40, 0.28);
+        box-shadow:
+          0 0 16px rgba(122, 22, 14, 0.7),
+          inset 0 0 22px rgba(122, 22, 14, 0.55);
+      }
+
+      /* single hot specular glint on the upper-left bevel (raking key) */
+      .glint {
+        position: absolute;
+        left: 26%;
+        top: 20%;
+        width: 190px;
+        height: 84px;
+        transform: rotate(-32deg);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(210, 214, 224, 0.6) 0%, rgba(210, 214, 224, 0) 70%);
+        mix-blend-mode: screen;
+        filter: blur(3px);
+        pointer-events: none;
+      }
+
+      /* iris contact shadow */
+      .iris-contact {
+        position: absolute;
+        left: 63.5%;
+        top: 80%;
+        width: 560px;
+        height: 96px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0) 72%);
+        filter: blur(10px);
+        pointer-events: none;
+      }
+
+      /* soft oxblood floor-bounce from the aperture (kept tight so the accent
+         still "owns the aperture only") */
+      .ox-bounce {
+        position: absolute;
+        left: 63.5%;
+        top: 47%;
+        width: 720px;
+        height: 720px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(38% 38% at 50% 50%, rgba(122, 22, 14, 0.16) 0%, rgba(122, 22, 14, 0) 70%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      /* ===================== CAPTION (warm-bone caps) ===================== */
+      /* "THEY GUESS. IT DOESN'T." — extra-condensed via Arial Narrow + scaleX */
+      #caption {
+        position: absolute;
+        left: 50%;
+        bottom: 7%;
+        transform: translateX(-50%);
+        text-align: center;
+        pointer-events: none;
+      }
+
+      #caption .line {
+        /* League Gothic — a genuinely extra-condensed editorial grotesque */
+        font-family: "League Gothic", "Bebas Neue", "Oswald", sans-serif;
+        font-weight: 400;
+        font-size: 128px; /* cap height ~86px ≈ 8% of 1080 */
+        line-height: 0.92;
+        letter-spacing: 0.015em;
+        text-transform: uppercase;
+        color: var(--bone);
+        transform: scaleX(0.94);
+        transform-origin: 50% 50%;
+        /* high contrast against near-black + faint chromatic fringing */
+        text-shadow:
+          -1px 0 0 rgba(210, 69, 40, 0.18),
+          1px 0 0 rgba(90, 150, 170, 0.12),
+          0 2px 12px rgba(0, 0, 0, 0.78);
+      }
+
+      /* ===================== FINISHING GRADE ===================== */
+      /* heavy vignette */
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(76% 68% at 54% 46%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.82) 100%);
+        pointer-events: none;
+      }
+
+      /* ~6% film grain (feTurbulence noise) */
+      .grain {
+        position: absolute;
+        inset: 0;
+        opacity: 0.06;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        background-size: 180px 180px;
+      }
+
+      /* faint global chromatic aberration at the frame edges */
+      .ca {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        opacity: 0.5;
+        background:
+          radial-gradient(120% 120% at -6% 50%, rgba(120, 60, 60, 0.05) 0%, rgba(0, 0, 0, 0) 24%),
+          radial-gradient(120% 120% at 106% 50%, rgba(40, 90, 110, 0.05) 0%, rgba(0, 0, 0, 0) 24%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="2"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="2" data-track-index="1">
+        <!-- FAR -->
+        <div class="layer" id="far" data-layout-allow-overflow>
+          <div class="far-haze" data-layout-allow-overflow></div>
+        </div>
+
+        <!-- MID -->
+        <div class="layer" id="mid" data-layout-allow-overflow>
+          <div class="ox-bounce"></div>
+
+          <!-- die (subordinate, lower-left) -->
+          <div class="die-contact"></div>
+          <div id="die-scene" data-layout-allow-overflow>
+            <div id="die">
+              <div class="die-face face-front">
+                <span class="pip p-tl"></span>
+                <span class="pip p-tr"></span>
+                <span class="pip p-ml"></span>
+                <span class="pip p-mm"></span>
+                <span class="pip p-mr"></span>
+                <span class="pip p-bl"></span>
+                <span class="pip p-br"></span>
+              </div>
+              <div class="die-face face-right">
+                <span class="pip p-tl"></span>
+                <span class="pip p-mm"></span>
+                <span class="pip p-br"></span>
+              </div>
+              <div class="die-face face-top">
+                <span class="pip p-tl"></span>
+                <span class="pip p-br"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- iris-eye (HERO) -->
+          <div class="iris-contact"></div>
+          <div id="iris-scene" data-layout-allow-overflow>
+            <div class="barrel"></div>
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="ring throat"></div>
+            <div class="blades" id="blades"></div>
+            <div class="ring ap-ring"></div>
+            <div class="ring pupil"></div>
+            <div class="glint"></div>
+          </div>
+        </div>
+
+        <!-- NEAR -->
+        <div class="layer" id="near" data-layout-allow-overflow>
+          <div id="caption">
+            <div class="line">THEY&nbsp;GUESS.</div>
+            <div class="line">IT&nbsp;DOESN'T.</div>
+          </div>
+        </div>
+
+        <!-- grade -->
+        <div class="ca"></div>
+        <div class="grain"></div>
+        <div class="vignette"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // build the iris blades deterministically (a closing ring of leaves)
+      const BLADES = 11;
+      const bwrap = document.getElementById("blades");
+      for (let i = 0; i < BLADES; i++) {
+        const b = document.createElement("div");
+        b.className = "blade";
+        b.style.transform = "rotate(" + (i * (360 / BLADES)) + "deg)";
+        // faint per-blade tonal variation so the metal doesn't read as flat
+        b.style.filter = "brightness(" + (0.86 + ((i % 3) * 0.06)).toFixed(2) + ")";
+        bwrap.appendChild(b);
+      }
+
+      // static hero frame. a whisper of life only: a slow parallax settle and a
+      // barely-there aperture breath, so the near/mid/far layers are real depth
+      // planes if this is ever rendered as motion. the die stays frozen.
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#far", { x: 0, scale: 1.0 });
+      gsap.set("#mid", { x: 0 });
+      gsap.set("#near", { x: 0 });
+
+      tl.fromTo("#far", { x: 10 }, { x: 0, duration: 2, ease: "sine.out" }, 0);
+      tl.fromTo("#mid", { x: 4 }, { x: 0, duration: 2, ease: "sine.out" }, 0);
+      tl.fromTo(
+        ".throat, .ap-ring, .pupil",
+        { filter: "brightness(0.94)" },
+        { filter: "brightness(1.06)", duration: 2, ease: "sine.inOut" },
+        0,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
