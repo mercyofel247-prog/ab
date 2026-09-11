@@ -1,0 +1,3 @@
+# Build-time only — not needed by the renderer
+package-lock.json
+.gitignore

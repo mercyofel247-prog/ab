@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHOT 08 — THEY GUESS. IT DOESN'T. (iris-open + land)</title>
+    <!-- Vendored GSAP pin (offline-deterministic; the headless render worker
+         cannot reliably reach a CDN through the proxy). Same GSAP the CDN ships. -->
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      /* ---- STANDALONE palette, all hex inlined (no theme pointer) ---- */
+      :root {
+        --ground: #0b0b0c;   /* near-black ground */
+        --bone:   #ede8dd;   /* warm-bone type */
+        --ox:     #7a160e;   /* deep oxblood — emissive iris ring ONLY */
+        --ox-hot: #d24528;   /* aperture hot core */
+        --ox-lo:  #48100b;
+        --graph:  #3a3a3e;   /* graphite die / depth */
+        --metal:  #c9c4ba;   /* machined bevel face (lit side) */
+        --metal-lo:#2a2a2e;
+      }
+
+      html, body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+      body { font-family: "Helvetica Neue", Arial, system-ui, sans-serif; }
+
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+
+      /* cool ~4300K falloff on the near-black ground */
+      #root::before {
+        content: "";
+        position: absolute; inset: 0;
+        background: radial-gradient(72% 62% at 66% 48%, #141417 0%, #101013 34%, #0c0c0e 62%, var(--ground) 100%);
+      }
+
+      /* every timed layer is a full-frame clip; MOTION lives on inner wrappers */
+      .clip { position: absolute; inset: 0; }
+      .inner { position: absolute; inset: 0; will-change: transform, opacity; }
+
+      /* iris optical centre = right third; shared transform-origin so the
+         ambient/impact scales pivot on the eye, not the frame centre */
+      .amb, .imp { position: absolute; inset: 0; transform-origin: 66.6% 48%; will-change: transform; }
+
+      /* ============================ z5 — DUST (back) ============================ */
+      #z5 { z-index: 1; }
+      .dust-dot { position: absolute; border-radius: 50%; }
+
+      /* ============================ z3 — DIE (graphite) ======================== */
+      #z3 { z-index: 2; }
+      #die-scene {
+        position: absolute; left: 21.5%; top: 71%;
+        width: 260px; height: 260px;
+        transform: translate(-50%, -50%);
+        perspective: 1300px; perspective-origin: 42% 40%;
+        filter: blur(0.8px) brightness(0.86); /* subordinate, slightly off focal plane */
+      }
+      #die { position: absolute; left: 50%; top: 50%; width: 168px; height: 168px; margin: -84px 0 0 -84px; transform-style: preserve-3d; }
+      .die-face {
+        position: absolute; width: 168px; height: 168px; border-radius: 24px;
+        background:
+          repeating-linear-gradient(92deg, rgba(201,196,186,0.05) 0px, rgba(201,196,186,0) 2px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0) 5px),
+          linear-gradient(112deg, #4a4a50 0%, #3a3a3e 40%, #2b2b30 70%, #202024 100%);
+        box-shadow: inset 3px 3px 5px rgba(201,196,186,0.22), inset -5px -6px 12px rgba(0,0,0,0.62);
+        border: 1px solid rgba(0,0,0,0.5);
+      }
+      .pip { position: absolute; width: 27px; height: 27px; border-radius: 50%;
+        background: radial-gradient(circle at 38% 34%, #16161a 0%, #0c0c0e 60%, #050506 100%);
+        box-shadow: inset 2px 2px 3px rgba(0,0,0,0.9), inset -1px -1px 2px rgba(120,122,130,0.22); }
+      .face-front { transform: translateZ(84px); }
+      .face-right { transform: rotateY(90deg) translateZ(84px); }
+      .face-top   { transform: rotateX(90deg) translateZ(84px); }
+      .p-tl{left:30px;top:30px}.p-tr{right:30px;top:30px}.p-ml{left:30px;top:70px}.p-mm{left:70px;top:70px}
+      .p-mr{right:30px;top:70px}.p-bl{left:30px;bottom:30px}.p-br{right:30px;bottom:30px}
+      .die-contact { position: absolute; left: 21.5%; top: 81%; width: 230px; height: 56px; transform: translate(-50%,-50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 72%); filter: blur(6px); }
+
+      /* ============================ z1 — IRIS BODY (hero) ====================== */
+      /* iris cluster ~55% width (1056px), optical centre on the right third */
+      #z1 { z-index: 3; }
+      .iris-box { position: absolute; left: 66.6%; top: 48%; width: 1056px; height: 1056px; transform: translate(-50%,-50%); }
+
+      /* machined barrel — brushed metal, cool key from upper-left, outer edge
+         dissolved so nothing reads as a hard element at the frame border */
+      .barrel {
+        position: absolute; inset: 0; border-radius: 50%;
+        background:
+          repeating-conic-gradient(from 0deg, rgba(201,196,186,0.05) 0deg 1.2deg, rgba(0,0,0,0.16) 1.2deg 2.4deg),
+          radial-gradient(closest-side at 40% 35%, var(--metal) 0%, #7d7a73 20%, #46464c 48%, #2c2c31 74%, #17171b 100%);
+        -webkit-mask-image: radial-gradient(closest-side at 50% 50%, #000 0%, #000 88%, rgba(0,0,0,0) 100%);
+                mask-image: radial-gradient(closest-side at 50% 50%, #000 0%, #000 88%, rgba(0,0,0,0) 100%);
+        box-shadow: inset 16px 18px 40px rgba(201,196,186,0.14), inset -30px -36px 70px rgba(0,0,0,0.72);
+      }
+      .ring { position: absolute; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+      .ring-1 { width: 80%; height: 80%;
+        background: radial-gradient(closest-side at 40% 35%, #6f6c65 0%, #3a3a3f 46%, #232327 78%, #16161a 100%);
+        box-shadow: inset 12px 13px 26px rgba(190,186,176,0.13), inset -18px -22px 44px rgba(0,0,0,0.74); }
+      .ring-2 { width: 63%; height: 63%;
+        background: radial-gradient(closest-side at 40% 35%, #55555b 0%, #303035 48%, #1a1a1e 100%);
+        box-shadow: inset 9px 10px 20px rgba(180,176,166,0.12), inset -14px -18px 38px rgba(0,0,0,0.8); }
+
+      /* single specular glint that travels the bevel during the open */
+      .glint { position: absolute; left: 20%; top: 16%; width: 300px; height: 120px; transform: rotate(-30deg);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(230,232,238,0.7) 0%, rgba(230,232,238,0) 70%);
+        mix-blend-mode: screen; filter: blur(4px); }
+
+      /* ============================ z2 — OXBLOOD APERTURE RING ================= */
+      #z2 { z-index: 4; }
+      /* the clip-path matte reveal lives on .aperture (iris opens 0 -> full) */
+      .aperture { position: absolute; left: 66.6%; top: 48%; width: 1056px; height: 1056px; transform: translate(-50%,-50%); }
+      .throat { position: absolute; left: 50%; top: 50%; width: 50%; height: 50%; transform: translate(-50%,-50%); border-radius: 50%;
+        background: radial-gradient(50% 50% at 50% 50%, var(--ox-hot) 0%, var(--ox) 24%, #5a1109 48%, var(--ox-lo) 72%, #170604 100%); }
+      /* asymmetric emissive rim + bloom (bloom on the oxblood ring ONLY) */
+      .ap-ring { position: absolute; left: 50%; top: 50%; width: 52%; height: 52%; transform: translate(-50%,-50%); border-radius: 50%;
+        border: 3px solid rgba(210,69,40,0.42);
+        box-shadow:
+          0 0 26px 4px rgba(122,22,14,0.75),
+          0 -6px 40px 6px rgba(210,69,40,0.30),   /* asymmetric inner glow, top-weighted */
+          inset 0 0 30px rgba(122,22,14,0.6); }
+      .blades { position: absolute; left: 50%; top: 50%; width: 50%; height: 50%; transform: translate(-50%,-50%); border-radius: 50%; overflow: hidden; }
+      .blade { position: absolute; left: 50%; top: 50%; width: 50%; height: 50%; transform-origin: 0% 0%;
+        clip-path: polygon(0% 0%, 118% 6%, 132% 92%, 8% 66%);
+        background: linear-gradient(120deg, #55555b 0%, #3a3a40 40%, #26262b 72%, #1a1a1e 100%);
+        border-top: 1px solid rgba(196,192,182,0.2); box-shadow: inset -6px -6px 12px rgba(0,0,0,0.5); }
+      .pupil { position: absolute; left: 50%; top: 50%; width: 19%; height: 19%; transform: translate(-50%,-50%); border-radius: 50%;
+        background:
+          radial-gradient(40% 40% at 42% 38%, rgba(210,69,40,0.55) 0%, rgba(122,22,14,0.2) 40%, rgba(0,0,0,0) 64%),
+          radial-gradient(closest-side at 50% 50%, #120303 0%, #070202 70%, #040101 100%);
+        box-shadow: 0 0 34px 4px rgba(122,22,14,0.5), inset 0 0 18px rgba(0,0,0,0.9); }
+
+      /* ============================ z4 — CAPTION ============================== */
+      /* raised above the grade so the bone caps stamp clean (block 7) — the
+         heavy vignette must not dim the caption */
+      #z4 { z-index: 7; }
+      #caption { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); text-align: center; }
+      /* soft scrim so the bone caps stamp clean over the lower iris */
+      #caption::before { content: ""; position: absolute; left: 50%; top: 50%; width: 1500px; height: 380px; transform: translate(-50%,-50%);
+        background: radial-gradient(50% 50% at 50% 50%, rgba(11,11,12,0.72) 0%, rgba(11,11,12,0) 72%); z-index: -1; }
+      #caption .line {
+        font-family: "League Gothic", "Bebas Neue", "Oswald", sans-serif; font-weight: 400;
+        font-size: 132px; line-height: 1.04; letter-spacing: 0.015em; text-transform: uppercase; color: var(--bone);
+        transform: scaleX(0.95); transform-origin: 50% 50%;
+        text-shadow: -1px 0 0 rgba(210,69,40,0.18), 1px 0 0 rgba(90,150,170,0.12), 0 2px 12px rgba(0,0,0,0.8);
+      }
+
+      /* ============================ z6 — GRADE (front) ======================== */
+      #z6 { z-index: 6; pointer-events: none; }
+      .vignette { position: absolute; inset: 0; background: radial-gradient(76% 68% at 54% 46%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.82) 100%); }
+      .ca { position: absolute; inset: 0; mix-blend-mode: screen; opacity: 0.5;
+        background:
+          radial-gradient(120% 120% at -6% 50%, rgba(120,60,60,0.05) 0%, rgba(0,0,0,0) 24%),
+          radial-gradient(120% 120% at 106% 50%, rgba(40,90,110,0.05) 0%, rgba(0,0,0,0) 24%); }
+      .grain { position: absolute; inset: -6%; opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        background-size: 180px 180px; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-start="0"
+      data-duration="3.2"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- z5 DUST — track 4 -->
+      <div id="z5" class="clip" data-start="0" data-duration="3.2" data-track-index="4">
+        <div class="inner" id="dust-inner"></div>
+      </div>
+
+      <!-- z3 DIE — track 2 -->
+      <div id="z3" class="clip" data-start="0" data-duration="3.2" data-track-index="2">
+        <div class="inner" id="die-inner">
+          <div class="die-contact"></div>
+          <div id="die-scene">
+            <div id="die">
+              <div class="die-face face-front">
+                <span class="pip p-tl"></span><span class="pip p-tr"></span><span class="pip p-ml"></span>
+                <span class="pip p-mm"></span><span class="pip p-mr"></span><span class="pip p-bl"></span><span class="pip p-br"></span>
+              </div>
+              <div class="die-face face-right">
+                <span class="pip p-tl"></span><span class="pip p-mm"></span><span class="pip p-br"></span>
+              </div>
+              <div class="die-face face-top">
+                <span class="pip p-tl"></span><span class="pip p-br"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- z1 IRIS BODY — track 0 -->
+      <div id="z1" class="clip" data-start="0" data-duration="3.2" data-track-index="0">
+        <div class="amb" data-layout-allow-overflow><div class="imp" data-layout-allow-overflow>
+          <div class="iris-box" data-layout-allow-overflow>
+            <div class="barrel" data-layout-allow-overflow></div>
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="glint" id="glint"></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- z2 OXBLOOD APERTURE RING — track 1 -->
+      <div id="z2" class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+        <div class="amb"><div class="imp">
+          <div class="aperture" id="aperture">
+            <div class="throat"></div>
+            <div class="blades" id="blades"></div>
+            <div class="ap-ring" id="apRing"></div>
+            <div class="pupil"></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- z4 CAPTION — track 3 -->
+      <div id="z4" class="clip" data-start="0" data-duration="3.2" data-track-index="3">
+        <div class="inner" id="cap-inner">
+          <div id="caption">
+            <div class="line">THEY&nbsp;GUESS.</div>
+            <div class="line">IT&nbsp;DOESN'T.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- z6 GRADE — track 5 -->
+      <div id="z6" class="clip" data-start="0" data-duration="3.2" data-track-index="5">
+        <div class="inner">
+          <div class="ca"></div>
+          <div class="grain" id="grain"></div>
+          <div class="vignette"></div>
+        </div>
+      </div>
+
+      <!-- AUDIO: sub-thud lands on the iris snap (f34 = 1400ms) — track 6 -->
+      <audio
+        id="thud"
+        data-start="1.4"
+        data-duration="1.8"
+        data-track-index="6"
+        src="assets/thud.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      /* ---- deterministic PRNG (mulberry32), no Math.random / Date.now ---- */
+      function mulberry32(a) {
+        return function () {
+          a |= 0; a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rnd = mulberry32(0x5108d1ce);
+
+      /* ---- build dust: positions/sizes baked in at build time ---- */
+      const dust = document.getElementById("dust-inner");
+      for (let i = 0; i < 70; i++) {
+        const d = document.createElement("div");
+        d.className = "dust-dot";
+        const s = (0.8 + rnd() * 2.0).toFixed(2);
+        d.style.width = s + "px";
+        d.style.height = s + "px";
+        d.style.left = (rnd() * 100).toFixed(3) + "%";
+        d.style.top = (rnd() * 100).toFixed(3) + "%";
+        const warm = rnd() > 0.5;
+        d.style.background = warm ? "rgba(237,232,221,0.55)" : "rgba(58,58,62,0.7)";
+        d.style.opacity = (0.05 + rnd() * 0.16).toFixed(3);
+        dust.appendChild(d);
+      }
+
+      /* ---- build iris blades deterministically ---- */
+      const BLADES = 11;
+      const blades = document.getElementById("blades");
+      for (let i = 0; i < BLADES; i++) {
+        const b = document.createElement("div");
+        b.className = "blade";
+        b.style.transform = "rotate(" + (i * (360 / BLADES)) + "deg)";
+        b.style.filter = "brightness(" + (0.86 + (i % 3) * 0.06).toFixed(2) + ")";
+        blades.appendChild(b);
+      }
+
+      /* =========================================================
+         HIDDEN START STATES — bare gsap.set(), OUTSIDE the timeline.
+         Reveals are .to()/keyframes only (never fromTo) so nothing
+         back-renders visible at f0 under a cold non-linear seek.
+         ========================================================= */
+      gsap.set(".amb", { scale: 1.0 });                 // ambient container push
+      gsap.set(".imp", { scale: 1.0 });                 // impact push-through
+      gsap.set("#die-inner", { rotation: 8, opacity: 1, transformOrigin: "21.5% 78%" }); // committed guess, pre-settle
+      gsap.set("#aperture", { clipPath: "circle(0% at 50% 50%)", webkitClipPath: "circle(0% at 50% 50%)" }); // eye closed
+      gsap.set("#apRing", { opacity: 0 });              // emissive rim dark until it opens
+      gsap.set("#glint", { xPercent: -60, opacity: 0 });
+      gsap.set("#cap-inner", { opacity: 0, y: 14 });    // caption not yet stamped
+      gsap.set("#dust-inner", { y: 0 });
+      gsap.set("#grain", { x: 0, y: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      /* ---- 0–500ms (f0–12) ESTABLISH ---- */
+      tl.to("#die-inner", { rotation: 0, duration: 0.5, ease: "back.out(2.2)" }, 0);        // tumbling-settle land
+      tl.to(".amb", { scale: 1.008, duration: 0.5, ease: "sine.inOut" }, 0);                // ambient push
+      tl.to("#dust-inner", { y: -14, duration: 3.2, ease: "sine.inOut" }, 0);               // dust drift (whole scene)
+      tl.to("#grain", { x: 22, y: -16, duration: 3.2, ease: "none" }, 0);                   // grain stays live
+
+      /* ---- 500–1400ms (f12–34) APERTURE OPEN (matte reveal) ---- */
+      tl.to("#aperture", { clipPath: "circle(72% at 50% 50%)", webkitClipPath: "circle(72% at 50% 50%)", duration: 0.9, ease: "power4.out" }, 0.5);
+      tl.to("#apRing", { opacity: 0.55, duration: 0.9, ease: "power3.out" }, 0.5);          // rim comes up with the open
+      tl.to("#glint", { keyframes: [
+        { opacity: 0.0, duration: 0.0 },
+        { opacity: 0.7, duration: 0.35 },
+        { opacity: 0.0, duration: 0.55 },
+      ], ease: "power2.out" }, 0.5);
+      tl.to("#glint", { xPercent: 60, duration: 0.9, ease: "power2.out" }, 0.5);            // glint travels the bevel
+
+      /* ---- 1400–1550ms (f34–37) RACK-SNAP / LAND (sync frame 34) ---- */
+      tl.to("#apRing", { opacity: 1, duration: 0.06, ease: "power2.out" }, 1.4);            // snaps to full emissive
+      tl.to(".imp", { keyframes: [
+        { scale: 1.11, duration: 0.06, ease: "back.out(3)" },
+        { scale: 1.0,  duration: 0.09, ease: "power2.out" },
+      ] }, 1.4);                                                                             // impact push-through
+      tl.to("#die-inner", { opacity: 0.8, duration: 0.15, ease: "power2.out" }, 1.4);       // die dims a hair
+
+      /* ---- 1550–1700ms (f37–41) CAPTION SETTLE ---- */
+      tl.to("#cap-inner", { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 1.55);
+
+      /* ---- 1700–2900ms (f41–70) SUSTAINED (no dead air) ---- */
+      tl.to(".amb", { scale: 1.05, duration: 1.2, ease: "sine.inOut" }, 1.7);              // ambient rises within cap
+      tl.to("#apRing", { keyframes: [
+        { opacity: 0.94, duration: 0.4, ease: "sine.inOut" },
+        { opacity: 1.0,  duration: 0.4, ease: "sine.inOut" },
+        { opacity: 0.94, duration: 0.4, ease: "sine.inOut" },
+      ] }, 1.7);                                                                             // oxblood ring breathes ±6%
+
+      /* ---- 2900–3200ms (f70–77) EXIT: HOLD (no fade). dust + grain still live. ---- */
+
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
