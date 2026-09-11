@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Shot 08 — Iris Open + Land</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --oxblood-hi: #b32a1c;
+        --graphite: #3a3a3e;
+        --iris-face: #c9c4ba;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      /* whole-frame ambient push — the "container" breathes, capped well under any edge reveal */
+      #frame {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* ---------------- z5 — dust (back) ---------------- */
+      .dust-wrap {
+        position: absolute;
+        inset: 0;
+      }
+
+      .mote {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--bone);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z3 — graphite die, lower-left, subordinate ---------------- */
+      .die-anchor {
+        position: absolute;
+        left: 300px;
+        top: 840px;
+        width: 0;
+        height: 0;
+      }
+
+      .die-wrap {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        will-change: transform;
+      }
+
+      .die-face {
+        width: 168px;
+        height: 168px;
+        border-radius: 18px;
+        background: linear-gradient(155deg, #4a4a4f 0%, var(--graphite) 46%, #2c2c30 100%);
+        box-shadow:
+          inset 0 2px 4px rgba(255, 255, 255, 0.08),
+          inset 0 -10px 22px rgba(0, 0, 0, 0.55),
+          0 24px 40px rgba(0, 0, 0, 0.6);
+        position: relative;
+        will-change: opacity;
+      }
+
+      .pip {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #17171a;
+        box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
+      }
+      .pip.p1 {
+        left: 30px;
+        top: 30px;
+      }
+      .pip.p2 {
+        right: 30px;
+        top: 30px;
+      }
+      .pip.p3 {
+        left: 74px;
+        top: 74px;
+      }
+      .pip.p4 {
+        left: 30px;
+        bottom: 30px;
+      }
+      .pip.p5 {
+        right: 30px;
+        bottom: 30px;
+      }
+
+      /* ---------------- z1 — machined iris hero, centre-right ---------------- */
+      .iris-anchor {
+        position: absolute;
+        left: 1360px;
+        top: 540px;
+        width: 0;
+        height: 0;
+      }
+
+      .iris-wrap {
+        position: absolute;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .iris-impact {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .iris-face {
+        width: 1060px;
+        height: 1060px;
+        border-radius: 50%;
+        background:
+          repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.05) 0deg 1.2deg, rgba(0, 0, 0, 0.03) 1.2deg 2.4deg),
+          radial-gradient(
+            circle at 36% 30%,
+            #e7e2d7 0%,
+            var(--iris-face) 24%,
+            #9d988e 56%,
+            #605c55 80%,
+            #302e2a 100%
+          );
+        box-shadow:
+          inset 0 0 60px rgba(0, 0, 0, 0.65),
+          inset 0 0 10px rgba(255, 255, 255, 0.35),
+          0 30px 90px rgba(0, 0, 0, 0.7);
+      }
+
+      .bevel-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.35);
+        box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.18);
+      }
+      .bevel-ring.r1 {
+        inset: 60px;
+      }
+      .bevel-ring.r2 {
+        inset: 96px;
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      .bevel-ring.r3 {
+        inset: 128px;
+        border-color: rgba(0, 0, 0, 0.4);
+      }
+
+      .iris-socket {
+        position: absolute;
+        inset: 210px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 44% 40%, #201f20 0%, #0e0d0e 62%, #050505 100%);
+        box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
+      }
+
+      .glint-wrap {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .glint {
+        position: absolute;
+        left: 50%;
+        top: 18px;
+        width: 10px;
+        height: 130px;
+        margin-left: -5px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+        filter: blur(2px);
+        will-change: opacity;
+      }
+
+      /* ---------------- z2 — oxblood emissive aperture ring, on z1 ---------------- */
+      .ring-wrap {
+        position: absolute;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .ring-impact {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .ring-glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 780px;
+        height: 780px;
+        margin-left: -390px;
+        margin-top: -390px;
+        border-radius: 50%;
+        background: radial-gradient(circle, transparent 55%, var(--oxblood) 63%, transparent 80%);
+        filter: blur(34px);
+        will-change: opacity;
+      }
+
+      .ring-aperture {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 640px;
+        height: 640px;
+        margin-left: -320px;
+        margin-top: -320px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          transparent 56%,
+          var(--oxblood) 61%,
+          var(--oxblood-hi) 68%,
+          var(--oxblood) 75%,
+          transparent 80%
+        );
+        will-change: clip-path, opacity;
+      }
+
+      /* ---------------- z4 — caption, lower-centre ---------------- */
+      .caption-anchor {
+        position: absolute;
+        left: 960px;
+        top: 948px;
+        width: 0;
+        height: 0;
+      }
+
+      .caption-wrap {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        will-change: transform, opacity;
+      }
+
+      .caption {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-weight: 700;
+        font-size: 54px;
+        letter-spacing: 0.06em;
+        color: var(--bone);
+        white-space: nowrap;
+        text-align: center;
+        text-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      }
+
+      /* ---------------- z6 — vignette + grain + grade (front) ---------------- */
+      .grade-wrap {
+        position: absolute;
+        inset: 0;
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 78% 72% at 50% 48%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.5) 100%);
+      }
+
+      .chroma {
+        position: absolute;
+        inset: 0;
+        box-shadow:
+          inset 4px 0 10px rgba(255, 40, 40, 0.06),
+          inset -4px 0 10px rgba(40, 160, 255, 0.06);
+      }
+
+      .grain {
+        position: absolute;
+        top: -256px;
+        left: -256px;
+        width: 2432px;
+        height: 1592px;
+        opacity: 0.06;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-start="0"
+      data-duration="3.2"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage">
+        <div id="frame" data-layout-allow-overflow>
+          <!-- z5 — mulberry32 dust, back -->
+          <div id="z5-dust" class="clip" data-start="0" data-duration="3.2" data-track-index="4">
+            <div class="dust-wrap" id="dustWrap" data-layout-allow-overflow></div>
+          </div>
+
+          <!-- z3 — graphite die, lower-left, subordinate -->
+          <div id="z3-die" class="clip" data-start="0" data-duration="3.2" data-track-index="2">
+            <div class="die-anchor">
+              <div class="die-wrap" id="dieWrap">
+                <div class="die-face" id="dieFace">
+                  <div class="pip p1"></div>
+                  <div class="pip p2"></div>
+                  <div class="pip p3"></div>
+                  <div class="pip p4"></div>
+                  <div class="pip p5"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- z1 — machined iris/eye hero, centre-right, ~55%+ width -->
+          <div id="z1-iris" class="clip" data-start="0" data-duration="3.2" data-track-index="0">
+            <div class="iris-anchor">
+              <div class="iris-wrap" id="irisWrap">
+                <div class="iris-impact" id="irisImpact">
+                  <div class="iris-face"></div>
+                  <div class="bevel-ring r1"></div>
+                  <div class="bevel-ring r2"></div>
+                  <div class="bevel-ring r3"></div>
+                  <div class="iris-socket"></div>
+                  <div class="glint-wrap" id="glintWrap">
+                    <div class="glint" id="glint"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- z2 — oxblood emissive aperture ring, on z1 -->
+          <div id="z2-ring" class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+            <div class="iris-anchor">
+              <div class="ring-wrap" id="ringWrap">
+                <div class="ring-impact" id="ringImpact">
+                  <div class="ring-glow" id="ringGlow"></div>
+                  <div class="ring-aperture" id="ringAperture"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- z4 — warm-bone caption, lower-centre -->
+          <div id="z4-caption" class="clip" data-start="0" data-duration="3.2" data-track-index="3">
+            <div class="caption-anchor">
+              <div class="caption-wrap" id="captionWrap">
+                <div class="caption">THEY GUESS. IT DOESN'T.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- z6 — vignette + grain + grade, front -->
+          <div id="z6-grade" class="clip" data-start="0" data-duration="3.2" data-track-index="5">
+            <div class="grade-wrap">
+              <div class="vignette"></div>
+              <div class="chroma"></div>
+              <div class="grain" id="grain"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <audio
+        id="irisLand"
+        data-start="0"
+        data-duration="3.2"
+        data-track-index="6"
+        src="assets/iris-land.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic PRNG (mulberry32) — dust field only, no Math.random/Date.now ----
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0xa11ce5);
+
+      const DUR = 3.2;
+      const IMPACT_T = 1.4; // f34 — the ONE sync frame (iris snap / land)
+
+      const dustWrap = document.getElementById("dustWrap");
+      const MOTE_COUNT = 46;
+      const motes = [];
+      for (let i = 0; i < MOTE_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "mote";
+        const x = rand() * 1920;
+        const y = rand() * 1080;
+        const size = 1.4 + rand() * 2.2;
+        const alpha = 0.1 + rand() * 0.26;
+        el.style.left = x + "px";
+        el.style.top = y + "px";
+        el.style.width = size + "px";
+        el.style.height = size + "px";
+        dustWrap.appendChild(el);
+        motes.push({
+          el,
+          ampX: 14 + rand() * 26,
+          ampY: 10 + rand() * 20,
+          dir: rand() < 0.5 ? 1 : -1,
+          alpha,
+        });
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ==== hidden start states — bare gsap.set(), OUTSIDE the timeline ====
+      gsap.set("#frame", { scale: 1 });
+      gsap.set(["#irisWrap", "#ringWrap"], { scale: 1 });
+      gsap.set(["#irisImpact", "#ringImpact"], { scale: 1 });
+      gsap.set("#ringAperture", { clipPath: "circle(0% at 50% 50%)" });
+      gsap.set("#ringGlow", { opacity: 0 });
+      gsap.set("#glintWrap", { rotate: -50 });
+      gsap.set("#glint", { opacity: 0 });
+      gsap.set("#dieWrap", { rotate: -18 - 8 });
+      gsap.set("#dieFace", { opacity: 1 });
+      gsap.set("#captionWrap", { opacity: 0, y: 22 });
+      gsap.set("#grain", { x: 0, y: 0 });
+      motes.forEach((m) => gsap.set(m.el, { x: 0, y: 0, opacity: m.alpha }));
+
+      // ==== 0 - 500ms (f0-12) — ESTABLISH ====
+      // die tumbling-settle: rotate 8deg -> resting edge tilt (-18deg), back.out
+      tl.to("#dieWrap", { rotate: -18, duration: 0.5, ease: "back.out(1.7)" }, 0);
+
+      // container ambient push, sine.inOut (holds at 1.008 through the eye-opening beats)
+      tl.to("#frame", { scale: 1.008, duration: 0.5, ease: "sine.inOut" }, 0);
+
+      // dust drift — sine.inOut, spans the FULL 3.2s so it never goes dead
+      motes.forEach((m) => {
+        const leg = DUR / 3;
+        tl.to(
+          m.el,
+          {
+            keyframes: [
+              { x: m.dir * m.ampX, y: -m.ampY, duration: leg, ease: "sine.inOut" },
+              { x: -m.dir * m.ampX * 0.7, y: m.ampY * 0.8, duration: leg, ease: "sine.inOut" },
+              { x: 0, y: 0, duration: leg, ease: "sine.inOut" },
+            ],
+          },
+          0,
+        );
+      });
+
+      // moving grain, ease:none linear sweep across the FULL 3.2s
+      tl.to("#grain", { x: -128, y: 96, duration: DUR, ease: "none" }, 0);
+
+      // ==== 500 - 1400ms (f12-34) — APERTURE OPEN (matte reveal) ====
+      tl.to("#ringAperture", { clipPath: "circle(80% at 50% 50%)", duration: 0.9, ease: "power4.out" }, 0.5);
+      tl.to("#ringGlow", { opacity: 0.55, duration: 0.9, ease: "power4.out" }, 0.5);
+
+      // specular glint travels the iris bevel, power2.out, simultaneous with the open
+      tl.to("#glintWrap", { rotate: 40, duration: 0.9, ease: "power2.out" }, 0.5);
+      tl.to(
+        "#glint",
+        {
+          keyframes: [
+            { opacity: 1, duration: 0.15, ease: "power2.out" },
+            { opacity: 1, duration: 0.5, ease: "none" },
+            { opacity: 0, duration: 0.25, ease: "power2.out" },
+          ],
+        },
+        0.5,
+      );
+
+      // ==== 1400 - 1550ms (f34-37) — RACK-SNAP / LAND (sync frame f34) ====
+      // iris ring snaps to full emissive
+      tl.to("#ringGlow", { opacity: 0.95, duration: 0.08, ease: "power2.out" }, IMPACT_T);
+      // discrete impact push-through on the iris cluster, back.out, then returns
+      tl.to(["#irisImpact", "#ringImpact"], { scale: 1.11, duration: 0.07, ease: "power3.out" }, IMPACT_T);
+      tl.to(["#irisImpact", "#ringImpact"], { scale: 1, duration: 0.08, ease: "back.out(2.4)" }, IMPACT_T + 0.07);
+      // die dims a hair as the eye dominates
+      tl.to("#dieFace", { opacity: 0.78, duration: 0.15, ease: "power2.out" }, IMPACT_T);
+
+      // ==== 1550 - 1700ms (f37-41) — CAPTION SETTLE ====
+      tl.to("#captionWrap", { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 1.55);
+
+      // ==== 1700 - 2900ms (f41-70) — SUSTAINED (no dead air) ====
+      tl.to("#frame", { scale: 1.05, duration: 1.2, ease: "sine.inOut" }, 1.7);
+      tl.to(
+        "#ringGlow",
+        {
+          keyframes: [
+            { opacity: 0.96, duration: 0.3, ease: "sine.inOut" },
+            { opacity: 0.84, duration: 0.3, ease: "sine.inOut" },
+            { opacity: 0.96, duration: 0.3, ease: "sine.inOut" },
+            { opacity: 0.9, duration: 0.3, ease: "sine.inOut" },
+          ],
+        },
+        1.7,
+      );
+
+      // ==== 2900 - 3200ms (f70-77) — EXIT: HOLD, razor-sharp, cuttable ====
+      // no fade — motion is already done by 2.9s; dust + grain keep running to 3.2s above.
+
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>
