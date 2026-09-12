@@ -65,24 +65,48 @@ export const Shot08Iris: React.FC = () => {
   );
 
   // ======================================================
-  // Beat 1 (f0-f11 / 0-0.46s) — die tumbles to a settled rest. A big
-  // rotation swing (nearly a full turn) and long travel distance so the
-  // tumble is unmistakable across these 11 frames rather than resolving
-  // as a barely-visible wobble.
+  // Beat 1 (f0-f11 / 0-0.46s) — the die is THROWN: it enters from off-frame
+  // with real height, arcs through the air on a launch-then-gravity curve
+  // (rise decelerating, fall accelerating — two separate interpolate()
+  // calls rather than one, since a single easing can't shape both halves
+  // of a parabola), spinning through several full turns while airborne,
+  // and lands with a back-out settle bounce. A contact shadow (driven by
+  // how far off the ground it currently is) grows and darkens as it
+  // lands, selling the height instead of just a flat side-to-side slide.
   // ======================================================
-  const dieRotate = interpolate(frame, [0, 11], [300, -6], {
+  const THROW_START_X = -150;
+  const THROW_START_Y = -50;
+  const THROW_APEX_Y = -210;
+  const APEX_FRAME = 5;
+
+  const dieX = interpolate(frame, [0, 11], [THROW_START_X, 0], {
     ...clampOpts,
-    easing: Easing.out(Easing.back(1.6)),
+    easing: Easing.out(Easing.quad),
   });
-  // a complementary settle offset (not spelled out numerically in the
-  // brief, but "tumbles to a settled rest" wants more than pure rotation)
-  const dieSettle = interpolate(frame, [0, 11], [1, 0], {
+  const riseY = interpolate(frame, [0, APEX_FRAME], [THROW_START_Y, THROW_APEX_Y], {
     ...clampOpts,
-    easing: Easing.out(Easing.back(1.6)),
+    easing: Easing.out(Easing.quad), // launched: decelerates going up
   });
-  const dieX = dieSettle * -95;
-  const dieY = dieSettle * -75;
-  const dieScale = 1 - dieSettle * 0.15;
+  const fallY = interpolate(frame, [APEX_FRAME, 11], [THROW_APEX_Y, 0], {
+    ...clampOpts,
+    easing: Easing.in(Easing.quad), // gravity: accelerates coming down
+  });
+  const dieY = frame <= APEX_FRAME ? riseY : fallY;
+
+  const dieRotate = interpolate(frame, [0, 11], [900, -6], {
+    ...clampOpts,
+    easing: Easing.out(Easing.back(1.5)),
+  });
+  const dieScale = interpolate(frame, [0, 11], [0.55, 1], {
+    ...clampOpts,
+    easing: Easing.out(Easing.back(1.5)),
+  });
+
+  // contact shadow: smallest/faintest at the apex (furthest from the
+  // ground), largest/darkest the instant it lands
+  const heightAboveGround = Math.abs(dieY);
+  const dieShadowScale = interpolate(heightAboveGround, [0, 280], [1, 0.32], clampOpts);
+  const dieShadowOpacity = interpolate(heightAboveGround, [0, 280], [0.55, 0.1], clampOpts);
 
   // ======================================================
   // Beat 3 (f34-f36 / 1.4-1.5s, sync frame f34) — die dims a hair as it
@@ -178,6 +202,23 @@ export const Shot08Iris: React.FC = () => {
             />
           );
         })}
+
+        {/* contact shadow — stays on the ground line; only its size/opacity
+            track how far off the ground the die currently is */}
+        <div
+          style={{
+            position: "absolute",
+            left: 260 + 50,
+            top: 860 + 96,
+            width: 90,
+            height: 22,
+            marginLeft: -45,
+            transform: `translateX(${dieX}px) scale(${dieShadowScale})`,
+            borderRadius: "50%",
+            background: "radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 72%)",
+            opacity: dieShadowOpacity,
+          }}
+        />
 
         {/* ---------------- die (lower-left, subordinate) ---------------- */}
         <div
