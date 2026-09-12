@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920, height=1080" />
+    <title>Dimensional Metal Hero</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
       * {
@@ -16,44 +17,386 @@
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: #000;
+        background: #050505;
       }
       body {
-        font-family: "Inter", sans-serif;
+        font-family: "League Gothic", "Oswald", "Arial Narrow", sans-serif;
       }
-      code,
-      pre,
-      .monospace {
-        font-family: "JetBrains Mono", monospace;
+
+      /* ---------- root / hero clip ---------- */
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #050505;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      #hero {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* ---------- z0: stage backdrop ---------- */
+      #layer-stage {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        background: radial-gradient(circle at 50% 42%, #0a0a0a 0%, #050505 78%);
+      }
+      #layer-stage::after {
+        /* faint cyc-wall-to-floor seam */
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 79%;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent 5%,
+          rgba(139, 147, 160, 0.07) 50%,
+          transparent 95%
+        );
+      }
+
+      /* ---------- z1: contact shadows (locked to footprint, no independent drift) ---------- */
+      .contact-shadow {
+        position: absolute;
+        pointer-events: none;
+        z-index: 5;
+        filter: blur(40px);
+        border-radius: 50%;
+      }
+      #die-shadow {
+        left: 400px;
+        top: 735px;
+        width: 220px;
+        height: 90px;
+        background: radial-gradient(ellipse, rgba(0, 0, 0, 0.45) 0%, transparent 70%);
+      }
+      #iris-shadow {
+        left: 1060px;
+        top: 470px;
+        width: 420px;
+        height: 160px;
+        filter: blur(70px);
+        background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 72%);
+      }
+
+      /* ---------- z2: die (mid-ground, slightly defocused, subordinate/unlit) ---------- */
+      #die-outer {
+        position: absolute;
+        left: 350px; /* center_px x=480 - size/2 */
+        top: 630px; /* center_px y=760 - size/2 */
+        width: 260px;
+        height: 260px;
+        perspective: 900px;
+        z-index: 20;
+      }
+      #die-tilt {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        transform: rotateX(-18deg) rotateY(32deg) rotateZ(6deg);
+        filter: blur(3px);
+      }
+      .die-face {
+        position: absolute;
+        width: 260px;
+        height: 260px;
+        backface-visibility: hidden;
+      }
+      .die-face-front {
+        transform: translateZ(130px);
+        background:
+          radial-gradient(circle at 25% 25%, rgba(5, 5, 5, 0.55) 0 9px, transparent 11px),
+          radial-gradient(circle at 75% 25%, rgba(5, 5, 5, 0.55) 0 9px, transparent 11px),
+          radial-gradient(circle at 25% 75%, rgba(5, 5, 5, 0.55) 0 9px, transparent 11px),
+          radial-gradient(circle at 75% 75%, rgba(5, 5, 5, 0.55) 0 9px, transparent 11px),
+          radial-gradient(circle at 50% 50%, rgba(5, 5, 5, 0.55) 0 9px, transparent 11px),
+          linear-gradient(100deg, #2a2a2e 0%, #3d3d42 45%, #55565c 62%, #2a2a2e 100%);
+        box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+      }
+      .die-face-top {
+        transform: rotateX(90deg) translateZ(130px);
+        background: linear-gradient(100deg, #3d3d42 0%, #55565c 40%, #3d3d42 100%);
+        box-shadow:
+          inset 0 -3px 0 rgba(139, 147, 160, 0.2),
+          inset 0 0 30px rgba(0, 0, 0, 0.25);
+      }
+      .die-face-right {
+        transform: rotateY(90deg) translateZ(130px);
+        background: #2a2a2e;
+        box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+      }
+
+      /* ---------- z3: iris (hero/focal plane, sharp, fully shut) ---------- */
+      #iris-outer {
+        position: absolute;
+        left: 910px; /* center_px x=1220 - diameter/2 */
+        top: 210px; /* center_px y=520 - diameter/2 */
+        width: 620px;
+        height: 620px;
+        z-index: 30;
+      }
+      #iris-outer svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      #iris-specular {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+        mix-blend-mode: screen;
+        background: linear-gradient(
+          100deg,
+          transparent 30%,
+          rgba(139, 147, 160, 0.55) 48%,
+          rgba(237, 232, 221, 0.15) 50%,
+          rgba(139, 147, 160, 0.55) 52%,
+          transparent 70%
+        );
+        background-repeat: no-repeat;
+        background-size: 260% 100%;
+        -webkit-mask-image: radial-gradient(
+          circle at 50% 50%,
+          transparent 0%,
+          transparent 16%,
+          #fff 18%,
+          #fff 47%,
+          transparent 49%
+        );
+        mask-image: radial-gradient(
+          circle at 50% 50%,
+          transparent 0%,
+          transparent 16%,
+          #fff 18%,
+          #fff 47%,
+          transparent 49%
+        );
+      }
+
+      /* ---------- z4: near-camera haze ---------- */
+      .layer-haze {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+        filter: blur(8px);
+        opacity: 0.08;
+        background:
+          radial-gradient(circle at 8% 12%, rgba(139, 147, 160, 0.6), transparent 30%),
+          radial-gradient(circle at 92% 88%, rgba(139, 147, 160, 0.5), transparent 26%);
+      }
+
+      /* ---------- z5/z6: grain + vignette polish (grain painted below vignette) ---------- */
+      #grain-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 90;
+        overflow: hidden;
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.05;
+        mix-blend-mode: overlay;
+      }
+      #hf-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        background: radial-gradient(ellipse at center, transparent 72%, rgba(0, 0, 0, 0.18) 100%);
+      }
+
+      /* ---------- z7: caption (static hold, unaffected by anything below) ---------- */
+      #caption-pos {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        top: 920px; /* center_px y */
+        transform: translateY(-50%);
+        text-align: center;
+        z-index: 110;
+        pointer-events: none;
+      }
+      #caption {
+        display: inline-block;
+        max-width: 1574px; /* 82% of 1920 title-safe width */
+        font-family: "League Gothic", "Oswald", "Arial Narrow", sans-serif;
+        font-weight: 400;
+        font-size: 142px;
+        line-height: 1;
+        letter-spacing: -0.005em;
+        color: #ede8dd;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
+      #caption .emph {
+        display: inline-block;
+        transform: scale(1.05);
+        letter-spacing: -0.01em;
       }
     </style>
   </head>
   <body>
     <div
-      id="root"
+      id="stage"
       data-composition-id="main"
       data-start="0"
-      data-duration="10"
+      data-duration="7"
+      data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      
-      
+      <div id="hero" class="clip" data-start="0" data-duration="7" data-track-index="0">
+        <!-- z0 -->
+        <div id="layer-stage"></div>
 
-      <!--
-        Add your clips here. Example:
-        <div id="title" class="clip" data-start="0" data-duration="5" data-track-index="1"
-             style="font-size: 64px; color: #fff; padding: 40px">
-          Hello World
+        <!-- z1 -->
+        <div id="die-shadow" class="contact-shadow"></div>
+        <div id="iris-shadow" class="contact-shadow"></div>
+
+        <!-- z2: die, brushed dark-metal cube frozen mid-tumble on one edge -->
+        <div id="die-outer">
+          <div id="die-tilt">
+            <div class="die-face die-face-top"></div>
+            <div class="die-face die-face-right"></div>
+            <div class="die-face die-face-front"></div>
+          </div>
         </div>
-      -->
+
+        <!-- z3: iris, machined aperture/eye, fully shut -->
+        <div id="iris-outer">
+          <svg viewBox="0 0 620 620" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="irisBody" cx="46%" cy="42%" r="72%">
+                <stop offset="0%" stop-color="#3D3D42" />
+                <stop offset="55%" stop-color="#2A2A2E" />
+                <stop offset="100%" stop-color="#0A0A0A" />
+              </radialGradient>
+              <radialGradient id="pupilGrad" cx="50%" cy="50%" r="55%">
+                <stop offset="0%" stop-color="#0A0A0A" />
+                <stop offset="100%" stop-color="#050505" />
+              </radialGradient>
+              <linearGradient id="bladeGrad0" gradientUnits="userSpaceOnUse" x1="515.57" y1="311.60" x2="477.25" y2="429.53"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad1" gradientUnits="userSpaceOnUse" x1="475.36" y1="432.12" x2="375.05" y2="505.01"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad2" gradientUnits="userSpaceOnUse" x1="372.00" y1="506.00" x2="248.00" y2="506.00"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad3" gradientUnits="userSpaceOnUse" x1="244.95" y1="505.01" x2="144.64" y2="432.12"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad4" gradientUnits="userSpaceOnUse" x1="142.75" y1="429.53" x2="104.43" y2="311.60"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad5" gradientUnits="userSpaceOnUse" x1="104.43" y1="308.40" x2="142.75" y2="190.47"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad6" gradientUnits="userSpaceOnUse" x1="144.64" y1="187.88" x2="244.95" y2="114.99"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad7" gradientUnits="userSpaceOnUse" x1="248.00" y1="114.00" x2="372.00" y2="114.00"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad8" gradientUnits="userSpaceOnUse" x1="375.05" y1="114.99" x2="475.36" y2="187.88"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+              <linearGradient id="bladeGrad9" gradientUnits="userSpaceOnUse" x1="477.25" y1="190.47" x2="515.57" y2="308.40"><stop offset="0%" stop-color="#2A2A2E"/><stop offset="50%" stop-color="#55565C"/><stop offset="100%" stop-color="#2A2A2E"/></linearGradient>
+            </defs>
+
+            <!-- machined outer bezel -->
+            <circle cx="310" cy="310" r="306" fill="url(#irisBody)" />
+            <circle cx="310" cy="310" r="306" fill="none" stroke="#55565C" stroke-width="3" stroke-opacity="0.35" />
+            <circle cx="310" cy="310" r="296" fill="none" stroke="#0A0A0A" stroke-width="2" stroke-opacity="0.5" />
+
+            <!-- aperture blades, fully shut, concentric wedge ring -->
+            <g id="iris-blades">
+              <path d="M 601.93 316.37 A 292 292 0 0 1 549.92 476.44 L 392.16 367.00 A 100 100 0 0 0 409.98 312.18 Z" fill="url(#bladeGrad0)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 542.43 486.75 A 292 292 0 0 1 406.27 585.67 L 342.97 404.41 A 100 100 0 0 0 389.60 370.53 Z" fill="url(#bladeGrad1)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 394.15 589.61 A 292 292 0 0 1 225.85 589.61 L 281.18 405.76 A 100 100 0 0 0 338.82 405.76 Z" fill="url(#bladeGrad2)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 213.73 585.67 A 292 292 0 0 1 77.57 486.75 L 230.40 370.53 A 100 100 0 0 0 277.03 404.41 Z" fill="url(#bladeGrad3)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 70.08 476.44 A 292 292 0 0 1 18.07 316.37 L 210.02 312.18 A 100 100 0 0 0 227.84 367.00 Z" fill="url(#bladeGrad4)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 18.07 303.63 A 292 292 0 0 1 70.08 143.56 L 227.84 253.00 A 100 100 0 0 0 210.02 307.82 Z" fill="url(#bladeGrad5)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 77.57 133.25 A 292 292 0 0 1 213.73 34.33 L 277.03 215.59 A 100 100 0 0 0 230.40 249.47 Z" fill="url(#bladeGrad6)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 225.85 30.39 A 292 292 0 0 1 394.15 30.39 L 338.82 214.24 A 100 100 0 0 0 281.18 214.24 Z" fill="url(#bladeGrad7)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 406.27 34.33 A 292 292 0 0 1 542.43 133.25 L 389.60 249.47 A 100 100 0 0 0 342.97 215.59 Z" fill="url(#bladeGrad8)" stroke="#1A1A1C" stroke-width="1.5" />
+              <path d="M 549.92 143.56 A 292 292 0 0 1 601.93 303.63 L 409.98 307.82 A 100 100 0 0 0 392.16 253.00 Z" fill="url(#bladeGrad9)" stroke="#1A1A1C" stroke-width="1.5" />
+            </g>
+
+            <!-- shut pupil, flat, matches backdrop near-black -->
+            <circle cx="310" cy="310" r="102" fill="none" stroke="#1A1A1C" stroke-width="3" />
+            <circle cx="310" cy="310" r="97" fill="url(#pupilGrad)" />
+          </svg>
+          <div id="iris-specular"></div>
+        </div>
+
+        <!-- z4 -->
+        <div class="layer-haze"></div>
+
+        <!-- z5: grain (below vignette) -->
+        <div id="grain-overlay">
+          <div class="grain-texture"></div>
+        </div>
+
+        <!-- z6: vignette (above grain) -->
+        <div id="hf-vignette"></div>
+
+        <!-- z7: caption, static hold -->
+        <div id="caption-pos">
+          <div id="caption">THEY <span class="emph">GUESS</span>. IT <span class="emph">DOESN'T</span>.</div>
+        </div>
+      </div>
     </div>
 
     <script>
-      window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-      // Example: tl.from("#title", { opacity: 0, y: -50, duration: 1 }, 0);
+
+      /* ---- shared multiplane parallax drift, one slow ease-in-out pass over the full 7s ----
+         amplitude = parallax_factor * 14px (shot-plan.animation.parallax); z2/z3 lean the
+         opposite direction from z0/z4 to sell true multiplane depth rather than a flat pan. */
+      tl.fromTo("#layer-stage", { x: -1 }, { x: 1, duration: 7, ease: "sine.inOut" }, 0);
+      tl.fromTo(".layer-haze", { x: -7 }, { x: 7, duration: 7, ease: "sine.inOut" }, 0);
+      tl.fromTo("#die-outer", { x: 3 }, { x: -3, duration: 7, ease: "sine.inOut" }, 0);
+      tl.fromTo("#iris-outer", { x: 5 }, { x: -5, duration: 7, ease: "sine.inOut" }, 0);
+
+      /* ---- die idle breathing: continuous micro-motion, not a resumed tumble ---- */
+      tl.fromTo(
+        "#die-outer",
+        { scale: 1, rotationZ: 0 },
+        { scale: 1.006, rotationZ: 0.5, duration: 2, ease: "sine.inOut", yoyo: true, repeat: 3 },
+        0,
+      );
+
+      /* ---- grain drift: finite GSAP sweep in place of the catalog block's infinite
+         CSS @keyframes loop (not seek-safe per the HF contract) ---- */
+      tl.fromTo(
+        ".grain-texture",
+        { xPercent: 0, yPercent: 0 },
+        { xPercent: -4, yPercent: 3, duration: 7, ease: "sine.inOut" },
+        0,
+      );
+
+      /* ---- caption: soft-blur-in settle, lands well before the 3.5s beat, then holds ---- */
+      tl.fromTo(
+        "#caption",
+        { opacity: 0, y: 14, filter: "blur(14px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.5, ease: "power2.out" },
+        0.15,
+      );
+
+      /* ---- specular crawl: single masked sweep across the aperture-blade ring only,
+         peaking at the 3.5s beat, never brightening the pupil ---- */
+      tl.fromTo(
+        "#iris-specular",
+        { backgroundPosition: "-120% 0%" },
+        { backgroundPosition: "140% 0%", duration: 1.7, ease: "power1.inOut" },
+        2.2,
+      );
+
       window.__timelines["main"] = tl;
+      tl.seek(0);
     </script>
   </body>
 </html>
