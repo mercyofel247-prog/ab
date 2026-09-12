@@ -209,6 +209,27 @@
         will-change: transform, opacity;
       }
 
+      /* the closed-iris cover — mimics real aperture blades: it starts
+         sized to hide the whole ring (matching the socket's own surface,
+         so it reads as "closed"), then GSAP shrinks it by scale down to
+         exactly the pupil's footprint, sweeping a hard circular edge
+         inward and progressively uncovering the ring — the same visual
+         direction a real iris opens in (the hole grows outward as the
+         blades retract), and it keeps the ring's own size constant so
+         this doesn't read as a zoom */
+      #iris-cover {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 560px;
+        height: 560px;
+        margin-left: -280px;
+        margin-top: -280px;
+        border-radius: 50%;
+        background: radial-gradient(60% 56% at 38% 32%, #55555b 0%, #3f3f44 34%, #2a2a2e 62%, #18181a 100%);
+        will-change: transform;
+      }
+
       /* impact burst — static bright gradient, GSAP only tweens opacity */
       #iris-flash {
         position: absolute;
@@ -320,6 +341,7 @@
               <div id="eye-bevel"></div>
               <div id="iris-glow"></div>
               <div id="iris-ring"></div>
+              <div id="iris-cover"></div>
               <div id="iris-flash"></div>
               <div id="eye-pupil"></div>
               <div id="glint-wrap"><div id="glint"></div></div>
@@ -454,28 +476,44 @@
       tl.to("#scene", { scale: 1.006, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
 
       // ======================================================
-      // Beat 1 (0.0 - 0.5s) — die tumbles to a settled rest
+      // Beat 1 (0.0 - 0.5s) — die tumbles to a settled rest. Uses a big
+      // rotation swing (nearly a full turn) and long travel distance so
+      // the tumble reads clearly across the whole beat instead of
+      // compressing into a couple of frames.
       // ======================================================
-      gsap.set("#die-face", { rotation: 34, x: -40, y: -40, scale: 0.92 });
-      gsap.set("#die-shadow", { opacity: 0.12, scaleX: 0.55, scaleY: 0.55 });
+      gsap.set("#die-face", { rotation: 300, x: -95, y: -75, scale: 0.85 });
+      gsap.set("#die-shadow", { opacity: 0.1, scaleX: 0.5, scaleY: 0.5 });
 
-      tl.to("#die-face", { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.8)" }, 0);
-      tl.to("#die-shadow", { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.42, ease: "power2.out" }, 0);
+      tl.to("#die-face", { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.46, ease: "back.out(1.6)" }, 0);
+      tl.to("#die-shadow", { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.46, ease: "power2.out" }, 0);
       // tiny settle bounce closing out beat 1
-      tl.to("#die-face", { y: 5, scaleY: 0.94, scaleX: 1.04, duration: 0.06, ease: "power1.in" }, 0.42);
-      tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.1, ease: "power2.out" }, 0.48);
+      tl.to("#die-face", { y: 5, scaleY: 0.94, scaleX: 1.04, duration: 0.05, ease: "power1.in" }, 0.46);
+      tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.09, ease: "power2.out" }, 0.51);
 
       // eye holds through beat 1 (no motion of its own beyond ambient push)
 
       // ======================================================
       // Beat 2 (0.5 - 1.4s) — the oxblood ring irises open across the eye
-      // (bloom in, standing in for a clip-path aperture reveal — clip-path
-      // isn't reliably tweenable on this runtime); glint travels the bevel
+      // like a camera aperture. Hand-authored: no registry block covers
+      // an iris-open mechanism, and clip-path isn't reliably tweenable on
+      // this runtime, so the reveal is built as a closed-iris "cover" —
+      // a disc matching the socket's own surface — that GSAP shrinks by
+      // scale from fully hiding the ring down to exactly the pupil's
+      // footprint. That sweeps a hard circular edge inward (real iris
+      // blades retract the same way, growing the opening outward) while
+      // the ring's own size stays constant, so it reads as an aperture
+      // opening rather than a ring zooming in. power2.out (not expo.out)
+      // keeps the motion visible across most of the 0.9s instead of
+      // resolving in the first few frames.
       // ======================================================
-      gsap.set("#iris-ring", { opacity: 0, scale: 0.12 });
-      gsap.set("#iris-glow", { opacity: 0, scale: 0.5 });
-      tl.to("#iris-ring", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
-      tl.to("#iris-glow", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
+      const RING_D = 560;
+      const PUPIL_D = 260;
+      const COVER_OPEN_SCALE = PUPIL_D / RING_D;
+
+      gsap.set("#iris-cover", { scale: 1 });
+      gsap.set("#iris-glow", { opacity: 0 });
+      tl.to("#iris-cover", { scale: COVER_OPEN_SCALE, duration: 0.9, ease: "power2.out" }, 0.5);
+      tl.to("#iris-glow", { opacity: 1, duration: 0.9, ease: "power2.out" }, 0.5);
 
       gsap.set("#glint-wrap", { rotation: -90 });
       gsap.set("#glint", { opacity: 0 });
