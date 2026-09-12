@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Shot 08 — They Guess, It Doesn't</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: radial-gradient(120% 95% at 50% 46%, #131314 0%, #0e0e0f 46%, var(--ground) 100%);
+      }
+
+      /* everything but the background/overlays rides one barely-visible
+         ambient breathing loop so the frame never sits fully motionless */
+      #scene {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------------- dust ---------------- */
+      .dust {
+        position: absolute;
+        border-radius: 50%;
+        background: var(--bone);
+        pointer-events: none;
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- die (flat 2D panel — only rotation/x/y/scale are
+         reliably tweenable by this runtime, so no 3D cube faces here) ---------------- */
+      #die-wrap {
+        position: absolute;
+        left: 330px;
+        top: 760px;
+        width: 240px;
+        height: 200px;
+      }
+
+      #die-shadow {
+        position: absolute;
+        left: 50%;
+        bottom: 18px;
+        width: 150px;
+        height: 34px;
+        margin-left: -75px;
+        background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 72%);
+        border-radius: 50%;
+        will-change: transform, opacity;
+      }
+
+      #die-face {
+        position: absolute;
+        left: 50%;
+        top: 40%;
+        width: 108px;
+        height: 108px;
+        margin-left: -54px;
+        margin-top: -54px;
+        border-radius: 12px;
+        background: linear-gradient(155deg, #4b4b50 0%, var(--graphite) 45%, #2a2a2d 100%);
+        box-shadow:
+          inset 0 0 0 1px rgba(237, 232, 221, 0.06),
+          0 12px 22px rgba(0, 0, 0, 0.55);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        padding: 18px;
+        will-change: transform, opacity;
+      }
+
+      .pip {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: radial-gradient(35% 35% at 35% 32%, #cfc9bc 0%, #8f8a80 55%, #57534c 100%);
+        align-self: center;
+        justify-self: center;
+      }
+
+      /* ---------------- eye hero ---------------- */
+      #eye-wrap {
+        position: absolute;
+        left: 50%;
+        top: 420px;
+        transform: translateX(-50%);
+      }
+
+      #eye-cluster {
+        position: relative;
+        width: 460px;
+        height: 460px;
+        will-change: transform;
+      }
+
+      #eye-socket {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: radial-gradient(58% 58% at 40% 36%, #4c4c51 0%, var(--graphite) 42%, #202023 78%, #131315 100%);
+        box-shadow:
+          inset 0 0 0 2px rgba(237, 232, 221, 0.05),
+          0 24px 60px rgba(0, 0, 0, 0.65);
+      }
+
+      /* soft emissive halo behind the ring — its glow is baked in as static
+         CSS (blur/gradient aren't reliably tweenable here); GSAP only ever
+         moves its opacity/scale, which reads as the halo brightening */
+      #iris-glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 440px;
+        height: 440px;
+        margin-left: -220px;
+        margin-top: -220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(122, 22, 14, 0.65) 0%, rgba(122, 22, 14, 0.28) 46%, rgba(122, 22, 14, 0) 72%);
+        filter: blur(12px);
+        will-change: transform, opacity;
+      }
+
+      /* the ring itself — emissive stroke only, never a flat fill; its glow
+         edge is static CSS box-shadow, GSAP only tweens opacity/scale */
+      #iris-ring {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 380px;
+        height: 380px;
+        margin-left: -190px;
+        margin-top: -190px;
+        border-radius: 50%;
+        border: 22px solid var(--oxblood);
+        box-shadow:
+          0 0 34px 4px rgba(122, 22, 14, 0.55),
+          inset 0 0 26px 4px rgba(122, 22, 14, 0.4);
+        will-change: transform, opacity;
+      }
+
+      /* impact burst — static bright gradient, GSAP only tweens opacity */
+      #iris-flash {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 380px;
+        height: 380px;
+        margin-left: -190px;
+        margin-top: -190px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 214, 200, 0.85) 0%, rgba(230, 120, 100, 0.35) 45%, rgba(230, 120, 100, 0) 75%);
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
+      #eye-pupil {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 190px;
+        height: 190px;
+        margin-left: -95px;
+        margin-top: -95px;
+        border-radius: 50%;
+        background: radial-gradient(50% 50% at 42% 38%, #1c1c1e 0%, #0a0a0b 60%, #000 100%);
+        box-shadow: inset 0 0 24px 6px rgba(0, 0, 0, 0.8);
+      }
+
+      #glint-wrap {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 380px;
+        height: 380px;
+        margin-left: -190px;
+        margin-top: -190px;
+      }
+
+      #glint {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 20px;
+        height: 20px;
+        margin-left: -10px;
+        margin-top: -2px;
+        border-radius: 50%;
+        background: radial-gradient(50% 50% at 50% 50%, var(--bone) 0%, rgba(237, 232, 221, 0.5) 55%, rgba(237, 232, 221, 0) 100%);
+      }
+
+      /* ---------------- caption ---------------- */
+      /* static positioning wrapper (never touched by GSAP) + a plain inner
+         element GSAP animates opacity/y on — keeps GSAP from ever owning
+         (and discarding) the CSS translateX centering transform */
+      #caption-pos {
+        position: absolute;
+        left: 50%;
+        top: 738px;
+        transform: translateX(-50%);
+        z-index: 110;
+      }
+
+      #caption {
+        white-space: nowrap;
+        color: var(--bone);
+        font-weight: 700;
+        font-size: 46px;
+        letter-spacing: 0.05em;
+        text-align: center;
+      }
+
+      #grain-overlay,
+      #hf-vignette {
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="shein_08_iris"
+      data-start="0"
+      data-duration="3.2"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3.2" data-track-index="1">
+        <div id="scene" data-layout-allow-overflow>
+          <div id="dust-field" data-layout-allow-overflow></div>
+
+          <div id="die-wrap" data-layout-allow-overflow>
+            <div id="die-shadow"></div>
+            <div id="die-face">
+              <div class="pip" style="grid-column:1;grid-row:1"></div>
+              <div class="pip" style="grid-column:3;grid-row:1"></div>
+              <div class="pip" style="grid-column:1;grid-row:2"></div>
+              <div class="pip" style="grid-column:3;grid-row:2"></div>
+              <div class="pip" style="grid-column:1;grid-row:3"></div>
+              <div class="pip" style="grid-column:3;grid-row:3"></div>
+            </div>
+          </div>
+
+          <div id="eye-wrap" data-layout-allow-overflow>
+            <div id="eye-cluster">
+              <div id="eye-socket"></div>
+              <div id="iris-glow"></div>
+              <div id="iris-ring"></div>
+              <div id="iris-flash"></div>
+              <div id="eye-pupil"></div>
+              <div id="glint-wrap"><div id="glint"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- grain-overlay (installed component, compositions/components/grain-overlay.html) -->
+        <div
+          id="grain-overlay"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100"
+        >
+          <div class="grain-texture"></div>
+        </div>
+
+        <!-- vignette (installed component, compositions/components/vignette.html) -->
+        <div
+          id="hf-vignette"
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 90"
+        ></div>
+
+        <!-- caption lives outside #scene (which gets a stacking context from its
+             own GSAP transform) so its z-index can actually clear the vignette/grain -->
+        <div id="caption-pos"><div id="caption">THEY GUESS. IT DOESN&rsquo;T.</div></div>
+      </section>
+    </div>
+
+    <style>
+      @keyframes hf-grain-noise {
+        0%,
+        100% {
+          transform: translate(0, 0);
+        }
+        10% {
+          transform: translate(-5%, -5%);
+        }
+        20% {
+          transform: translate(-10%, 5%);
+        }
+        30% {
+          transform: translate(5%, -10%);
+        }
+        40% {
+          transform: translate(-5%, 15%);
+        }
+        50% {
+          transform: translate(-10%, 5%);
+        }
+        60% {
+          transform: translate(15%, 0);
+        }
+        70% {
+          transform: translate(0, 10%);
+        }
+        80% {
+          transform: translate(-15%, 0);
+        }
+        90% {
+          transform: translate(10%, 5%);
+        }
+      }
+
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.12;
+        animation: hf-grain-noise 0.5s steps(1) infinite;
+      }
+
+      #hf-vignette {
+        background: radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.68) 100%);
+      }
+    </style>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic PRNG (mulberry32) — no Math.random anywhere ----
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(84621);
+
+      const tl = gsap.timeline({ paused: true });
+
+      // ======================================================
+      // dust field — seeded, continuous drift for the full 3.2s
+      // ======================================================
+      const dustField = document.querySelector("#dust-field");
+      const DUST_COUNT = 16;
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const mote = document.createElement("div");
+        mote.className = "dust";
+        const size = 2 + rand() * 3;
+        const x = 120 + rand() * 1680;
+        const y = 560 + rand() * 460;
+        const driftX = (rand() - 0.5) * 90;
+        const driftY = -40 - rand() * 60;
+        const dur = 2.6 + rand() * 2.2;
+        // phase-offset so motes aren't in lockstep — must stay >= 0: a negative
+        // timeline position retroactively shifts every other child's start time
+        const startAt = rand() * 1.4;
+        const opac = 0.08 + rand() * 0.16;
+        mote.style.width = size + "px";
+        mote.style.height = size + "px";
+        mote.style.left = x + "px";
+        mote.style.top = y + "px";
+        mote.style.opacity = String(opac);
+        dustField.appendChild(mote);
+
+        gsap.set(mote, { x: 0, y: 0 });
+        tl.to(
+          mote,
+          {
+            x: driftX,
+            y: driftY,
+            duration: dur,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: 6,
+          },
+          startAt,
+        );
+      }
+
+      // ======================================================
+      // ambient push — the whole scene breathes, never fully still
+      // ======================================================
+      tl.to(
+        "#scene",
+        { scale: 1.006, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 },
+        0,
+      );
+
+      // ======================================================
+      // Beat 1 (0.0 - 0.5s) — die tumbles to a settled rest
+      // ======================================================
+      gsap.set("#die-face", { rotation: 34, x: -46, y: -46, scale: 0.92 });
+      gsap.set("#die-shadow", { opacity: 0.12, scaleX: 0.55, scaleY: 0.55 });
+
+      tl.to(
+        "#die-face",
+        { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.8)" },
+        0,
+      );
+      tl.to(
+        "#die-shadow",
+        { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.42, ease: "power2.out" },
+        0,
+      );
+      // tiny settle bounce closing out beat 1
+      tl.to("#die-face", { y: 5, scaleY: 0.94, scaleX: 1.04, duration: 0.06, ease: "power1.in" }, 0.42);
+      tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.1, ease: "power2.out" }, 0.48);
+
+      // eye hero holds through beat 1 (no motion of its own beyond ambient push)
+
+      // ======================================================
+      // Beat 2 (0.5 - 1.4s) — the oxblood ring irises open (bloom in); glint travels
+      // ======================================================
+      gsap.set("#iris-ring", { opacity: 0, scale: 0.15 });
+      gsap.set("#iris-glow", { opacity: 0, scale: 0.5 });
+      tl.to("#iris-ring", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
+      tl.to("#iris-glow", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
+
+      gsap.set("#glint-wrap", { rotation: -90 });
+      gsap.set("#glint", { opacity: 0 });
+      tl.to("#glint-wrap", { rotation: 270, duration: 0.9, ease: "power2.inOut" }, 0.5);
+      tl.to("#glint", { opacity: 1, duration: 0.15, ease: "power1.out" }, 0.5);
+      tl.to("#glint", { opacity: 0, duration: 0.15, ease: "power1.in" }, 1.25);
+
+      // ======================================================
+      // Beat 3 (1.4 - 1.55s, sync at 1.4s) — full emissive snap + impact push
+      // ======================================================
+      gsap.set("#iris-flash", { opacity: 0 });
+      tl.to("#iris-flash", { opacity: 1, duration: 0.05, ease: "none" }, 1.4);
+      tl.to("#iris-flash", { opacity: 0, duration: 0.35, ease: "power2.out" }, 1.45);
+
+      tl.to("#iris-glow", { opacity: 1, scale: 1.14, duration: 0.07, ease: "power4.out" }, 1.4);
+      tl.to("#iris-glow", { opacity: 0.82, scale: 1, duration: 0.22, ease: "power2.out" }, 1.47);
+
+      // impact push-in-and-back on the whole eye cluster (overshoot as a claim about mass)
+      tl.to("#eye-cluster", { scale: 1.09, duration: 0.06, ease: "power4.out" }, 1.4);
+      tl.to("#eye-cluster", { scale: 1, duration: 0.09, ease: "power2.out" }, 1.46);
+
+      // the die dims a hair as the eye takes the frame's attention
+      tl.to("#die-face", { opacity: 0.6, duration: 0.3, ease: "power2.out" }, 1.4);
+
+      // ======================================================
+      // Beat 4 (1.55 - 1.7s) — caption settles in beneath the eye
+      // ======================================================
+      gsap.set("#caption", { opacity: 0, y: 18 });
+      tl.to("#caption", { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 1.55);
+
+      // ======================================================
+      // Beat 5 (1.7 - 2.9s) — sustained: ring breathes, dust drifts, push continues
+      // ======================================================
+      tl.to(
+        "#iris-glow",
+        { opacity: 0.6, scale: 0.96, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        1.7,
+      );
+
+      // ======================================================
+      // Beat 6 (2.9 - 3.2s) — gentle ambient idle to the final frame (no fade)
+      // ambient push, ring breathing, and dust drift above already run to 3.2s
+      // ======================================================
+
+      window.__timelines["shein_08_iris"] = tl;
+    </script>
+  </body>
+</html>
