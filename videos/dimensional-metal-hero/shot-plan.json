@@ -1,0 +1,28 @@
+{
+  "category": "kinetic-type",
+  "duration_s": 7,
+  "fps": 30,
+  "canvas": { "w": 1920, "h": 1080, "aspect": "16:9" },
+  "style": "Cold dimensional-metal hero/B-anchor still composition — a held studio-lit product shot of two hand-illustrated machined-metal forms on a near-black stage, not a kinetic word-reveal. Material realism is built entirely from layered CSS/SVG gradients, radial layers, blur/filters, and clip-paths (no photographic or fetched assets). Single raking key light (left-to-right) across both forms; cold graphite die lower-left (subordinate, unlit, mid-tumble frozen on edge) and a dominant (~55% of frame) machined aperture/iris-eye form on the right, fully shut, absolutely no emissive glow — dormant, inert metal, 'the eye has not opened yet.' Distinct near/mid/far depth layers for parallax, shallow depth of field, soft contact shadows, faint specular glints on bevels. Mood: restrained, ominous, dormant — a luxury-object product shot crossed with a sci-fi dormant-machine tease.",
+  "palette": ["#050505", "#0A0A0A", "#2A2A2E", "#3D3D42", "#55565C", "#8B93A0", "#EDE8DD"],
+  "font": "League Gothic",
+  "beats": [3.5],
+  "export": "mp4",
+
+  "asset_needs": [],
+
+  "content": {
+    "scenes": [
+      {
+        "id": "hero",
+        "start": 0,
+        "end": 7,
+        "text": "THEY GUESS. IT DOESN'T.",
+        "emphasis_words": ["GUESS", "DOESN'T"],
+        "emotion": "cold, dormant, ominous restraint — ambient dread ahead of an unrevealed judgment",
+        "motion": "Caption is a static hold, not a kinetic word-reveal: a single slow fade/settle-in (~0.4-0.6s) and then it sits fixed, extra-condensed caps, warm-bone #EDE8DD, min height ~8% of frame height, lower-center between the two metal forms, inside the title-safe inner 90%. All perceptible motion in the shot instead lives in the background/foreground dimensional scene: slow parallax drift across the near/mid/far depth layers, a faint specular sheen slowly crawling across the metal bevels (peaking around the beat below), and a very subtle settle/breathing micro-motion on the die. No aperture-opening motion of any kind — the iris stays shut throughout.",
+        "beats": [3.5]
+      }
+    ]
+  }
+}
