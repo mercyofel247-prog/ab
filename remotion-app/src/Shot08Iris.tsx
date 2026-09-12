@@ -65,20 +65,24 @@ export const Shot08Iris: React.FC = () => {
   );
 
   // ======================================================
-  // Beat 1 (f0-f11 / 0-0.46s) — die tumbles to a settled rest
+  // Beat 1 (f0-f11 / 0-0.46s) — die tumbles to a settled rest. A big
+  // rotation swing (nearly a full turn) and long travel distance so the
+  // tumble is unmistakable across these 11 frames rather than resolving
+  // as a barely-visible wobble.
   // ======================================================
-  const dieRotate = interpolate(frame, [0, 11], [8, 0], {
+  const dieRotate = interpolate(frame, [0, 11], [300, -6], {
     ...clampOpts,
-    easing: Easing.out(Easing.back(1.7)),
+    easing: Easing.out(Easing.back(1.6)),
   });
   // a complementary settle offset (not spelled out numerically in the
   // brief, but "tumbles to a settled rest" wants more than pure rotation)
   const dieSettle = interpolate(frame, [0, 11], [1, 0], {
     ...clampOpts,
-    easing: Easing.out(Easing.back(1.7)),
+    easing: Easing.out(Easing.back(1.6)),
   });
-  const dieX = dieSettle * -18;
-  const dieY = dieSettle * -14;
+  const dieX = dieSettle * -95;
+  const dieY = dieSettle * -75;
+  const dieScale = 1 - dieSettle * 0.15;
 
   // ======================================================
   // Beat 3 (f34-f36 / 1.4-1.5s, sync frame f34) — die dims a hair as it
@@ -184,7 +188,7 @@ export const Shot08Iris: React.FC = () => {
             width: 100,
             height: 100,
             opacity: dieOpacity,
-            transform: `translate(${dieX}px, ${dieY}px) rotate(${dieRotate}deg)`,
+            transform: `translate(${dieX}px, ${dieY}px) rotate(${dieRotate}deg) scale(${dieScale})`,
             borderRadius: 12,
             background: `linear-gradient(155deg, #4b4b50 0%, ${GRAPHITE} 45%, #262629 100%)`,
             boxShadow: "inset 0 0 0 1px rgba(237,232,221,0.06), 0 12px 20px rgba(0,0,0,0.55)",
