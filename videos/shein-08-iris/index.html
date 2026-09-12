@@ -36,7 +36,7 @@
         width: 1920px;
         height: 1080px;
         overflow: hidden;
-        background: radial-gradient(120% 95% at 50% 46%, #131314 0%, #0e0e0f 46%, var(--ground) 100%);
+        background: radial-gradient(120% 95% at 62% 46%, #131314 0%, #0e0e0f 46%, var(--ground) 100%);
       }
 
       /* everything but the background/overlays rides one barely-visible
@@ -55,23 +55,24 @@
         will-change: transform, opacity;
       }
 
-      /* ---------------- die (flat 2D panel — only rotation/x/y/scale are
-         reliably tweenable by this runtime, so no 3D cube faces here) ---------------- */
+      /* ---------------- die (flat 2D panel, lower-left, subordinate —
+         only rotation/x/y/scale are reliably tweenable by this runtime,
+         so no 3D cube faces here) ---------------- */
       #die-wrap {
         position: absolute;
-        left: 330px;
-        top: 760px;
-        width: 240px;
-        height: 200px;
+        left: 220px;
+        top: 790px;
+        width: 220px;
+        height: 190px;
       }
 
       #die-shadow {
         position: absolute;
         left: 50%;
         bottom: 18px;
-        width: 150px;
-        height: 34px;
-        margin-left: -75px;
+        width: 130px;
+        height: 30px;
+        margin-left: -65px;
         background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 72%);
         border-radius: 50%;
         will-change: transform, opacity;
@@ -81,88 +82,130 @@
         position: absolute;
         left: 50%;
         top: 40%;
-        width: 108px;
-        height: 108px;
-        margin-left: -54px;
-        margin-top: -54px;
-        border-radius: 12px;
-        background: linear-gradient(155deg, #4b4b50 0%, var(--graphite) 45%, #2a2a2d 100%);
+        width: 92px;
+        height: 92px;
+        margin-left: -46px;
+        margin-top: -46px;
+        border-radius: 11px;
+        background: linear-gradient(155deg, #46464a 0%, var(--graphite) 45%, #262629 100%);
         box-shadow:
           inset 0 0 0 1px rgba(237, 232, 221, 0.06),
-          0 12px 22px rgba(0, 0, 0, 0.55);
+          0 10px 18px rgba(0, 0, 0, 0.55);
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: repeat(3, 1fr);
-        padding: 18px;
+        padding: 15px;
         will-change: transform, opacity;
       }
 
       .pip {
-        width: 14px;
-        height: 14px;
+        width: 12px;
+        height: 12px;
         border-radius: 50%;
         background: radial-gradient(35% 35% at 35% 32%, #cfc9bc 0%, #8f8a80 55%, #57534c 100%);
         align-self: center;
         justify-self: center;
       }
 
-      /* ---------------- eye hero ---------------- */
+      /* ---------------- mechanical iris — dominates the right two-thirds
+         of the frame ---------------- */
       #eye-wrap {
         position: absolute;
-        left: 50%;
-        top: 420px;
-        transform: translateX(-50%);
+        left: 1300px;
+        top: 490px;
       }
 
       #eye-cluster {
         position: relative;
-        width: 460px;
-        height: 460px;
+        width: 720px;
+        height: 720px;
+        margin-left: -360px;
+        margin-top: -360px;
         will-change: transform;
       }
 
+      /* brushed dark metal body — layered static gradients (banding +
+         a soft sheen) stand in for a metal texture; none of this is
+         GSAP-animated, so a rich static look costs nothing */
       #eye-socket {
         position: absolute;
         inset: 0;
         border-radius: 50%;
-        background: radial-gradient(58% 58% at 40% 36%, #4c4c51 0%, var(--graphite) 42%, #202023 78%, #131315 100%);
+        background:
+          repeating-linear-gradient(
+            98deg,
+            rgba(255, 255, 255, 0.028) 0px,
+            rgba(255, 255, 255, 0.028) 1px,
+            rgba(0, 0, 0, 0) 1px,
+            rgba(0, 0, 0, 0) 3px
+          ),
+          radial-gradient(60% 56% at 38% 32%, #55555b 0%, #3f3f44 34%, #2a2a2e 62%, #18181a 100%);
         box-shadow:
           inset 0 0 0 2px rgba(237, 232, 221, 0.05),
-          0 24px 60px rgba(0, 0, 0, 0.65);
+          0 30px 70px rgba(0, 0, 0, 0.6);
       }
 
-      /* soft emissive halo behind the ring — its glow is baked in as static
-         CSS (blur/gradient aren't reliably tweenable here); GSAP only ever
+      /* the machined bevel — a raised metallic rim just inside the
+         socket's outer edge; static conic sheen, never animated */
+      #eye-bevel {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 648px;
+        height: 648px;
+        margin-left: -324px;
+        margin-top: -324px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        background:
+          conic-gradient(
+              from 220deg,
+              rgba(237, 232, 221, 0.32) 0deg,
+              rgba(237, 232, 221, 0.04) 70deg,
+              rgba(0, 0, 0, 0.35) 150deg,
+              rgba(237, 232, 221, 0.1) 230deg,
+              rgba(237, 232, 221, 0.32) 360deg
+            )
+            border-box;
+        -webkit-mask:
+          linear-gradient(#000 0 0) padding-box,
+          linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+      }
+
+      /* soft emissive halo behind the ring — glow baked in as static CSS
+         (blur/gradient aren't reliably tweenable here); GSAP only ever
          moves its opacity/scale, which reads as the halo brightening */
       #iris-glow {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 440px;
-        height: 440px;
-        margin-left: -220px;
-        margin-top: -220px;
+        width: 700px;
+        height: 700px;
+        margin-left: -350px;
+        margin-top: -350px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(122, 22, 14, 0.65) 0%, rgba(122, 22, 14, 0.28) 46%, rgba(122, 22, 14, 0) 72%);
-        filter: blur(12px);
+        filter: blur(16px);
         will-change: transform, opacity;
       }
 
-      /* the ring itself — emissive stroke only, never a flat fill; its glow
-         edge is static CSS box-shadow, GSAP only tweens opacity/scale */
+      /* the ring itself — emissive stroke only, never a flat fill; its
+         glow edge is static box-shadow, GSAP only tweens opacity/scale */
       #iris-ring {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 380px;
-        height: 380px;
-        margin-left: -190px;
-        margin-top: -190px;
+        width: 560px;
+        height: 560px;
+        margin-left: -280px;
+        margin-top: -280px;
         border-radius: 50%;
-        border: 22px solid var(--oxblood);
+        border: 34px solid var(--oxblood);
         box-shadow:
-          0 0 34px 4px rgba(122, 22, 14, 0.55),
-          inset 0 0 26px 4px rgba(122, 22, 14, 0.4);
+          0 0 46px 6px rgba(122, 22, 14, 0.55),
+          inset 0 0 34px 6px rgba(122, 22, 14, 0.4);
         will-change: transform, opacity;
       }
 
@@ -171,10 +214,10 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 380px;
-        height: 380px;
-        margin-left: -190px;
-        margin-top: -190px;
+        width: 560px;
+        height: 560px;
+        margin-left: -280px;
+        margin-top: -280px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(255, 214, 200, 0.85) 0%, rgba(230, 120, 100, 0.35) 45%, rgba(230, 120, 100, 0) 75%);
         mix-blend-mode: screen;
@@ -185,35 +228,37 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 190px;
-        height: 190px;
-        margin-left: -95px;
-        margin-top: -95px;
+        width: 260px;
+        height: 260px;
+        margin-left: -130px;
+        margin-top: -130px;
         border-radius: 50%;
         background: radial-gradient(50% 50% at 42% 38%, #1c1c1e 0%, #0a0a0b 60%, #000 100%);
-        box-shadow: inset 0 0 24px 6px rgba(0, 0, 0, 0.8);
+        box-shadow: inset 0 0 30px 8px rgba(0, 0, 0, 0.8);
       }
 
+      /* the specular glint travels the bevel (the socket's outer rim),
+         not the inner ring, per spec */
       #glint-wrap {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 380px;
-        height: 380px;
-        margin-left: -190px;
-        margin-top: -190px;
+        width: 648px;
+        height: 648px;
+        margin-left: -324px;
+        margin-top: -324px;
       }
 
       #glint {
         position: absolute;
         left: 50%;
         top: 0;
-        width: 20px;
-        height: 20px;
-        margin-left: -10px;
-        margin-top: -2px;
+        width: 26px;
+        height: 26px;
+        margin-left: -13px;
+        margin-top: -3px;
         border-radius: 50%;
-        background: radial-gradient(50% 50% at 50% 50%, var(--bone) 0%, rgba(237, 232, 221, 0.5) 55%, rgba(237, 232, 221, 0) 100%);
+        background: radial-gradient(50% 50% at 50% 50%, var(--bone) 0%, rgba(237, 232, 221, 0.55) 55%, rgba(237, 232, 221, 0) 100%);
       }
 
       /* ---------------- caption ---------------- */
@@ -222,8 +267,8 @@
          (and discarding) the CSS translateX centering transform */
       #caption-pos {
         position: absolute;
-        left: 50%;
-        top: 738px;
+        left: 1300px;
+        top: 900px;
         transform: translateX(-50%);
         z-index: 110;
       }
@@ -232,7 +277,7 @@
         white-space: nowrap;
         color: var(--bone);
         font-weight: 700;
-        font-size: 46px;
+        font-size: 50px;
         letter-spacing: 0.05em;
         text-align: center;
       }
@@ -272,6 +317,7 @@
           <div id="eye-wrap" data-layout-allow-overflow>
             <div id="eye-cluster">
               <div id="eye-socket"></div>
+              <div id="eye-bevel"></div>
               <div id="iris-glow"></div>
               <div id="iris-ring"></div>
               <div id="iris-flash"></div>
@@ -370,22 +416,22 @@
       const tl = gsap.timeline({ paused: true });
 
       // ======================================================
-      // dust field — seeded, continuous drift for the full 3.2s
+      // dust field — seeded, continuous drift for the full 3.2s.
+      // Positions ALWAYS use non-negative timeline positions: a negative
+      // position retroactively shifts every other child's start time.
       // ======================================================
       const dustField = document.querySelector("#dust-field");
-      const DUST_COUNT = 16;
+      const DUST_COUNT = 18;
       for (let i = 0; i < DUST_COUNT; i++) {
         const mote = document.createElement("div");
         mote.className = "dust";
         const size = 2 + rand() * 3;
-        const x = 120 + rand() * 1680;
-        const y = 560 + rand() * 460;
+        const x = 100 + rand() * 1720;
+        const y = 480 + rand() * 540;
         const driftX = (rand() - 0.5) * 90;
         const driftY = -40 - rand() * 60;
         const dur = 2.6 + rand() * 2.2;
-        // phase-offset so motes aren't in lockstep — must stay >= 0: a negative
-        // timeline position retroactively shifts every other child's start time
-        const startAt = rand() * 1.4;
+        const startAt = rand() * 1.4; // organic phase-offset, never negative
         const opac = 0.08 + rand() * 0.16;
         mote.style.width = size + "px";
         mote.style.height = size + "px";
@@ -397,14 +443,7 @@
         gsap.set(mote, { x: 0, y: 0 });
         tl.to(
           mote,
-          {
-            x: driftX,
-            y: driftY,
-            duration: dur,
-            ease: "sine.inOut",
-            yoyo: true,
-            repeat: 6,
-          },
+          { x: driftX, y: driftY, duration: dur, ease: "sine.inOut", yoyo: true, repeat: 6 },
           startAt,
         );
       }
@@ -412,38 +451,28 @@
       // ======================================================
       // ambient push — the whole scene breathes, never fully still
       // ======================================================
-      tl.to(
-        "#scene",
-        { scale: 1.006, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 },
-        0,
-      );
+      tl.to("#scene", { scale: 1.006, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
 
       // ======================================================
       // Beat 1 (0.0 - 0.5s) — die tumbles to a settled rest
       // ======================================================
-      gsap.set("#die-face", { rotation: 34, x: -46, y: -46, scale: 0.92 });
+      gsap.set("#die-face", { rotation: 34, x: -40, y: -40, scale: 0.92 });
       gsap.set("#die-shadow", { opacity: 0.12, scaleX: 0.55, scaleY: 0.55 });
 
-      tl.to(
-        "#die-face",
-        { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.8)" },
-        0,
-      );
-      tl.to(
-        "#die-shadow",
-        { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.42, ease: "power2.out" },
-        0,
-      );
+      tl.to("#die-face", { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.8)" }, 0);
+      tl.to("#die-shadow", { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.42, ease: "power2.out" }, 0);
       // tiny settle bounce closing out beat 1
       tl.to("#die-face", { y: 5, scaleY: 0.94, scaleX: 1.04, duration: 0.06, ease: "power1.in" }, 0.42);
       tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.1, ease: "power2.out" }, 0.48);
 
-      // eye hero holds through beat 1 (no motion of its own beyond ambient push)
+      // eye holds through beat 1 (no motion of its own beyond ambient push)
 
       // ======================================================
-      // Beat 2 (0.5 - 1.4s) — the oxblood ring irises open (bloom in); glint travels
+      // Beat 2 (0.5 - 1.4s) — the oxblood ring irises open across the eye
+      // (bloom in, standing in for a clip-path aperture reveal — clip-path
+      // isn't reliably tweenable on this runtime); glint travels the bevel
       // ======================================================
-      gsap.set("#iris-ring", { opacity: 0, scale: 0.15 });
+      gsap.set("#iris-ring", { opacity: 0, scale: 0.12 });
       gsap.set("#iris-glow", { opacity: 0, scale: 0.5 });
       tl.to("#iris-ring", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
       tl.to("#iris-glow", { opacity: 1, scale: 1, duration: 0.9, ease: "expo.out" }, 0.5);
@@ -455,7 +484,9 @@
       tl.to("#glint", { opacity: 0, duration: 0.15, ease: "power1.in" }, 1.25);
 
       // ======================================================
-      // Beat 3 (1.4 - 1.55s, sync at 1.4s) — full emissive snap + impact push
+      // Beat 3 (1.4 - 1.7s) — full emissive snap + overshoot-and-settle
+      // punch (the eye has locked on); die dims; a beat later the caption
+      // settles in beneath the eye
       // ======================================================
       gsap.set("#iris-flash", { opacity: 0 });
       tl.to("#iris-flash", { opacity: 1, duration: 0.05, ease: "none" }, 1.4);
@@ -464,32 +495,27 @@
       tl.to("#iris-glow", { opacity: 1, scale: 1.14, duration: 0.07, ease: "power4.out" }, 1.4);
       tl.to("#iris-glow", { opacity: 0.82, scale: 1, duration: 0.22, ease: "power2.out" }, 1.47);
 
-      // impact push-in-and-back on the whole eye cluster (overshoot as a claim about mass)
+      // hard overshoot-and-settle punch on the whole eye cluster
       tl.to("#eye-cluster", { scale: 1.09, duration: 0.06, ease: "power4.out" }, 1.4);
       tl.to("#eye-cluster", { scale: 1, duration: 0.09, ease: "power2.out" }, 1.46);
 
-      // the die dims a hair as the eye takes the frame's attention
+      // the die dims as it loses the frame's attention
       tl.to("#die-face", { opacity: 0.6, duration: 0.3, ease: "power2.out" }, 1.4);
 
-      // ======================================================
-      // Beat 4 (1.55 - 1.7s) — caption settles in beneath the eye
-      // ======================================================
+      // a beat later: caption settles in beneath the eye
       gsap.set("#caption", { opacity: 0, y: 18 });
       tl.to("#caption", { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 1.55);
 
       // ======================================================
-      // Beat 5 (1.7 - 2.9s) — sustained: ring breathes, dust drifts, push continues
+      // Beat 4 (1.7 - 3.2s) — gentle ambient idle to the final frame: the
+      // iris breathes faintly, dust keeps drifting, nothing goes fully
+      // static (scene breathing + dust above already run the full 3.2s)
       // ======================================================
       tl.to(
         "#iris-glow",
-        { opacity: 0.6, scale: 0.96, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        { opacity: 0.6, scale: 0.96, duration: 0.75, ease: "sine.inOut", yoyo: true, repeat: 1 },
         1.7,
       );
-
-      // ======================================================
-      // Beat 6 (2.9 - 3.2s) — gentle ambient idle to the final frame (no fade)
-      // ambient push, ring breathing, and dust drift above already run to 3.2s
-      // ======================================================
 
       window.__timelines["shein_08_iris"] = tl;
     </script>
