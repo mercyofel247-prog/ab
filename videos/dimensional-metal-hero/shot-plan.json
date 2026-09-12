@@ -11,6 +11,50 @@
 
   "asset_needs": [],
 
+  "reuse_search": {
+    "queries_run": [
+      "machined metal bevel product shot",
+      "caption extra condensed hold",
+      "grain vignette polish overlay",
+      "specular shimmer sweep metal glint",
+      "parallax depth of field blur layers",
+      "League Gothic condensed font"
+    ],
+    "found_and_reused": [
+      { "name": "soft-blur-in", "type": "component", "use": "caption reveal — opacity+blur+lift settle-in matches the brief's single slow fade/settle-in for the held caption line" },
+      { "name": "grain-overlay", "type": "component", "use": "topmost polish layer — very low intensity to add analog metal-stage texture without warmth/color tint" },
+      { "name": "vignette", "type": "component", "use": "topmost polish layer — restrained radial darken to pull focus onto the iris/die stage" }
+    ],
+    "inspected_not_used": [
+      { "name": "text-shimmer", "reason": "specular gradient-sweep-through-a-mask technique is the right primitive, but it is built for text glyphs; the specular crawl here sweeps over SVG/CSS concentric iris-blade geometry, not type — hand-adapt the masked-gradient-sweep technique rather than installing the component" },
+      { "name": "gloss-sweep", "reason": "single diagonal specular gloss on a held/landed element is the right beat shape (matches our one-time crawl-to-beat), but it's authored for a card 'landing with a slam' — our iris never moves, so only the gloss-timing idea is borrowed, not the component" },
+      { "name": "focus-rack", "reason": "synchronized blur/dim/scale/parallax across two depth-separated cards is the right DoF concept, but it performs an active focus SHIFT between two subjects — our shot holds one static focal plane (iris sharp, die soft) with no shift, so only the per-layer blur/parallax technique is borrowed" },
+      { "name": "caption-editorial-emphasis", "reason": "dual-font size-contrast emphasis considered for GUESS/DOESN'T, but League Gothic ships weight 400 only (no bold variant) and the brief wants a plain static hold, not a kinetic dual-font system — passed over for a simple scale/tracking emphasis on the single font" }
+    ],
+    "confirmed_gap": "No catalog block or component models a brushed-graphite die + machined-iris dimensional product scene ('machined metal bevel product shot' returned only unrelated device/app-showcase blocks). The die+iris geometry, materials, specular crawl, and die micro-motion are hand-authored CSS/SVG per the Part 1 brief; this is a full illustrated scene rather than one named look/effect, so no --search-miss feedback was logged (catalog-map.md reserves that for a named effect the user asked for by name)."
+  },
+
+  "block": null,
+  "customize": {
+    "components_to_add": [
+      {
+        "component": "soft-blur-in",
+        "target": "caption text node",
+        "params": { "duration_s": 0.5, "blur_start_px": 14, "y_start_px": 14, "opacity_start": 0, "ease": "power2.out" }
+      },
+      {
+        "component": "grain-overlay",
+        "target": "full-canvas topmost layer (below vignette)",
+        "params": { "opacity": 0.05, "blend_mode": "overlay", "monochrome": true, "note": "kept subliminal — must not read as a stylistic 'film' choice, only as stage-texture" }
+      },
+      {
+        "component": "vignette",
+        "target": "full-canvas topmost layer (above grain)",
+        "params": { "darken_strength": 0.18, "color": "#000000", "radius_pct": 72, "note": "pure black radial only, no color cast — pulls focus onto the iris" }
+      }
+    ]
+  },
+
   "content": {
     "scenes": [
       {
@@ -20,9 +64,173 @@
         "text": "THEY GUESS. IT DOESN'T.",
         "emphasis_words": ["GUESS", "DOESN'T"],
         "emotion": "cold, dormant, ominous restraint — ambient dread ahead of an unrevealed judgment",
-        "motion": "Caption is a static hold, not a kinetic word-reveal: a single slow fade/settle-in (~0.4-0.6s) and then it sits fixed, extra-condensed caps, warm-bone #EDE8DD, min height ~8% of frame height, lower-center between the two metal forms, inside the title-safe inner 90%. All perceptible motion in the shot instead lives in the background/foreground dimensional scene: slow parallax drift across the near/mid/far depth layers, a faint specular sheen slowly crawling across the metal bevels (peaking around the beat below), and a very subtle settle/breathing micro-motion on the die. No aperture-opening motion of any kind — the iris stays shut throughout.",
+        "motion": "Caption is a static hold, not a kinetic word-reveal: soft-blur-in settle (0.5s, blur 14px->0, y +14px->0, opacity 0->1, power2.out) starting at t=0.15s, then fixed for the remainder. All perceptible motion instead lives in the dimensional scene: a slow multiplane parallax drift across the far/mid/hero/foreground depth layers (0.6-1.2s ease in-out over the full 7s, near-imperceptible), a single specular-crawl sweep across the iris's machined bevels from t=2.2s to t=3.9s peaking exactly at the beat (3.5s), and a continuous subtle breathing micro-motion on the die (scale 1.000<->1.006, rotateZ 0<->0.5deg, 4s sine, non-looping-obvious/organic). The iris stays fully shut throughout — no aperture-opening motion of any kind.",
         "beats": [3.5]
       }
-    ]
+    ],
+
+    "layout": {
+      "canvas": { "w": 1920, "h": 1080 },
+      "title_safe_inner_pct": 90,
+      "die": {
+        "role": "subordinate mid-ground object, frozen mid-tumble on an edge/vertex",
+        "center_px": { "x": 480, "y": 760 },
+        "size_px": { "w": 260, "h": 260 },
+        "rotation_deg": { "x": -18, "y": 32, "z": 6 },
+        "notes": "positioned lower-left; two faces + one lit edge visible; smaller and softer than the iris to read as clearly subordinate"
+      },
+      "iris": {
+        "role": "dominant hero object, machined aperture/eye, fully shut",
+        "center_px": { "x": 1220, "y": 520 },
+        "diameter_px": 620,
+        "frame_share_pct": 57,
+        "notes": "right of center, ~55-57% of frame height; vertically centered slightly above the caption band to leave the lower-center clear"
+      },
+      "caption": {
+        "role": "static held title line, lower-center, between the two forms",
+        "center_px": { "x": 960, "y": 920 },
+        "cap_height_px": 130,
+        "min_height_pct_of_frame": 8,
+        "align": "center",
+        "max_width_pct": 82,
+        "notes": "sits inside the inner 90% title-safe box; baseline high enough to clear the bottom title-safe edge at 1080*0.95=1026px"
+      },
+      "key_light": {
+        "type": "single raking key, left-to-right",
+        "origin": "off-frame upper-left, ~15deg above horizontal",
+        "casts_shadows_toward": "lower-right on both objects"
+      }
+    },
+
+    "depth_layers": [
+      {
+        "id": "z0_stage",
+        "plane": "far",
+        "elements": ["near-black backdrop", "faint cyc-wall-to-floor seam"],
+        "blur_px": 0,
+        "parallax_factor": 0.15,
+        "drift_px_over_7s": 2,
+        "notes": "base plane, effectively static; sells depth by staying almost still while nearer layers drift more"
+      },
+      {
+        "id": "z1_contact_shadows",
+        "plane": "far-mid",
+        "elements": ["die contact shadow", "iris contact shadow"],
+        "blur_px": 40,
+        "parallax_factor": 0.15,
+        "drift_px_over_7s": 0,
+        "notes": "locked to their objects' footprints, no independent drift"
+      },
+      {
+        "id": "z2_die",
+        "plane": "mid-ground (slightly behind focal plane)",
+        "elements": ["die"],
+        "blur_px": 3,
+        "parallax_factor": 0.4,
+        "drift_px_over_7s": 6,
+        "focus": "soft — defocused just enough to read as behind the focal plane, reinforcing 'subordinate/unlit'",
+        "notes": "carries the idle breathing micro-motion (see animation.die_breathing)"
+      },
+      {
+        "id": "z3_iris",
+        "plane": "hero/focal plane",
+        "elements": ["iris body", "concentric aperture blades", "shut pupil disc"],
+        "blur_px": 0,
+        "parallax_factor": 0.7,
+        "drift_px_over_7s": 10,
+        "focus": "tack sharp — the key light and the specular crawl both live here",
+        "notes": "the only element allowed a moving highlight (the specular crawl); everything else on this layer is otherwise static"
+      },
+      {
+        "id": "z4_foreground_haze",
+        "plane": "near-camera",
+        "elements": ["very faint radial haze at frame edges", "a few near-invisible out-of-focus dust motes"],
+        "blur_px": 8,
+        "parallax_factor": 1.0,
+        "drift_px_over_7s": 14,
+        "opacity_max": 0.08,
+        "notes": "fastest, opposite-leaning drift vs. z2/z3 sells multiplane depth; must stay near-subliminal"
+      },
+      {
+        "id": "z5_grain",
+        "plane": "post/topmost",
+        "elements": ["grain-overlay component"],
+        "notes": "see customize.components_to_add"
+      },
+      {
+        "id": "z6_vignette",
+        "plane": "post/topmost",
+        "elements": ["vignette component"],
+        "notes": "see customize.components_to_add"
+      },
+      {
+        "id": "z7_caption",
+        "plane": "UI/topmost",
+        "elements": ["caption text"],
+        "notes": "unaffected by parallax/blur/grain/vignette dimming — must stay perfectly legible"
+      }
+    ],
+
+    "materials": {
+      "die": {
+        "base_gradient": "linear-gradient(100deg, #2A2A2E 0%, #3D3D42 45%, #55565C 62%, #2A2A2E 100%)",
+        "lit_edge_highlight": "1px-2px hairline of #8B93A0 at ~20% opacity along the single bevel edge nearest the key light — kept minimal since the die is deliberately unlit/subordinate",
+        "unlit_faces": "#2A2A2E flat, near-zero specular",
+        "contact_shadow": "radial-gradient ellipse, rgba(0,0,0,0.45), blur 40px, offset dx +30px dy +20px (toward lower-right, away from key light)"
+      },
+      "iris": {
+        "base_ring_gradient": "conic-gradient / radial-gradient blend cycling #3D3D42 -> #55565C -> #3D3D42 across each concentric aperture blade, i.e. resting-state specular is capped at #55565C — never brighter at rest, so the shot reads dormant",
+        "groove_shadow": "#2A2A2E in the recessed channels between blades",
+        "pupil_center": "#0A0A0A flat, matching the backdrop's near-black so the shut center visually recedes into nothing (no emissive glow of any kind)",
+        "contact_shadow": "radial-gradient ellipse, rgba(0,0,0,0.4), blur 70px, offset dx +50px dy +30px",
+        "specular_crawl_gradient": "linear-gradient(100deg, transparent 30%, rgba(139,147,160,0.55) 48%, rgba(237,232,221,0.15) 50%, rgba(139,147,160,0.55) 52%, transparent 70%), masked to the aperture-blade ring geometry only, blend-mode: screen, swept via transform/background-position across ~160% of the iris width so it enters and exits off-geometry cleanly"
+      },
+      "stage_backdrop": "radial-gradient(#0A0A0A center, #050505 edges)",
+      "caption": {
+        "color": "#EDE8DD",
+        "text_shadow": "0 2px 10px rgba(0,0,0,0.5)",
+        "note_no_glow": "no textShadow bloom/glow — flat, restrained, legible against near-black"
+      },
+      "constraint": "no hue anywhere in this list falls near red/oxblood; every warm value is limited to the single bone caption hex #EDE8DD"
+    },
+
+    "animation": {
+      "caption_reveal": {
+        "technique": "soft-blur-in (catalog component)",
+        "start_s": 0.15,
+        "duration_s": 0.5,
+        "from": { "opacity": 0, "blur_px": 14, "y_px": 14 },
+        "to": { "opacity": 1, "blur_px": 0, "y_px": 0 },
+        "ease": "power2.out",
+        "then": "hold fixed, no further motion, for the remaining ~6.35s"
+      },
+      "emphasis_words": {
+        "words": ["GUESS", "DOESN'T"],
+        "technique": "scale + tracking only — no font-weight change (League Gothic ships weight 400 only)",
+        "params": { "scale": 1.05, "letter_spacing_delta": "-0.01em", "color": "#EDE8DD (unchanged)" },
+        "timing": "applied as a static state from the moment the caption settles, not an animated emphasis beat"
+      },
+      "specular_crawl": {
+        "target": "z3_iris concentric aperture-blade rings only",
+        "start_s": 2.2,
+        "end_s": 3.9,
+        "peak_at_beat_s": 3.5,
+        "technique": "masked linear-gradient sweep (hand-adapted from text-shimmer's mask-sweep primitive and gloss-sweep's single-pass diagonal gloss, applied to SVG/CSS ring geometry instead of text/card)",
+        "path": "translate the specular_crawl_gradient from off-geometry-left to off-geometry-right at 100deg (matching the raking key light angle)",
+        "ease": "power1.inOut",
+        "repeats": "once only per the 7s hold — no looping shimmer, this is a single held product shot"
+      },
+      "die_breathing": {
+        "target": "z2_die",
+        "technique": "continuous idle micro-motion, not a resumed tumble",
+        "params": { "scale": [1.0, 1.006, 1.0], "rotateZ_deg": [0, 0.5, 0], "period_s": 4, "ease": "sine.inOut" },
+        "notes": "runs the whole 7s; amplitude kept small enough to read as 'held object breathing', never as the die moving/tumbling again"
+      },
+      "parallax": {
+        "technique": "multiplane drift — each z-layer's parallax_factor (see depth_layers[]) scales a shared slow camera-drift curve",
+        "shared_curve": { "duration_s": 7, "shape": "one slow ease-in-out pass, translateX amplitude scaled per-layer by parallax_factor", "max_amplitude_px": 14 },
+        "direction_note": "z2 (die) and z3 (iris) drift in slightly different apparent directions/rates than z0/z4 to sell true multiplane depth rather than a single flat pan"
+      }
+    }
   }
 }
