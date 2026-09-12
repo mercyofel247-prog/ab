@@ -40,7 +40,8 @@
       }
 
       /* everything but the background/overlays rides one barely-visible
-         ambient breathing loop so the frame never sits fully motionless */
+         ambient breathing loop (and, briefly, the impact camera-shake) so
+         the frame never sits fully motionless */
       #scene {
         position: absolute;
         inset: 0;
@@ -56,8 +57,8 @@
       }
 
       /* ---------------- die (flat 2D panel, lower-left, subordinate —
-         only rotation/x/y/scale are reliably tweenable by this runtime,
-         so no 3D cube faces here) ---------------- */
+         only rotation/x/y/scale/opacity/width/height are reliably
+         tweenable by this runtime, so no 3D cube faces here) ---------------- */
       #die-wrap {
         position: absolute;
         left: 220px;
@@ -107,20 +108,20 @@
         justify-self: center;
       }
 
-      /* ---------------- mechanical iris — dominates the right two-thirds
-         of the frame ---------------- */
+      /* ---------------- mechanical iris — 55% of frame width (1056px),
+         fully contained within the frame, centered on the right third ---------------- */
       #eye-wrap {
         position: absolute;
-        left: 1300px;
-        top: 490px;
+        left: 1280px;
+        top: 540px;
       }
 
       #eye-cluster {
         position: relative;
-        width: 720px;
-        height: 720px;
-        margin-left: -360px;
-        margin-top: -360px;
+        width: 1056px;
+        height: 1056px;
+        margin-left: -528px;
+        margin-top: -528px;
         will-change: transform;
       }
 
@@ -151,12 +152,12 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 648px;
-        height: 648px;
-        margin-left: -324px;
-        margin-top: -324px;
+        width: 950px;
+        height: 950px;
+        margin-left: -475px;
+        margin-top: -475px;
         border-radius: 50%;
-        border: 3px solid transparent;
+        border: 4px solid transparent;
         background:
           conic-gradient(
               from 220deg,
@@ -176,8 +177,26 @@
 
       /* soft emissive halo behind the ring — glow baked in as static CSS
          (blur/gradient aren't reliably tweenable here); GSAP only ever
-         moves its opacity/scale, which reads as the halo brightening */
+         moves its opacity, which reads as the halo brightening */
       #iris-glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 900px;
+        height: 900px;
+        margin-left: -450px;
+        margin-top: -450px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(122, 22, 14, 0.65) 0%, rgba(122, 22, 14, 0.28) 46%, rgba(122, 22, 14, 0) 72%);
+        filter: blur(18px);
+        will-change: opacity;
+      }
+
+      /* the ring's full-brightness fill — a solid, FIXED-size oxblood
+         disc; GSAP only ever tweens its opacity. The dark #aperture disc
+         on top of it is what actually changes radius — that geometric
+         shrink/grow is what uncovers this fill into a visible "ring". */
+      #ring-fill {
         position: absolute;
         left: 50%;
         top: 50%;
@@ -186,48 +205,24 @@
         margin-left: -350px;
         margin-top: -350px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(122, 22, 14, 0.65) 0%, rgba(122, 22, 14, 0.28) 46%, rgba(122, 22, 14, 0) 72%);
-        filter: blur(16px);
-        will-change: transform, opacity;
+        background: var(--oxblood);
+        will-change: opacity;
       }
 
-      /* the ring itself — emissive stroke only, never a flat fill; its
-         glow edge is static box-shadow, GSAP only tweens opacity/scale */
-      #iris-ring {
+      /* the dark aperture — a REAL camera-diaphragm stand-in: GSAP tweens
+         its width/height directly (both on the runtime's supported-
+         property list), shrinking its actual footprint to uncover more of
+         #ring-fill beneath it. Centered with a static transform (not a
+         width-dependent margin) so it stays centered as its size changes. */
+      #aperture {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 560px;
-        height: 560px;
-        margin-left: -280px;
-        margin-top: -280px;
+        transform: translate(-50%, -50%);
         border-radius: 50%;
-        border: 34px solid var(--oxblood);
-        box-shadow:
-          0 0 46px 6px rgba(122, 22, 14, 0.55),
-          inset 0 0 34px 6px rgba(122, 22, 14, 0.4);
-        will-change: transform, opacity;
-      }
-
-      /* the closed-iris cover — mimics real aperture blades: it starts
-         sized to hide the whole ring (matching the socket's own surface,
-         so it reads as "closed"), then GSAP shrinks it by scale down to
-         exactly the pupil's footprint, sweeping a hard circular edge
-         inward and progressively uncovering the ring — the same visual
-         direction a real iris opens in (the hole grows outward as the
-         blades retract), and it keeps the ring's own size constant so
-         this doesn't read as a zoom */
-      #iris-cover {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 560px;
-        height: 560px;
-        margin-left: -280px;
-        margin-top: -280px;
-        border-radius: 50%;
-        background: radial-gradient(60% 56% at 38% 32%, #55555b 0%, #3f3f44 34%, #2a2a2e 62%, #18181a 100%);
-        will-change: transform;
+        background: radial-gradient(60% 56% at 38% 32%, #4a4a50 0%, #34343a 34%, #202024 62%, #0c0c0d 100%);
+        box-shadow: inset 0 0 34px 8px rgba(0, 0, 0, 0.75);
+        will-change: width, height;
       }
 
       /* impact burst — static bright gradient, GSAP only tweens opacity */
@@ -235,61 +230,51 @@
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 560px;
-        height: 560px;
-        margin-left: -280px;
-        margin-top: -280px;
+        width: 700px;
+        height: 700px;
+        margin-left: -350px;
+        margin-top: -350px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(255, 214, 200, 0.85) 0%, rgba(230, 120, 100, 0.35) 45%, rgba(230, 120, 100, 0) 75%);
         mix-blend-mode: screen;
         pointer-events: none;
       }
 
-      #eye-pupil {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 260px;
-        height: 260px;
-        margin-left: -130px;
-        margin-top: -130px;
-        border-radius: 50%;
-        background: radial-gradient(50% 50% at 42% 38%, #1c1c1e 0%, #0a0a0b 60%, #000 100%);
-        box-shadow: inset 0 0 30px 8px rgba(0, 0, 0, 0.8);
-      }
-
-      /* the specular glint travels the bevel (the socket's outer rim),
-         not the inner ring, per spec */
+      /* the specular glint travels the bevel once */
       #glint-wrap {
         position: absolute;
         left: 50%;
         top: 50%;
-        width: 648px;
-        height: 648px;
-        margin-left: -324px;
-        margin-top: -324px;
+        width: 950px;
+        height: 950px;
+        margin-left: -475px;
+        margin-top: -475px;
       }
 
       #glint {
         position: absolute;
         left: 50%;
         top: 0;
-        width: 26px;
-        height: 26px;
-        margin-left: -13px;
-        margin-top: -3px;
+        width: 30px;
+        height: 30px;
+        margin-left: -15px;
+        margin-top: -4px;
         border-radius: 50%;
         background: radial-gradient(50% 50% at 50% 50%, var(--bone) 0%, rgba(237, 232, 221, 0.55) 55%, rgba(237, 232, 221, 0) 100%);
       }
 
       /* ---------------- caption ---------------- */
       /* static positioning wrapper (never touched by GSAP) + a plain inner
-         element GSAP animates opacity/y on — keeps GSAP from ever owning
-         (and discarding) the CSS translateX centering transform */
+         element GSAP animates opacity on — keeps GSAP from ever owning
+         (and discarding) the CSS translateX centering transform. The eye
+         is 55% of frame width and nearly fills the frame's height too, so
+         there is no room for the caption entirely below it without
+         overlap; it sits in the bottom safe margin with a text-shadow so
+         it stays legible over whatever it crosses. */
       #caption-pos {
         position: absolute;
-        left: 1300px;
-        top: 900px;
+        left: 1280px;
+        top: 978px;
         transform: translateX(-50%);
         z-index: 110;
       }
@@ -298,9 +283,12 @@
         white-space: nowrap;
         color: var(--bone);
         font-weight: 700;
-        font-size: 50px;
+        font-size: 48px;
         letter-spacing: 0.05em;
         text-align: center;
+        text-shadow:
+          0 2px 10px rgba(0, 0, 0, 0.85),
+          0 0 26px rgba(0, 0, 0, 0.65);
       }
 
       #grain-overlay,
@@ -340,10 +328,9 @@
               <div id="eye-socket"></div>
               <div id="eye-bevel"></div>
               <div id="iris-glow"></div>
-              <div id="iris-ring"></div>
-              <div id="iris-cover"></div>
+              <div id="ring-fill"></div>
+              <div id="aperture"></div>
               <div id="iris-flash"></div>
-              <div id="eye-pupil"></div>
               <div id="glint-wrap"><div id="glint"></div></div>
             </div>
           </div>
@@ -472,47 +459,46 @@
 
       // ======================================================
       // ambient push — the whole scene breathes, never fully still
+      // (roughly 1.00 to 1.03 and back, continuously)
       // ======================================================
-      tl.to("#scene", { scale: 1.006, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
+      tl.to("#scene", { scale: 1.03, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 2 }, 0);
 
       // ======================================================
-      // Beat 1 (0.0 - 0.5s) — die tumbles to a settled rest. Uses a big
-      // rotation swing (nearly a full turn) and long travel distance so
-      // the tumble reads clearly across the whole beat instead of
-      // compressing into a couple of frames.
+      // Beat 1 (0.0 - 0.5s) — the die is already mid-tumble at frame 0 and
+      // settles fully by 0.5s with a slight rotational overshoot-and-stop
+      // (back.out gives the overshoot for free).
       // ======================================================
-      gsap.set("#die-face", { rotation: 300, x: -95, y: -75, scale: 0.85 });
-      gsap.set("#die-shadow", { opacity: 0.1, scaleX: 0.5, scaleY: 0.5 });
+      gsap.set("#die-face", { rotation: 262, x: -46, y: -34, scale: 0.9 });
+      gsap.set("#die-shadow", { opacity: 0.14, scaleX: 0.55, scaleY: 0.55 });
 
-      tl.to("#die-face", { rotation: -6, x: 0, y: 0, scale: 1, duration: 0.46, ease: "back.out(1.6)" }, 0);
-      tl.to("#die-shadow", { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.46, ease: "power2.out" }, 0);
+      tl.to("#die-face", { rotation: -7, x: 0, y: 0, scale: 1, duration: 0.42, ease: "back.out(1.7)" }, 0);
+      tl.to("#die-shadow", { opacity: 0.5, scaleX: 1, scaleY: 1, duration: 0.42, ease: "power2.out" }, 0);
       // tiny settle bounce closing out beat 1
-      tl.to("#die-face", { y: 5, scaleY: 0.94, scaleX: 1.04, duration: 0.05, ease: "power1.in" }, 0.46);
-      tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.09, ease: "power2.out" }, 0.51);
-
-      // eye holds through beat 1 (no motion of its own beyond ambient push)
+      tl.to("#die-face", { y: 4, scaleY: 0.95, scaleX: 1.03, duration: 0.04, ease: "power1.in" }, 0.42);
+      tl.to("#die-face", { y: 0, scaleY: 1, scaleX: 1, duration: 0.08, ease: "power2.out" }, 0.46);
 
       // ======================================================
-      // Beat 2 (0.5 - 1.4s) — the oxblood ring irises open across the eye
-      // like a camera aperture. Hand-authored: no registry block covers
-      // an iris-open mechanism, and clip-path isn't reliably tweenable on
-      // this runtime, so the reveal is built as a closed-iris "cover" —
-      // a disc matching the socket's own surface — that GSAP shrinks by
-      // scale from fully hiding the ring down to exactly the pupil's
-      // footprint. That sweeps a hard circular edge inward (real iris
-      // blades retract the same way, growing the opening outward) while
-      // the ring's own size stays constant, so it reads as an aperture
-      // opening rather than a ring zooming in. power2.out (not expo.out)
-      // keeps the motion visible across most of the 0.9s instead of
-      // resolving in the first few frames.
+      // Beat 2 (0.5 - 1.4s) — TRUE aperture close-down-and-reopen: the
+      // dark #aperture disc's own width/height shrink (a real geometric
+      // radius change, both properties on this runtime's supported list),
+      // uncovering the fixed-size oxblood #ring-fill disc beneath it,
+      // while that fill's opacity brightens over the same window. A
+      // specular glint sweeps the bevel once alongside it. The eye holds
+      // fully closed (dormant) until this window starts.
       // ======================================================
-      const RING_D = 560;
-      const PUPIL_D = 260;
-      const COVER_OPEN_SCALE = PUPIL_D / RING_D;
+      const APERTURE_CLOSED_D = 760; // fully covers ring-fill: no red visible
+      const APERTURE_OPEN_D = 320; // resting open size once the ring is revealed
 
-      gsap.set("#iris-cover", { scale: 1 });
+      gsap.set("#aperture", { width: APERTURE_CLOSED_D, height: APERTURE_CLOSED_D });
+      gsap.set("#ring-fill", { opacity: 0.04 }); // dormant: essentially no red yet
       gsap.set("#iris-glow", { opacity: 0 });
-      tl.to("#iris-cover", { scale: COVER_OPEN_SCALE, duration: 0.9, ease: "power2.out" }, 0.5);
+
+      tl.to(
+        "#aperture",
+        { width: APERTURE_OPEN_D, height: APERTURE_OPEN_D, duration: 0.9, ease: "power2.out" },
+        0.5,
+      );
+      tl.to("#ring-fill", { opacity: 0.78, duration: 0.9, ease: "power2.out" }, 0.5);
       tl.to("#iris-glow", { opacity: 1, duration: 0.9, ease: "power2.out" }, 0.5);
 
       gsap.set("#glint-wrap", { rotation: -90 });
@@ -522,38 +508,68 @@
       tl.to("#glint", { opacity: 0, duration: 0.15, ease: "power1.in" }, 1.25);
 
       // ======================================================
-      // Beat 3 (1.4 - 1.7s) — full emissive snap + overshoot-and-settle
-      // punch (the eye has locked on); die dims; a beat later the caption
-      // settles in beneath the eye
+      // Beat 3 (1.4 - 1.55s, exact impact at 1.4) — the aperture mechanism
+      // snaps fully open: eye-cluster punches to 112% in <100ms and
+      // springs back to 100% by 1.55s exactly; a 6px camera-shake on
+      // #scene damps out over the same 150ms window; the ring flashes to
+      // its single brightest value at the instant of the punch, then
+      // settles to a steady glow; the die dims to about half brightness
+      // in this same 100ms window.
       // ======================================================
+      tl.to("#eye-cluster", { scale: 1.12, duration: 0.08, ease: "power4.out" }, 1.4);
+      tl.to("#eye-cluster", { scale: 1.0, duration: 0.07, ease: "power2.out" }, 1.48);
+
+      // 6px camera-shake, damping out over 1.4 -> 1.55
+      tl.to("#scene", { x: 6, y: -4, duration: 0.02, ease: "none" }, 1.4);
+      tl.to("#scene", { x: -5, y: 3, duration: 0.02, ease: "none" }, 1.42);
+      tl.to("#scene", { x: 4, y: -3, duration: 0.02, ease: "none" }, 1.44);
+      tl.to("#scene", { x: -3, y: 2, duration: 0.02, ease: "none" }, 1.46);
+      tl.to("#scene", { x: 2, y: -1, duration: 0.02, ease: "none" }, 1.48);
+      tl.to("#scene", { x: -1, y: 1, duration: 0.02, ease: "none" }, 1.5);
+      tl.to("#scene", { x: 0, y: 0, duration: 0.03, ease: "power1.out" }, 1.52);
+
       gsap.set("#iris-flash", { opacity: 0 });
-      tl.to("#iris-flash", { opacity: 1, duration: 0.05, ease: "none" }, 1.4);
-      tl.to("#iris-flash", { opacity: 0, duration: 0.35, ease: "power2.out" }, 1.45);
+      tl.to("#iris-flash", { opacity: 1, duration: 0.04, ease: "none" }, 1.4);
+      tl.to("#iris-flash", { opacity: 0, duration: 0.3, ease: "power2.out" }, 1.44);
 
-      tl.to("#iris-glow", { opacity: 1, scale: 1.14, duration: 0.07, ease: "power4.out" }, 1.4);
-      tl.to("#iris-glow", { opacity: 0.82, scale: 1, duration: 0.22, ease: "power2.out" }, 1.47);
+      // ring flashes to its single brightest value at the exact instant of
+      // the punch, then settles back to a steady glow
+      tl.to("#ring-fill", { opacity: 1, duration: 0.04, ease: "none" }, 1.4);
+      tl.to("#ring-fill", { opacity: 0.8, duration: 0.25, ease: "power2.out" }, 1.44);
+      tl.to("#iris-glow", { opacity: 1, duration: 0.04, ease: "none" }, 1.4);
+      tl.to("#iris-glow", { opacity: 0.82, duration: 0.25, ease: "power2.out" }, 1.44);
 
-      // hard overshoot-and-settle punch on the whole eye cluster
-      tl.to("#eye-cluster", { scale: 1.09, duration: 0.06, ease: "power4.out" }, 1.4);
-      tl.to("#eye-cluster", { scale: 1, duration: 0.09, ease: "power2.out" }, 1.46);
-
-      // the die dims as it loses the frame's attention
-      tl.to("#die-face", { opacity: 0.6, duration: 0.3, ease: "power2.out" }, 1.4);
-
-      // a beat later: caption settles in beneath the eye
-      gsap.set("#caption", { opacity: 0, y: 18 });
-      tl.to("#caption", { opacity: 1, y: 0, duration: 0.15, ease: "power2.out" }, 1.55);
+      // the die dims to roughly half brightness in the same 100ms window
+      tl.to("#die-face", { opacity: 0.5, duration: 0.1, ease: "power2.out" }, 1.4);
 
       // ======================================================
-      // Beat 4 (1.7 - 3.2s) — gentle ambient idle to the final frame: the
-      // iris breathes faintly, dust keeps drifting, nothing goes fully
-      // static (scene breathing + dust above already run the full 3.2s)
+      // Beat 4 (1.55s) — a beat after the impact has fully finished (never
+      // simultaneously with it), the caption fades in. Its color is a
+      // static CSS value (never GSAP-animated) and the fade is fast
+      // enough (~2 frames at 24fps) that it never reads as a gray
+      // mid-transition — it's the correct bone hex from its first visible
+      // frame, just very briefly ramping opacity.
+      // ======================================================
+      gsap.set("#caption", { opacity: 0 });
+      tl.to("#caption", { opacity: 1, duration: 0.08, ease: "power1.out" }, 1.55);
+
+      // ======================================================
+      // Beat 5 (1.7 - 2.9s) — sustained: nothing new happens, but nothing
+      // stops either. The ring pulses faintly; ambient scene breathing and
+      // dust (above) already run continuously through the full 3.2s.
       // ======================================================
       tl.to(
-        "#iris-glow",
-        { opacity: 0.6, scale: 0.96, duration: 0.75, ease: "sine.inOut", yoyo: true, repeat: 1 },
+        "#ring-fill",
+        { opacity: 0.68, duration: 0.3, ease: "sine.inOut", yoyo: true, repeat: 4 },
         1.7,
       );
+
+      // ======================================================
+      // Beat 6 (2.9 - 3.2s) — calm, fully resolved hold: dust and the
+      // faint ring-breath (both already running through 3.2s) keep the
+      // frame alive without introducing anything new. No fade to black —
+      // this is a hard cut into the next shot.
+      // ======================================================
 
       window.__timelines["shein_08_iris"] = tl;
     </script>
