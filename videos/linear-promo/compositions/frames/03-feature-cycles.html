@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+          font-family: "Inter", sans-serif;
+          color: #F7F8F8;
+        }
+        .col {
+          position: absolute;
+          top: 220px;
+          width: 380px;
+          height: 620px;
+          border: 1.5px solid rgba(94, 106, 210, 0.2);
+          border-radius: 14px;
+          padding: 20px;
+        }
+        .col-title {
+          font-size: 20px;
+          color: #8A8F98;
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+        .card {
+          width: 100%;
+          height: 90px;
+          border-radius: 10px;
+          background: rgba(94, 106, 210, 0.08);
+          border: 1.5px solid rgba(94, 106, 210, 0.2);
+          margin-bottom: 14px;
+          display: flex;
+          align-items: center;
+          padding: 0 16px;
+          font-size: 20px;
+          color: #F7F8F8;
+        }
+        .card.dragging {
+          border-color: #5E6AD2;
+          background: rgba(94, 106, 210, 0.22);
+        }
+        .ring {
+          position: absolute;
+          right: 220px;
+          top: 470px;
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          border: 10px solid rgba(94, 106, 210, 0.2);
+          border-top-color: #5E6AD2;
+        }
+      </style>
+
+      <div id="root" data-composition-id="03-feature-cycles" data-width="1920" data-height="1080">
+        <!-- SKETCH: cycle board columns + a dragged card + a progress ring -->
+        <div class="col" style="left: 220px;">
+          <div class="col-title">BACKLOG</div>
+          <div class="card">Rate-limit audit</div>
+          <div class="card">Docs pass</div>
+        </div>
+        <div class="col" style="left: 660px;">
+          <div class="col-title">THIS CYCLE</div>
+          <div class="card dragging">Onboarding redirect fix</div>
+          <div class="card">Empty-state copy</div>
+        </div>
+        <div class="col" style="left: 1100px;">
+          <div class="col-title">DONE</div>
+          <div class="card">Deploy cache fix</div>
+        </div>
+        <div class="ring"></div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        window.__timelines["03-feature-cycles"] = gsap.timeline({ paused: true });
+      </script>
+    </template>
+  </body>
+</html>

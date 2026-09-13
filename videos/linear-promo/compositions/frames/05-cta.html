@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+          font-family: "Inter", sans-serif;
+          color: #F7F8F8;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+        .wordmark {
+          font-size: 72px;
+          font-weight: 700;
+          margin-bottom: 40px;
+        }
+        .cta {
+          padding: 20px 48px;
+          border-radius: 100px;
+          background: #5E6AD2;
+          color: #F7F8F8;
+          font-size: 30px;
+          font-weight: 600;
+        }
+        .url {
+          margin-top: 28px;
+          font-size: 22px;
+          color: #8A8F98;
+        }
+      </style>
+
+      <div id="root" data-composition-id="05-cta" data-width="1920" data-height="1080">
+        <!-- SKETCH: centered wordmark, solid CTA pill, url -->
+        <div class="wordmark">Linear</div>
+        <div class="cta">Try it free</div>
+        <div class="url">linear.app</div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        window.__timelines["05-cta"] = gsap.timeline({ paused: true });
+      </script>
+    </template>
+  </body>
+</html>

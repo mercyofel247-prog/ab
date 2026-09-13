@@ -1,0 +1,33 @@
+{
+  "provider": "kokoro",
+  "speed": 1,
+  "lines": [
+    {
+      "id": "01",
+      "text": "Sticky notes on the monitor. A spreadsheet nobody fully trusts. Six different tools — and somehow, none of them talk to each other."
+    },
+    {
+      "id": "02",
+      "text": "This is Linear — fast, and built to stay out of your way. Every issue gets triaged and moving, so the busywork disappears."
+    },
+    {
+      "id": "03",
+      "text": "Plan the cycle in seconds. Drag an issue into place, and watch the whole sprint shift to match it."
+    },
+    {
+      "id": "04",
+      "text": "Zoom out, and see exactly where every project really stands — velocity, blockers, progress, all at a glance."
+    },
+    {
+      "id": "05",
+      "text": "Try it free. No credit card, no setup call — just Linear, ready when you are."
+    }
+  ],
+  "bgm": {
+    "mode": "retrieve",
+    "query": "subtle confident electronic underscore, minimal/tech, mixed low (~-18dB under narration — never competes with the VO)",
+    "blob": "Linear replaces slow, scattered issue tracking with one fast, focused tool built for software teams.",
+    "arc": "PAS (compressed) — hook/pain → product intro (solution) → 2× feature-benefit → CTA"
+  },
+  "voice": "af_heart"
+}

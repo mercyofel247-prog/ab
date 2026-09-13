@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+          font-family: "Inter", sans-serif;
+          color: #F7F8F8;
+        }
+        .wordmark {
+          position: absolute;
+          left: 120px;
+          top: 90px;
+          font-size: 36px;
+          font-weight: 700;
+          color: #F7F8F8;
+        }
+        .panel {
+          position: absolute;
+          left: 360px;
+          top: 260px;
+          width: 1200px;
+          height: 560px;
+          border: 1.5px solid rgba(94, 106, 210, 0.28);
+          background: rgba(94, 106, 210, 0.06);
+          border-radius: 14px;
+        }
+        .row {
+          position: absolute;
+          left: 40px;
+          width: 1120px;
+          height: 80px;
+          border-bottom: 1px solid rgba(94, 106, 210, 0.2);
+          display: flex;
+          align-items: center;
+          padding: 0 24px;
+          font-size: 24px;
+          color: #8A8F98;
+        }
+        .pill {
+          margin-left: auto;
+          padding: 6px 18px;
+          border-radius: 100px;
+          background: rgba(94, 106, 210, 0.14);
+          color: #5E6AD2;
+          font-size: 18px;
+          font-weight: 600;
+        }
+        .cursor {
+          position: absolute;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #5E6AD2;
+        }
+      </style>
+
+      <div id="root" data-composition-id="02-product-intro" data-width="1920" data-height="1080">
+        <!-- SKETCH: clean Issues list, wireframe rows + one triaged pill + cursor -->
+        <div class="wordmark">Linear</div>
+        <div class="panel">
+          <div class="row" style="top: 20px;">Fix onboarding redirect bug<span class="pill">Todo</span></div>
+          <div class="row" style="top: 100px;">Improve empty-state copy<span class="pill">In Progress</span></div>
+          <div class="row" style="top: 180px; color: #F7F8F8;">Cache invalidation on deploy<span class="pill" style="background: rgba(94,106,210,0.22);">Triaged</span></div>
+          <div class="row" style="top: 260px;">Audit rate-limit headers<span class="pill">Todo</span></div>
+        </div>
+        <div class="cursor" style="left: 1120px; top: 458px;"></div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        window.__timelines["02-product-intro"] = gsap.timeline({ paused: true });
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+          font-family: "Inter", sans-serif;
+        }
+        .block {
+          position: absolute;
+          border: 1.5px solid rgba(94, 106, 210, 0.28);
+          background: rgba(94, 106, 210, 0.08);
+          border-radius: 14px;
+          color: #F7F8F8;
+          font-weight: 600;
+          font-size: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 20px;
+        }
+      </style>
+
+      <div id="root" data-composition-id="01-hook" data-width="1920" data-height="1080">
+        <!-- SKETCH: scattered tool-window blocks crowding toward center; wireframe only -->
+        <div class="block" style="left: 180px; top: 140px; width: 360px; height: 160px; transform: rotate(-6deg);">STICKY NOTES</div>
+        <div class="block" style="left: 1420px; top: 120px; width: 340px; height: 170px; transform: rotate(4deg);">SPREADSHEET</div>
+        <div class="block" style="left: 260px; top: 600px; width: 320px; height: 150px; transform: rotate(3deg);">TOOL A — TICKETS</div>
+        <div class="block" style="left: 1360px; top: 580px; width: 340px; height: 160px; transform: rotate(-4deg);">TOOL B — DOCS</div>
+        <div class="block" style="left: 720px; top: 320px; width: 480px; height: 220px; transform: rotate(-2deg); border-color: rgba(94,106,210,0.4); font-size: 34px;">SIX TOOLS<br />THAT DON'T TALK</div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        window.__timelines["01-hook"] = gsap.timeline({ paused: true });
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,26 @@
+[NO-CAPTURE PATH — linear.app blocked by this environment's network egress policy.
+The lines below are NOT scraped site copy; they are original copy we are free to
+use, written from well-known public positioning for Linear (a project/issue
+tracking tool for software teams). Do not present any line here as verbatim
+site text.]
+
+Brand: Linear — project and issue tracking built for software teams.
+
+Known public positioning (paraphrased, not quoted):
+- Speed and focus: the app is famous for being fast (instant navigation, no
+  loading spinners) and keyboard-first (command menu, shortcuts for nearly
+  everything).
+- Built for engineering workflows: issues, cycles (sprints), projects, and
+  roadmaps, with tight GitHub/GitLab sync so status follows real code activity.
+- Minimal, opinionated design: dark-by-default UI, high information density
+  without clutter, deliberately few settings/knobs versus legacy trackers.
+- Common contrast drawn in the market: legacy issue trackers (e.g. Jira-style
+  tools) are perceived as slow, heavy, and configuration-bloated; Linear's
+  pitch is the opposite of that experience.
+
+Original hook/beat lines drafted for this video (ours to use freely):
+- Hook (problem): "Your team didn't sign up to fight its project tracker."
+- Beat 1 — Issues: "Every issue, triaged and tracked, without the busywork."
+- Beat 2 — Cycles: "Plan the sprint. Watch it move in real time."
+- Beat 3 — Insights: "See where work really stands, at a glance."
+- CTA: "Try it free."

@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head></head>
+  <body>
+    <template>
+      <style>
+        #root {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+          font-family: "Inter", sans-serif;
+          color: #F7F8F8;
+        }
+        .panel {
+          position: absolute;
+          left: 300px;
+          top: 220px;
+          width: 1320px;
+          height: 620px;
+          border: 1.5px solid rgba(94, 106, 210, 0.2);
+          border-radius: 14px;
+          padding: 32px;
+        }
+        .label {
+          font-size: 20px;
+          color: #8A8F98;
+          font-weight: 600;
+          margin-bottom: 24px;
+        }
+        .chart {
+          width: 100%;
+          height: 280px;
+          border-bottom: 1.5px solid rgba(94, 106, 210, 0.2);
+          position: relative;
+        }
+        .bar-row {
+          display: flex;
+          align-items: center;
+          margin-top: 24px;
+          font-size: 20px;
+          color: #8A8F98;
+        }
+        .bar-track {
+          flex: 1;
+          height: 10px;
+          border-radius: 6px;
+          background: rgba(94, 106, 210, 0.14);
+          margin: 0 16px;
+          overflow: hidden;
+        }
+        .bar-fill {
+          height: 100%;
+          background: #5E6AD2;
+        }
+      </style>
+
+      <div id="root" data-composition-id="04-feature-insights" data-width="1920" data-height="1080">
+        <!-- SKETCH: insights panel — chart placeholder + status breakdown bars -->
+        <div class="panel">
+          <div class="label">VELOCITY</div>
+          <svg class="chart" viewBox="0 0 1256 280" preserveAspectRatio="none">
+            <polyline points="0,220 180,190 360,205 540,140 720,160 900,90 1080,110 1256,60" fill="none" stroke="#5E6AD2" stroke-width="4" />
+          </svg>
+          <div class="bar-row">Done<div class="bar-track"><div class="bar-fill" style="width: 62%;"></div></div></div>
+          <div class="bar-row">In progress<div class="bar-track"><div class="bar-fill" style="width: 24%;"></div></div></div>
+          <div class="bar-row">Todo<div class="bar-track"><div class="bar-fill" style="width: 14%;"></div></div></div>
+        </div>
+      </div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+        window.__timelines["04-feature-insights"] = gsap.timeline({ paused: true });
+      </script>
+    </template>
+  </body>
+</html>
