@@ -1,76 +1,266 @@
-<!doctype html>
-<html>
-  <head></head>
-  <body>
-    <template>
-      <style>
-        #root {
-          position: absolute;
-          inset: 0;
-          background: #08090A;
-          font-family: "Inter", sans-serif;
-          color: #F7F8F8;
-        }
-        .panel {
-          position: absolute;
-          left: 300px;
-          top: 220px;
-          width: 1320px;
-          height: 620px;
-          border: 1.5px solid rgba(94, 106, 210, 0.2);
-          border-radius: 14px;
-          padding: 32px;
-        }
-        .label {
-          font-size: 20px;
-          color: #8A8F98;
-          font-weight: 600;
-          margin-bottom: 24px;
-        }
-        .chart {
-          width: 100%;
-          height: 280px;
-          border-bottom: 1.5px solid rgba(94, 106, 210, 0.2);
-          position: relative;
-        }
-        .bar-row {
-          display: flex;
-          align-items: center;
-          margin-top: 24px;
-          font-size: 20px;
-          color: #8A8F98;
-        }
-        .bar-track {
-          flex: 1;
-          height: 10px;
-          border-radius: 6px;
-          background: rgba(94, 106, 210, 0.14);
-          margin: 0 16px;
-          overflow: hidden;
-        }
-        .bar-fill {
-          height: 100%;
-          background: #5E6AD2;
-        }
-      </style>
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #08090A;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #F7F8F8;
+    }
 
-      <div id="root" data-composition-id="04-feature-insights" data-width="1920" data-height="1080">
-        <!-- SKETCH: insights panel — chart placeholder + status breakdown bars -->
-        <div class="panel">
-          <div class="label">VELOCITY</div>
-          <svg class="chart" viewBox="0 0 1256 280" preserveAspectRatio="none">
-            <polyline points="0,220 180,190 360,205 540,140 720,160 900,90 1080,110 1256,60" fill="none" stroke="#5E6AD2" stroke-width="4" />
+    .insights-bg {
+      position: absolute;
+      inset: 0;
+      background: #08090A;
+    }
+
+    .insights-camera {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .insights-scene {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ambient glow — sits behind the panel, un-triggered bloom (ambient-glow-bloom) */
+    .insights-glow {
+      position: absolute;
+      left: 220px;
+      top: 140px;
+      width: 1480px;
+      height: 730px;
+      border-radius: 48px;
+      background: radial-gradient(closest-side, rgba(94, 106, 210, 0.55), rgba(94, 106, 210, 0) 70%);
+      opacity: 0;
+      transform: scale(0.85);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* insights panel — card-tinted (frame.md component) */
+    .insights-panel {
+      position: absolute;
+      left: 300px;
+      top: 220px;
+      width: 1320px;
+      height: 620px;
+      box-sizing: border-box;
+      padding: 36px 40px;
+      background: rgba(94, 106, 210, 0.08);
+      border: 1.5px solid rgba(94, 106, 210, 0.28);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+    }
+
+    .insights-label {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #5E6AD2;
+      margin: 0 0 22px;
+    }
+
+    .insights-chart {
+      display: block;
+      width: 100%;
+      height: 280px;
+      border-bottom: 1.5px solid rgba(94, 106, 210, 0.22);
+      overflow: visible;
+    }
+
+    .insights-chart path,
+    .insights-chart polyline {
+      fill: none;
+    }
+
+    .insights-bars {
+      margin-top: 34px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .insights-bar-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .insights-bar-label {
+      width: 190px;
+      flex-shrink: 0;
+      font-size: 26px;
+      font-weight: 500;
+      color: #8A8F98;
+    }
+
+    .insights-bar-track {
+      flex: 1;
+      height: 14px;
+      margin-left: 20px;
+      border-radius: 7px;
+      background: rgba(94, 106, 210, 0.14);
+      overflow: hidden;
+    }
+
+    .insights-bar-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: 7px;
+      background: #5E6AD2;
+      transform-origin: left center;
+      transform: scaleX(0);
+    }
+
+    /* bottom-band caption — docked, small, unobtrusive (inside the reserved ~17% band) */
+    .insights-caption {
+      position: absolute;
+      left: 96px;
+      top: 966px;
+      font-size: 24px;
+      font-weight: 500;
+      color: #8A8F98;
+      opacity: 0;
+    }
+  </style>
+
+  <div id="root" data-composition-id="04-feature-insights" data-width="1920" data-height="1080">
+    <div class="insights-bg clip" data-start="0" data-duration="8.327" data-track-index="0"></div>
+
+    <div class="insights-camera" id="insights-camera">
+      <div class="insights-scene">
+        <div class="insights-glow" id="insights-glow"></div>
+
+        <div class="insights-panel" id="insights-panel">
+          <div class="insights-label">Velocity</div>
+
+          <svg class="insights-chart" id="insights-chart" viewBox="0 0 1256 280" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="insights-area-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#5E6AD2" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="#5E6AD2" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon
+              id="insights-area"
+              points="0,220 180,190 360,205 540,140 720,160 900,90 1080,110 1256,60 1256,280 0,280"
+              fill="url(#insights-area-grad)"
+              opacity="0"
+            />
+            <polyline
+              id="insights-line"
+              points="0,220 180,190 360,205 540,140 720,160 900,90 1080,110 1256,60"
+              stroke="#5E6AD2"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
           </svg>
-          <div class="bar-row">Done<div class="bar-track"><div class="bar-fill" style="width: 62%;"></div></div></div>
-          <div class="bar-row">In progress<div class="bar-track"><div class="bar-fill" style="width: 24%;"></div></div></div>
-          <div class="bar-row">Todo<div class="bar-track"><div class="bar-fill" style="width: 14%;"></div></div></div>
+
+          <div class="insights-bars">
+            <div class="insights-bar-row">
+              <div class="insights-bar-label">Done</div>
+              <div class="insights-bar-track">
+                <div class="insights-bar-fill" id="insights-bar-done"></div>
+              </div>
+            </div>
+            <div class="insights-bar-row">
+              <div class="insights-bar-label">In progress</div>
+              <div class="insights-bar-track">
+                <div class="insights-bar-fill" id="insights-bar-progress"></div>
+              </div>
+            </div>
+            <div class="insights-bar-row">
+              <div class="insights-bar-label">Todo</div>
+              <div class="insights-bar-track">
+                <div class="insights-bar-fill" id="insights-bar-todo"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
 
-      <script>
-        window.__timelines = window.__timelines || {};
-        window.__timelines["04-feature-insights"] = gsap.timeline({ paused: true });
-      </script>
-    </template>
-  </body>
-</html>
+    <div class="insights-caption" id="insights-caption">See where work stands.</div>
+  </div>
+
+  <script>
+    (function () {
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      window.__timelines["04-feature-insights"] = tl;
+
+      var DURATION = 8.327;
+
+      // Measure the velocity line's real geometry (svg-path-draw) — synchronous, the
+      // SVG is already live in the DOM once the template clones.
+      var line = document.getElementById("insights-line");
+      var lineLen = line.getTotalLength();
+      line.style.strokeDasharray = String(lineLen);
+      line.style.strokeDashoffset = String(lineLen);
+
+      // ---- Scene 1 (0.0-2.0s): "Zoom out" — the panel scales/fades in; chart + bars
+      // stay unset. A very slow, barely-perceptible continuous zoom-in begins underneath
+      // and runs the full shot (multi-phase-camera, single continuous phase).
+      tl.fromTo(
+        "#insights-panel",
+        { opacity: 0, scale: 0.94 },
+        { opacity: 1, scale: 1, duration: 1.1, ease: "power2.out" },
+        0.1,
+      );
+
+      tl.fromTo(
+        "#insights-camera",
+        { scale: 1 },
+        { scale: 1.025, duration: DURATION, ease: "sine.inOut" },
+        0,
+      );
+
+      // ---- Scene 2 (2.0-4.5s): "see exactly where every project really stands" — the
+      // velocity line draws itself left-to-right (svg-path-draw), then the area fill
+      // resolves in right behind the finished stroke.
+      var CHART_DRAW_START = 2.0;
+      var CHART_DRAW_DUR = 2.3;
+      tl.to(
+        line,
+        { strokeDashoffset: 0, duration: CHART_DRAW_DUR, ease: "power2.out" },
+        CHART_DRAW_START,
+      );
+      tl.to(
+        "#insights-area",
+        { opacity: 1, duration: 0.4, ease: "power1.out" },
+        CHART_DRAW_START + CHART_DRAW_DUR,
+      );
+
+      // ---- Scene 3 (4.5-6.5s): "velocity, blockers, progress" — the 3 status bars
+      // fill in sequence, each accent fill growing left-to-right (stat-bars-and-fills,
+      // progress-fill form). Relative widths only — no invented numbers.
+      tl.to("#insights-bar-done", { scaleX: 0.62, duration: 0.6, ease: "power2.out" }, 4.5);
+      tl.to("#insights-bar-progress", { scaleX: 0.24, duration: 0.55, ease: "power2.out" }, 5.0);
+      tl.to("#insights-bar-todo", { scaleX: 0.14, duration: 0.5, ease: "power2.out" }, 5.5);
+
+      // ---- Scene 4 (6.5-8.327s): "all at a glance" — a soft accent glow blooms behind
+      // the panel (ambient-glow-bloom, bloom-and-hold form), the camera settles into its
+      // slow zoom, and the one-line caption fades in low in the keep-out band.
+      tl.fromTo(
+        "#insights-glow",
+        { opacity: 0, scale: 0.85 },
+        { opacity: 0.32, scale: 1, duration: 1.0, ease: "power2.out" },
+        6.5,
+      );
+      tl.fromTo(
+        "#insights-caption",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power1.out" },
+        6.7,
+      );
+    })();
+  </script>
+</template>

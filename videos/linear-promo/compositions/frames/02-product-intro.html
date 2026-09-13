@@ -284,9 +284,10 @@
         );
 
         // subtle row-glow breathing through the padded tail — low amplitude, deterministic
+        // (4 legs x 0.6s = 2.4s, fits inside the 6.6s-9.189s tail with room to spare)
         pi02_tl.to(
           "#pi02-row3-glow",
-          { opacity: 0.72, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 3 },
+          { opacity: 0.72, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 3 },
           6.6
         );
       </script>
