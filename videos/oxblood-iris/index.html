@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Oxblood Iris — mechanical aperture reveal</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0b0b0c;
+        --metal: #c9c4ba;
+        --metal-hi: #e6e1d6;
+        --metal-lo: #8f8a80;
+        --face-bg: #0a0909;
+        --gap-dark: #050506;
+        --oxblood: #7a160e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+
+      /* the whole iris cluster — carries the impact punch and the breathing drift */
+      #cluster {
+        position: relative;
+        width: 960px;
+        height: 960px;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* brushed dark metal housing with a machined bevel — static, spans 50% of frame width */
+      #metal-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background:
+          repeating-conic-gradient(
+            from 0deg,
+            var(--metal-hi) 0deg 0.6deg,
+            var(--metal) 0.6deg 1.4deg,
+            var(--metal-lo) 1.4deg 2deg
+          );
+        box-shadow:
+          inset 0 10px 22px rgba(255, 255, 255, 0.22),
+          inset 0 -14px 28px rgba(0, 0, 0, 0.65),
+          inset 0 0 0 6px rgba(0, 0, 0, 0.35),
+          0 0 0 2px rgba(0, 0, 0, 0.6),
+          0 12px 40px rgba(0, 0, 0, 0.7);
+      }
+
+      #metal-ring::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: radial-gradient(
+          120% 120% at 30% 22%,
+          rgba(255, 255, 255, 0.28) 0%,
+          rgba(255, 255, 255, 0) 32%,
+          rgba(0, 0, 0, 0) 60%,
+          rgba(0, 0, 0, 0.45) 100%
+        );
+        mix-blend-mode: soft-light;
+      }
+
+      /* the mechanism opening — everything inside is clipped to a circle */
+      #iris-face {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 880px;
+        height: 880px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        overflow: hidden;
+        background: var(--face-bg);
+        box-shadow: inset 0 0 24px 6px rgba(0, 0, 0, 0.85);
+      }
+
+      #ring-fill,
+      #dark-center,
+      #glow-overlay,
+      #impact-flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+
+      #ring-fill {
+        background: var(--oxblood);
+        opacity: 0;
+      }
+
+      #dark-center {
+        background: var(--gap-dark);
+      }
+
+      #glow-overlay {
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(122, 22, 14, 0) 0%,
+          rgba(255, 90, 60, 0.9) 40%,
+          rgba(122, 22, 14, 0.5) 64%,
+          rgba(122, 22, 14, 0) 86%
+        );
+        mix-blend-mode: screen;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      #impact-flash {
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(255, 226, 212, 0.95) 0%,
+          rgba(255, 150, 120, 0.4) 40%,
+          rgba(255, 150, 120, 0) 76%
+        );
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div id="scene">
+          <div id="cluster" data-layout-allow-overflow>
+            <div id="metal-ring"></div>
+            <div id="iris-face" data-layout-allow-overflow>
+              <div id="ring-fill"></div>
+              <div id="dark-center"></div>
+              <div id="glow-overlay"></div>
+              <div id="impact-flash"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const ringFill = document.querySelector("#ring-fill");
+      const darkCenter = document.querySelector("#dark-center");
+      const glowEl = document.querySelector("#glow-overlay");
+      const clusterEl = document.querySelector("#cluster");
+
+      // ---- geometry, in px, relative to the 880px iris-face (radius 440) ----
+      const CLOSED_R = 130; // dark aperture radius while dormant (0 – 0.5s) — small relative to the 440px face
+      const OPEN_DARK_R = 55; // dark center's radius once fully open — shrinks, but stays a true hollow gap
+      const OPEN_RING_R = 440; // ring outer radius once fully open — meets the metal bevel
+
+      const OPEN_START = 0.5;
+      const IMPACT_T = 1.4; // hard snap to full brightness + scale punch
+      const SPRING_END = 1.6; // scale has sprung back to 100% by here
+      const HOLD_END = 3.0;
+
+      function setAperture(ringR, darkR, ringOpacity) {
+        ringFill.style.clipPath = `circle(${ringR}px at 50% 50%)`;
+        darkCenter.style.clipPath = `circle(${darkR}px at 50% 50%)`;
+        ringFill.style.opacity = ringOpacity;
+      }
+
+      // ---- initial pose: fully closed, no color visible, dormant ----
+      // (the forward tweens below all start from this exact pose — nothing
+      // back-renders a hidden state at frame 0)
+      setAperture(CLOSED_R, CLOSED_R, 0.04);
+      gsap.set(glowEl, { opacity: 0 });
+      gsap.set("#impact-flash", { opacity: 0 });
+      gsap.set(clusterEl, { scale: 1 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // (1) 0 – 0.5s: fully closed, dormant. Nothing animates — the initial
+      // pose above already reads as "small dark aperture, no color".
+
+      // (2) 0.5 – 1.4s: the aperture opens — dark center shrinks while the
+      // hollow oxblood ring genuinely expands to take the space it gave up.
+      const openDrive = { p: 0 };
+      tl.to(
+        openDrive,
+        {
+          p: 1,
+          duration: IMPACT_T - OPEN_START,
+          ease: "power2.inOut",
+          onUpdate: () => {
+            const p = openDrive.p;
+            const ringR = CLOSED_R + (OPEN_RING_R - CLOSED_R) * p;
+            const darkR = CLOSED_R + (OPEN_DARK_R - CLOSED_R) * p;
+            const ringOpacity = 0.04 + 0.84 * Math.pow(p, 1.4);
+            setAperture(ringR, darkR, ringOpacity);
+          },
+        },
+        OPEN_START,
+      );
+      // the ring's glow brightens alongside it
+      tl.to(glowEl, { opacity: 0.55, duration: IMPACT_T - OPEN_START, ease: "power2.in" }, OPEN_START);
+
+      // (3) IMPACT at 1.4s — hard, sudden snap to full brightness (<100ms),
+      // then the cluster punches to 108% and springs back to 100% by 1.6s.
+      tl.call(() => setAperture(OPEN_RING_R, OPEN_DARK_R, 0.88), null, IMPACT_T);
+      tl.to(ringFill, { opacity: 1, duration: 0.06, ease: "power1.out" }, IMPACT_T);
+
+      tl.to(glowEl, { opacity: 1, duration: 0.05, ease: "none" }, IMPACT_T);
+      tl.to(glowEl, { opacity: 0.35, duration: 0.35, ease: "power2.out" }, IMPACT_T + 0.06);
+
+      tl.to("#impact-flash", { opacity: 1, duration: 0.05, ease: "none" }, IMPACT_T);
+      tl.to("#impact-flash", { opacity: 0, duration: 0.35, ease: "power2.out" }, IMPACT_T + 0.05);
+
+      tl.to(clusterEl, { scale: 1.08, duration: 0.05, ease: "power3.out" }, IMPACT_T);
+      tl.to(clusterEl, { scale: 1, duration: 0.15, ease: "back.out(1.7)" }, IMPACT_T + 0.05);
+
+      // (4) 1.6 – 3.0s: no new geometry — but nothing sits still. A barely
+      // visible breathing scale drift (1.00 – 1.02) runs the whole frame,
+      // and the oxblood ring pulses faintly. It tapers slightly over the
+      // last 0.3s into a calm, still-alive hold — never a frozen frame.
+      const breatheDrive = { p: 0 };
+      const BREATHE_DURATION = HOLD_END - SPRING_END;
+      const BREATHE_CYCLES = 2;
+      tl.to(
+        breatheDrive,
+        {
+          p: 1,
+          duration: BREATHE_DURATION,
+          ease: "none",
+          onUpdate: () => {
+            const p = breatheDrive.p;
+            const tAbs = SPRING_END + p * BREATHE_DURATION;
+            const settle = tAbs > 2.7 ? 1 - 0.35 * ((tAbs - 2.7) / 0.3) : 1;
+            const phase = p * Math.PI * 2 * BREATHE_CYCLES;
+            const scale = 1.01 + 0.01 * settle * Math.sin(phase);
+            gsap.set(clusterEl, { scale });
+            const pulse = 0.35 + 0.15 * settle * Math.sin(phase * 1.3 + 0.6);
+            gsap.set(glowEl, { opacity: pulse });
+          },
+        },
+        SPRING_END,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
