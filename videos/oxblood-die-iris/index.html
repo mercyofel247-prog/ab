@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Oxblood Die/Iris — the guess and the certainty</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg: #0b0b0c;
+        --metal: #c9c4ba;
+        --metal-hi: #e6e1d6;
+        --metal-lo: #8f8a80;
+        --face-bg: #0a0909;
+        --gap-dark: #050506;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      #scene {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* ---------------- die (lower-left, static — already landed) ---------------- */
+
+      #die-slot {
+        position: absolute;
+        left: 200px;
+        top: 660px;
+        width: 220px;
+        height: 220px;
+        display: grid;
+        place-items: center;
+      }
+
+      #die {
+        position: relative;
+        width: 148px;
+        height: 148px;
+        border-radius: 20px;
+        background: linear-gradient(160deg, #4c4c51 0%, var(--graphite) 55%, #2a2a2e 100%);
+        box-shadow:
+          inset 0 3px 4px rgba(255, 255, 255, 0.16),
+          inset 0 -5px 9px rgba(0, 0, 0, 0.55),
+          0 16px 26px rgba(0, 0, 0, 0.6);
+        will-change: opacity;
+      }
+
+      .pip {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #1c1c1f;
+        box-shadow:
+          inset 0 2px 2px rgba(0, 0, 0, 0.7),
+          inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+      }
+
+      .pip-tl {
+        left: 24px;
+        top: 24px;
+      }
+      .pip-tr {
+        right: 24px;
+        top: 24px;
+      }
+      .pip-c {
+        left: 63px;
+        top: 63px;
+      }
+      .pip-bl {
+        left: 24px;
+        bottom: 24px;
+      }
+      .pip-br {
+        right: 24px;
+        bottom: 24px;
+      }
+
+      /* ---------------- iris (right side, 45% of frame width) ---------------- */
+
+      #iris-slot {
+        position: absolute;
+        right: 130px;
+        top: 50%;
+        width: 864px;
+        height: 864px;
+        margin-top: -432px;
+        display: grid;
+        place-items: center;
+      }
+
+      /* the whole iris cluster — carries the impact punch and the breathing drift */
+      #cluster {
+        position: relative;
+        width: 864px;
+        height: 864px;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      /* brushed dark metal housing with a machined bevel — static */
+      #metal-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background:
+          repeating-conic-gradient(
+            from 0deg,
+            var(--metal-hi) 0deg 0.6deg,
+            var(--metal) 0.6deg 1.4deg,
+            var(--metal-lo) 1.4deg 2deg
+          );
+        box-shadow:
+          inset 0 10px 22px rgba(255, 255, 255, 0.22),
+          inset 0 -14px 28px rgba(0, 0, 0, 0.65),
+          inset 0 0 0 6px rgba(0, 0, 0, 0.35),
+          0 0 0 2px rgba(0, 0, 0, 0.6),
+          0 12px 40px rgba(0, 0, 0, 0.7);
+      }
+
+      #metal-ring::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: radial-gradient(
+          120% 120% at 30% 22%,
+          rgba(255, 255, 255, 0.28) 0%,
+          rgba(255, 255, 255, 0) 32%,
+          rgba(0, 0, 0, 0) 60%,
+          rgba(0, 0, 0, 0.45) 100%
+        );
+        mix-blend-mode: soft-light;
+      }
+
+      /* the mechanism opening — everything inside is clipped to a circle */
+      #iris-face {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 784px;
+        height: 784px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        overflow: hidden;
+        background: var(--face-bg);
+        box-shadow: inset 0 0 24px 6px rgba(0, 0, 0, 0.85);
+      }
+
+      #ring-fill,
+      #dark-center,
+      #glow-overlay,
+      #impact-flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+      }
+
+      #ring-fill {
+        background: var(--oxblood);
+        opacity: 0;
+      }
+
+      #dark-center {
+        background: var(--gap-dark);
+      }
+
+      #glow-overlay {
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(122, 22, 14, 0) 0%,
+          rgba(255, 90, 60, 0.9) 40%,
+          rgba(122, 22, 14, 0.5) 64%,
+          rgba(122, 22, 14, 0) 86%
+        );
+        mix-blend-mode: screen;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      #impact-flash {
+        background: radial-gradient(
+          50% 50% at 50% 50%,
+          rgba(255, 226, 212, 0.95) 0%,
+          rgba(255, 150, 120, 0.4) 40%,
+          rgba(255, 150, 120, 0) 76%
+        );
+        mix-blend-mode: screen;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div id="scene">
+          <div id="die-slot" data-layout-allow-overflow>
+            <div id="die">
+              <div class="pip pip-tl"></div>
+              <div class="pip pip-tr"></div>
+              <div class="pip pip-c"></div>
+              <div class="pip pip-bl"></div>
+              <div class="pip pip-br"></div>
+            </div>
+          </div>
+
+          <div id="iris-slot" data-layout-allow-overflow>
+            <div id="cluster" data-layout-allow-overflow>
+              <div id="metal-ring"></div>
+              <div id="iris-face" data-layout-allow-overflow>
+                <div id="ring-fill"></div>
+                <div id="dark-center"></div>
+                <div id="glow-overlay"></div>
+                <div id="impact-flash"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      const dieEl = document.querySelector("#die");
+      const ringFill = document.querySelector("#ring-fill");
+      const darkCenter = document.querySelector("#dark-center");
+      const glowEl = document.querySelector("#glow-overlay");
+      const clusterEl = document.querySelector("#cluster");
+
+      // ---- geometry, in px, relative to the 784px iris-face (radius 392) ----
+      const CLOSED_R = 115; // dark aperture radius while dormant (0 – 0.5s) — small relative to the 392px face
+      const OPEN_DARK_R = 48; // dark center's radius once fully open — shrinks, but stays a true hollow gap
+      const OPEN_RING_R = 392; // ring outer radius once fully open — meets the metal bevel
+
+      const OPEN_START = 0.5;
+      const IMPACT_T = 1.4; // hard snap to full brightness + scale punch, and the die's dimmest instant
+      const SPRING_END = 1.6; // scale has sprung back to 100% by here
+      const HOLD_END = 3.0;
+
+      const DIE_FULL_OPACITY = 1;
+      const DIE_DIM_OPACITY = 0.22; // dim, flat, but still present — never fully gone
+
+      function setAperture(ringR, darkR, ringOpacity) {
+        ringFill.style.clipPath = `circle(${ringR}px at 50% 50%)`;
+        darkCenter.style.clipPath = `circle(${darkR}px at 50% 50%)`;
+        ringFill.style.opacity = ringOpacity;
+      }
+
+      // ---- initial pose: die at full value, iris fully closed, no color
+      // visible, dormant. Every tween below is a forward tween away from
+      // this exact pose — nothing back-renders a hidden state at frame 0.
+      setAperture(CLOSED_R, CLOSED_R, 0.04);
+      gsap.set(glowEl, { opacity: 0 });
+      gsap.set("#impact-flash", { opacity: 0 });
+      gsap.set(clusterEl, { scale: 1 });
+      gsap.set(dieEl, { opacity: DIE_FULL_OPACITY });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // (1) 0 – 0.5s: a beat of silence — die static and sure, iris shut.
+      // Nothing animates; the initial pose above already reads correctly.
+
+      // (2) 0.5 – 1.4s: the iris opens — dark center shrinks while the
+      // hollow oxblood ring genuinely expands to take the space it gave up
+      // — while, in the very same window, the die's real opacity value
+      // drops in parallel, so the guess visibly goes dark and small next
+      // to the thing that already knew.
+      const openDrive = { p: 0 };
+      tl.to(
+        openDrive,
+        {
+          p: 1,
+          duration: IMPACT_T - OPEN_START,
+          ease: "power2.inOut",
+          onUpdate: () => {
+            const p = openDrive.p;
+            const ringR = CLOSED_R + (OPEN_RING_R - CLOSED_R) * p;
+            const darkR = CLOSED_R + (OPEN_DARK_R - CLOSED_R) * p;
+            const ringOpacity = 0.04 + 0.84 * Math.pow(p, 1.4);
+            setAperture(ringR, darkR, ringOpacity);
+
+            // same driver, same window — the die's fade is locked to the
+            // iris's opening curve, not an independent guess at timing.
+            const dieOpacity = DIE_FULL_OPACITY + (DIE_DIM_OPACITY - DIE_FULL_OPACITY) * p;
+            gsap.set(dieEl, { opacity: dieOpacity });
+          },
+        },
+        OPEN_START,
+      );
+      // the ring's glow brightens alongside it
+      tl.to(glowEl, { opacity: 0.55, duration: IMPACT_T - OPEN_START, ease: "power2.in" }, OPEN_START);
+
+      // (3) IMPACT at 1.4s — hard, sudden snap to full brightness (<100ms),
+      // the cluster punches to 108% and springs back to 100% by 1.6s. The
+      // die is already at its dimmest, flattest value at this exact instant
+      // (the fade above lands there precisely as the open-tween completes).
+      tl.call(() => setAperture(OPEN_RING_R, OPEN_DARK_R, 0.88), null, IMPACT_T);
+      tl.to(ringFill, { opacity: 1, duration: 0.06, ease: "power1.out" }, IMPACT_T);
+
+      tl.to(glowEl, { opacity: 1, duration: 0.05, ease: "none" }, IMPACT_T);
+      tl.to(glowEl, { opacity: 0.35, duration: 0.35, ease: "power2.out" }, IMPACT_T + 0.06);
+
+      tl.to("#impact-flash", { opacity: 1, duration: 0.05, ease: "none" }, IMPACT_T);
+      tl.to("#impact-flash", { opacity: 0, duration: 0.35, ease: "power2.out" }, IMPACT_T + 0.05);
+
+      tl.to(clusterEl, { scale: 1.08, duration: 0.05, ease: "power3.out" }, IMPACT_T);
+      tl.to(clusterEl, { scale: 1, duration: 0.15, ease: "back.out(1.7)" }, IMPACT_T + 0.05);
+
+      // (4) 1.6 – 3.0s: the iris stays sealed and bright — no reopening, no
+      // aperture-radius change from here on — only its glow pulses via
+      // opacity. The whole frame carries a barely-visible breathing scale
+      // drift (1.00 – 1.02). The die holds at its dim value, static, present
+      // but no longer where the eye goes. It tapers slightly over the last
+      // 0.3s into a calm, still-alive hold — never a frozen frame.
+      const breatheDrive = { p: 0 };
+      const BREATHE_DURATION = HOLD_END - SPRING_END;
+      const BREATHE_CYCLES = 2;
+      tl.to(
+        breatheDrive,
+        {
+          p: 1,
+          duration: BREATHE_DURATION,
+          ease: "none",
+          onUpdate: () => {
+            const p = breatheDrive.p;
+            const tAbs = SPRING_END + p * BREATHE_DURATION;
+            const settle = tAbs > 2.7 ? 1 - 0.35 * ((tAbs - 2.7) / 0.3) : 1;
+            const phase = p * Math.PI * 2 * BREATHE_CYCLES;
+            const scale = 1.01 + 0.01 * settle * Math.sin(phase);
+            gsap.set(clusterEl, { scale });
+            const pulse = 0.35 + 0.15 * settle * Math.sin(phase * 1.3 + 0.6);
+            gsap.set(glowEl, { opacity: pulse });
+          },
+        },
+        SPRING_END,
+      );
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
