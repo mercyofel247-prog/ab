@@ -1,35 +1,50 @@
-<!doctype html>
-<html>
-  <head></head>
-  <body>
-    <template>
+<template>
       <style>
         #root {
           position: absolute;
           inset: 0;
-          background: #08090A;
-          font-family: "Inter", sans-serif;
+          font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
           color: #F7F8F8;
+          overflow: hidden;
         }
-        .wordmark {
+
+        .pi02-bg {
+          position: absolute;
+          inset: 0;
+          background: #08090A;
+        }
+
+        .pi02-content {
+          position: absolute;
+          inset: 0;
+        }
+
+        .pi02-wordmark {
           position: absolute;
           left: 120px;
           top: 90px;
           font-size: 36px;
           font-weight: 700;
           color: #F7F8F8;
+          letter-spacing: -0.02em;
+          transform-origin: 0% 50%;
+          opacity: 0;
         }
-        .panel {
+
+        .pi02-panel {
           position: absolute;
           left: 360px;
           top: 260px;
           width: 1200px;
           height: 560px;
           border: 1.5px solid rgba(94, 106, 210, 0.28);
-          background: rgba(94, 106, 210, 0.06);
+          background: rgba(94, 106, 210, 0.08);
           border-radius: 14px;
+          transform-origin: 50% 50%;
+          opacity: 0;
         }
-        .row {
+
+        .pi02-row {
           position: absolute;
           left: 40px;
           width: 1120px;
@@ -40,8 +55,31 @@
           padding: 0 24px;
           font-size: 24px;
           color: #8A8F98;
+          opacity: 0;
         }
-        .pill {
+
+        .pi02-row-focal {
+          border-radius: 10px;
+        }
+
+        .pi02-row-glow {
+          position: absolute;
+          inset: 0;
+          border-radius: 10px;
+          background: rgba(94, 106, 210, 0.22);
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .pi02-row-label {
+          position: relative;
+        }
+
+        .pi02-row-label-bright {
+          color: #F7F8F8;
+        }
+
+        .pi02-pill {
           margin-left: auto;
           padding: 6px 18px;
           border-radius: 100px;
@@ -49,32 +87,207 @@
           color: #5E6AD2;
           font-size: 18px;
           font-weight: 600;
+          white-space: nowrap;
+          position: relative;
         }
-        .cursor {
+
+        .pi02-pill-wrap {
+          margin-left: auto;
+          position: relative;
+          width: 118px;
+          height: 34px;
+        }
+
+        .pi02-pill-wrap .pi02-pill {
           position: absolute;
+          right: 0;
+          top: 0;
+          margin-left: 0;
+          transform-origin: 50% 50%;
+        }
+
+        .pi02-pill-triaged {
+          background: rgba(94, 106, 210, 0.22);
+          opacity: 0;
+        }
+
+        .pi02-cursor {
+          position: absolute;
+          left: 1120px;
+          top: 458px;
           width: 18px;
           height: 18px;
           border-radius: 50%;
           background: #5E6AD2;
+          box-shadow: 0 0 0 4px rgba(94, 106, 210, 0.18);
+          z-index: 20;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .pi02-ripple {
+          position: absolute;
+          left: 1129px;
+          top: 467px;
+          width: 60px;
+          height: 60px;
+          margin-left: -30px;
+          margin-top: -30px;
+          border-radius: 50%;
+          border: 2px solid #5E6AD2;
+          transform: scale(0);
+          opacity: 0;
+          pointer-events: none;
+          z-index: 15;
+        }
+
+        .pi02-caption {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 960px;
+          text-align: center;
+          font-size: 20px;
+          font-weight: 500;
+          color: #8A8F98;
+          letter-spacing: 0.01em;
+          opacity: 0;
         }
       </style>
 
       <div id="root" data-composition-id="02-product-intro" data-width="1920" data-height="1080">
-        <!-- SKETCH: clean Issues list, wireframe rows + one triaged pill + cursor -->
-        <div class="wordmark">Linear</div>
-        <div class="panel">
-          <div class="row" style="top: 20px;">Fix onboarding redirect bug<span class="pill">Todo</span></div>
-          <div class="row" style="top: 100px;">Improve empty-state copy<span class="pill">In Progress</span></div>
-          <div class="row" style="top: 180px; color: #F7F8F8;">Cache invalidation on deploy<span class="pill" style="background: rgba(94,106,210,0.22);">Triaged</span></div>
-          <div class="row" style="top: 260px;">Audit rate-limit headers<span class="pill">Todo</span></div>
+        <div class="pi02-bg clip" data-start="0" data-duration="9.189" data-track-index="0"></div>
+
+        <div class="pi02-content clip" data-start="0" data-duration="9.189" data-track-index="1">
+          <div class="pi02-wordmark" id="pi02-wordmark">Linear</div>
+
+          <div class="pi02-panel" id="pi02-panel">
+            <div class="pi02-row" id="pi02-row1" style="top: 20px;">
+              <span class="pi02-row-label">Fix onboarding redirect bug</span>
+              <span class="pi02-pill">Todo</span>
+            </div>
+            <div class="pi02-row" id="pi02-row2" style="top: 100px;">
+              <span class="pi02-row-label">Improve empty-state copy</span>
+              <span class="pi02-pill">In Progress</span>
+            </div>
+            <div class="pi02-row pi02-row-focal" id="pi02-row3" style="top: 180px;">
+              <div class="pi02-row-glow" id="pi02-row3-glow"></div>
+              <span class="pi02-row-label pi02-row-label-bright">Cache invalidation on deploy</span>
+              <span class="pi02-pill-wrap">
+                <span class="pi02-pill" id="pi02-pill-todo">Todo</span>
+                <span class="pi02-pill pi02-pill-triaged" id="pi02-pill-triaged">Triaged</span>
+              </span>
+            </div>
+            <div class="pi02-row" id="pi02-row4" style="top: 260px;">
+              <span class="pi02-row-label">Audit rate-limit headers</span>
+              <span class="pi02-pill">Todo</span>
+            </div>
+          </div>
+
+          <div class="pi02-ripple" id="pi02-ripple"></div>
+          <div class="pi02-cursor" id="pi02-cursor"></div>
+
+          <div class="pi02-caption" id="pi02-caption">One tool. Every issue.</div>
         </div>
-        <div class="cursor" style="left: 1120px; top: 458px;"></div>
       </div>
 
       <script>
         window.__timelines = window.__timelines || {};
-        window.__timelines["02-product-intro"] = gsap.timeline({ paused: true });
+        var pi02_tl = gsap.timeline({ paused: true });
+        window.__timelines["02-product-intro"] = pi02_tl;
+
+        // ---- Scene 1 (0.0-1.5s): wordmark + panel scale/fade in together ----
+        // spring-pop-entrance: calm settle, no overshoot, hero visible by t<=0.5s
+        pi02_tl.fromTo(
+          "#pi02-wordmark",
+          { opacity: 0, scale: 0.92, y: 8 },
+          { opacity: 1, scale: 1, y: 0, duration: 0.45, ease: "power3.out" },
+          0.05
+        );
+        pi02_tl.fromTo(
+          "#pi02-panel",
+          { opacity: 0, scale: 0.96 },
+          { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" },
+          0.08
+        );
+
+        // ---- Scene 2 (1.5-3.5s): rows waterfall top-to-bottom ----
+        // waterfall-entry: binary opacity via set, overlapping power4.out arrivals
+        var rows = ["#pi02-row1", "#pi02-row2", "#pi02-row3", "#pi02-row4"];
+        var rowStart = 1.6;
+        var rowStagger = 0.35;
+        var rowDur = 0.5;
+        rows.forEach(function (sel, i) {
+          var t = rowStart + i * rowStagger;
+          pi02_tl.set(sel, { opacity: 1, y: 46 }, t);
+          pi02_tl.to(sel, { y: 0, duration: rowDur, ease: "power4.out" }, t);
+        });
+
+        // ---- Scene 3 (3.5-6.0s): cursor glides in, clicks the focal row, pill flips ----
+        // cursor-click-ripple: move -> click depression -> ripple, adapted with a state swap
+        var MOVE_START = 3.6;
+        var MOVE_DUR = 0.9;
+        var CLICK_AT = MOVE_START + MOVE_DUR + 0.1; // 4.6
+        var PRESS_DUR = 0.08;
+        var RIPPLE_AT = CLICK_AT + 0.04;
+        var FLIP_AT = CLICK_AT + 0.05;
+
+        // cursor enters from off-frame (upper-right of its resting slot) and settles
+        pi02_tl.fromTo(
+          "#pi02-cursor",
+          { opacity: 0, x: 760, y: -180 },
+          { opacity: 1, x: 0, y: 0, duration: MOVE_DUR, ease: "power2.inOut" },
+          MOVE_START
+        );
+
+        // click depression: cursor compresses then releases
+        pi02_tl.to(
+          "#pi02-cursor",
+          { scale: 0.82, duration: PRESS_DUR, ease: "power2.in", yoyo: true, repeat: 1 },
+          CLICK_AT
+        );
+
+        // single ripple ring from the click point (understated — the one accent moment)
+        pi02_tl.set("#pi02-ripple", { opacity: 1 }, RIPPLE_AT);
+        pi02_tl.to(
+          "#pi02-ripple",
+          { scale: 4, opacity: 0, duration: 0.7, ease: "power2.out", immediateRender: false },
+          RIPPLE_AT
+        );
+
+        // pill flip: Todo scales out while Triaged spring-pops in (same slot)
+        pi02_tl.to(
+          "#pi02-pill-todo",
+          { opacity: 0, scale: 0, duration: 0.25, ease: "power3.in" },
+          FLIP_AT
+        );
+        pi02_tl.fromTo(
+          "#pi02-pill-triaged",
+          { opacity: 0, scale: 0 },
+          { opacity: 1, scale: 1, duration: 0.35, ease: "power3.out" },
+          FLIP_AT
+        );
+
+        // row background brightens — the accent moment, holds through the tail
+        pi02_tl.to(
+          "#pi02-row3-glow",
+          { opacity: 1, duration: 0.5, ease: "power2.out" },
+          FLIP_AT
+        );
+
+        // ---- Scene 4 (6.0-9.189s): hold, caption fades in, subtle glow breathing ----
+        pi02_tl.fromTo(
+          "#pi02-caption",
+          { opacity: 0, y: 6 },
+          { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+          6.2
+        );
+
+        // subtle row-glow breathing through the padded tail — low amplitude, deterministic
+        pi02_tl.to(
+          "#pi02-row3-glow",
+          { opacity: 0.72, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 3 },
+          6.6
+        );
       </script>
     </template>
-  </body>
-</html>

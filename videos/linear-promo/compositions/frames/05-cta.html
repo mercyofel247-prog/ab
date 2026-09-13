@@ -1,51 +1,168 @@
-<!doctype html>
-<html>
-  <head></head>
-  <body>
-    <template>
-      <style>
-        #root {
-          position: absolute;
-          inset: 0;
-          background: #08090A;
-          font-family: "Inter", sans-serif;
-          color: #F7F8F8;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        .wordmark {
-          font-size: 72px;
-          font-weight: 700;
-          margin-bottom: 40px;
-        }
-        .cta {
-          padding: 20px 48px;
-          border-radius: 100px;
-          background: #5E6AD2;
-          color: #F7F8F8;
-          font-size: 30px;
-          font-weight: 600;
-        }
-        .url {
-          margin-top: 28px;
-          font-size: 22px;
-          color: #8A8F98;
-        }
-      </style>
+<template>
+  <style>
+    @font-face {
+      font-family: "Inter";
+      src: url("assets/fonts/Inter-400.woff2") format("woff2");
+      font-weight: 400;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("assets/fonts/Inter-500.woff2") format("woff2");
+      font-weight: 500;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("assets/fonts/Inter-600.woff2") format("woff2");
+      font-weight: 600;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Inter";
+      src: url("assets/fonts/Inter-700.woff2") format("woff2");
+      font-weight: 700;
+      font-style: normal;
+      font-display: block;
+    }
 
-      <div id="root" data-composition-id="05-cta" data-width="1920" data-height="1080">
-        <!-- SKETCH: centered wordmark, solid CTA pill, url -->
-        <div class="wordmark">Linear</div>
-        <div class="cta">Try it free</div>
-        <div class="url">linear.app</div>
+    #root {
+      position: absolute;
+      inset: 0;
+      container-type: size;
+      font-family: "Inter", sans-serif;
+      color: #F7F8F8;
+      overflow: hidden;
+    }
+
+    /* full-bleed ground — a dedicated clip layer, never painted on #root */
+    .c05cta-bg {
+      position: absolute;
+      inset: 0;
+      background: #08090A;
+    }
+
+    .c05cta-card1,
+    .c05cta-card2 {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .c05cta-wordmark1 {
+      font-family: "Inter", sans-serif;
+      font-weight: 700;
+      font-size: 8.75cqw;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: #F7F8F8;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .c05cta-lockup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .c05cta-wordmark2 {
+      font-family: "Inter", sans-serif;
+      font-weight: 700;
+      font-size: 2.08cqw;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: #F7F8F8;
+      margin-bottom: 2.6cqw;
+    }
+
+    .c05cta-pill {
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      font-size: 1.98cqw;
+      line-height: 1;
+      color: #F7F8F8;
+      background: #5E6AD2;
+      border-radius: 100px;
+      padding: 1.35cqw 3.33cqw;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .c05cta-url {
+      font-family: "Inter", sans-serif;
+      font-weight: 400;
+      font-size: 1.15cqw;
+      letter-spacing: 0.02em;
+      color: #8A8F98;
+      margin-top: 1.5cqw;
+    }
+  </style>
+
+  <div id="root" data-composition-id="05-cta" data-width="1920" data-height="1080">
+    <div class="c05cta-bg clip" data-start="0" data-duration="7.843" data-track-index="0"></div>
+
+    <!-- Card 1 — wordmark alone (0.0–2.2s) -->
+    <div class="c05cta-card1 clip" data-start="0" data-duration="2.2" data-track-index="1">
+      <div class="c05cta-wordmark1" id="c05cta-wordmark1">Linear</div>
+    </div>
+
+    <!-- Card 2 — hard cut: wordmark docked small + CTA pill + url (2.2s–end) -->
+    <div class="c05cta-card2 clip" data-start="2.2" data-duration="5.643" data-track-index="1">
+      <div class="c05cta-lockup" id="c05cta-lockup">
+        <div class="c05cta-wordmark2">Linear</div>
+        <div class="c05cta-pill" id="c05cta-pill">Try it free</div>
+        <div class="c05cta-url" id="c05cta-url">linear.app</div>
       </div>
+    </div>
+  </div>
 
-      <script>
-        window.__timelines = window.__timelines || {};
-        window.__timelines["05-cta"] = gsap.timeline({ paused: true });
-      </script>
-    </template>
-  </body>
-</html>
+  <script>
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    window.__timelines["05-cta"] = tl;
+
+    // Scene 1 (0.0–2.2s): wordmark spring-pops into center, slight overshoot then settle.
+    // Hero must be visible by t<=0.5s — lands well inside that window.
+    tl.fromTo(
+      "#c05cta-wordmark1",
+      { scale: 0, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.4)" },
+      0.05
+    );
+
+    // Scene 2 (hard cut at 2.2s): card1 -> card2 swap is the clip-window boundary itself
+    // (no fade authored — instant, full opacity). The docked wordmark and url sit in their
+    // resting state; only the pill performs its own spring-settle right on the cut.
+    tl.fromTo(
+      "#c05cta-pill",
+      { scale: 0, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.5)" },
+      2.2
+    );
+
+    // Scene 3 (~3.6–4.2s): url fades up beneath the pill as the VO finishes its line.
+    tl.fromTo(
+      "#c05cta-url",
+      { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
+      3.6
+    );
+
+    // Scene 4 (4.8–7.843s): full lockup holds to the final frame — at most a
+    // barely-perceptible slow scale-up across the hold (final frame: no exit, full opacity).
+    tl.fromTo(
+      "#c05cta-lockup",
+      { scale: 1 },
+      { scale: 1.015, duration: 3.043, ease: "none" },
+      4.8
+    );
+  </script>
+</template>
