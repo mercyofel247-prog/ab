@@ -274,10 +274,15 @@ const IrisCluster: React.FC<{ frame: number; fps: number }> = ({
   );
 };
 
+const DIE_REST_TOP = 795;
+const DIE_DROP_HEIGHT = 380;
+
 const Die: React.FC<{ frame: number; fps: number }> = ({ frame, fps }) => {
   // Pre-rolled spring: at video frame 0 the internal clock is already at
   // frame 3, so the die is mid-fall (not a static sprite) and settles,
-  // with a slight overshoot, by frame 12.
+  // with a slight overshoot, by frame 12. The same spring value drives
+  // both the vertical bounce-in and the tumble rotation, so the landing
+  // and the rotational stop land on the same beat.
   const tumble = spring({
     frame: frame + 3,
     fps,
@@ -286,36 +291,63 @@ const Die: React.FC<{ frame: number; fps: number }> = ({ frame, fps }) => {
   const rotateZ = interpolate(tumble, [0, 1], [-380, 8]);
   const rotateX = interpolate(tumble, [0, 1], [42, 0]);
 
+  // Falls in from above; the spring's own overshoot carries it slightly
+  // past rest (a little impact give) before it settles.
+  const dieTop = DIE_REST_TOP - DIE_DROP_HEIGHT * (1 - tumble);
+  const heightAboveRest = Math.max(0, DIE_REST_TOP - dieTop);
+  const shadowScale = interpolate(heightAboveRest, [0, DIE_DROP_HEIGHT], [1, 0.45], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const shadowOpacity = interpolate(heightAboveRest, [0, DIE_DROP_HEIGHT], [0.5, 0.12], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   const dim = interpolate(frame, [34, 37], [1, 0.5], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: 165,
-        top: 795,
-        width: 130,
-        height: 130,
-        perspective: 500,
-        opacity: dim,
-      }}
-    >
+    <>
       <div
         style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: 16,
-          background:
-            "linear-gradient(135deg, #48484D 0%, #3A3A3E 45%, #2A2A2D 100%)",
-          border: "2px solid #222224",
-          boxShadow: "0 18px 30px rgba(0,0,0,0.55)",
-          transform: `rotateX(${rotateX}deg) rotateZ(${rotateZ}deg)`,
-          position: "relative",
+          position: "absolute",
+          left: 230 - 45 * shadowScale,
+          top: DIE_REST_TOP + 136,
+          width: 90 * shadowScale,
+          height: 22 * shadowScale,
+          borderRadius: "50%",
+          background: "#000000",
+          opacity: shadowOpacity * dim,
+          filter: "blur(3px)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 165,
+          top: dieTop,
+          width: 130,
+          height: 130,
+          perspective: 500,
+          opacity: dim,
         }}
       >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: 16,
+            background:
+              "linear-gradient(135deg, #48484D 0%, #3A3A3E 45%, #2A2A2D 100%)",
+            border: "2px solid #222224",
+            boxShadow: "0 18px 30px rgba(0,0,0,0.55)",
+            transform: `rotateX(${rotateX}deg) rotateZ(${rotateZ}deg)`,
+            position: "relative",
+          }}
+        >
         {[
           [30, 30],
           [100, 30],
@@ -337,8 +369,9 @@ const Die: React.FC<{ frame: number; fps: number }> = ({ frame, fps }) => {
             }}
           />
         ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
