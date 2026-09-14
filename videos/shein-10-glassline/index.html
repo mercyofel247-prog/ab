@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN 10 — glassline (the clothes are the experiment)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      /* every timed layer is class="clip" — the framework owns its visibility.
+         motion always lands on the inner .wrap, never on the clip itself. */
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      .wrap {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      /* ---------------- z5: mulberry32 dust (back) ---------------- */
+
+      #dust-wrap {
+        will-change: transform, opacity;
+      }
+
+      .dust {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(237, 232, 221, 0.9) 0%, rgba(237, 232, 221, 0) 72%);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z1: frosted glass + ghost-grid ---------------- */
+
+      #z1-wrap {
+        will-change: transform;
+      }
+
+      #ghost-grid {
+        position: absolute;
+        left: 600px;
+        top: 200px;
+        width: 720px;
+        height: 540px;
+      }
+
+      .garment {
+        position: absolute;
+        width: 60px;
+        height: 68px;
+        background: var(--graphite);
+        clip-path: polygon(
+          38% 0%,
+          62% 0%,
+          62% 10%,
+          100% 22%,
+          86% 40%,
+          68% 28%,
+          68% 100%,
+          32% 100%,
+          32% 28%,
+          14% 40%,
+          0% 22%,
+          38% 10%
+        );
+        will-change: transform, opacity;
+      }
+
+      #glass-pane {
+        position: absolute;
+        left: 550px;
+        top: 160px;
+        width: 820px;
+        height: 620px;
+        border-radius: 28px;
+        background: linear-gradient(
+          128deg,
+          rgba(237, 232, 221, 0.1) 0%,
+          rgba(237, 232, 221, 0.03) 38%,
+          rgba(58, 58, 62, 0.1) 72%,
+          rgba(237, 232, 221, 0.06) 100%
+        );
+        border: 1px solid rgba(237, 232, 221, 0.22);
+        backdrop-filter: blur(7px) saturate(115%);
+        -webkit-backdrop-filter: blur(7px) saturate(115%);
+        box-shadow:
+          inset 0 1px 0 rgba(237, 232, 221, 0.18),
+          inset 0 -18px 40px rgba(0, 0, 0, 0.35),
+          0 20px 50px rgba(0, 0, 0, 0.55);
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      #glass-pane::after {
+        /* an etched sheen streak across the pane */
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 28px;
+        background: linear-gradient(
+          70deg,
+          transparent 38%,
+          rgba(237, 232, 221, 0.1) 46%,
+          rgba(237, 232, 221, 0.16) 49%,
+          rgba(237, 232, 221, 0.1) 52%,
+          transparent 60%
+        );
+      }
+
+      /* ---------------- z3: oxblood spike-line ---------------- */
+
+      #z3-wrap {
+        will-change: transform;
+      }
+
+      #spike-svg {
+        position: absolute;
+        inset: 0;
+      }
+
+      #spike-path,
+      #spike-glow-path {
+        fill: none;
+        stroke: var(--oxblood);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      #spike-path {
+        stroke-width: 3.5;
+      }
+
+      #spike-glow-path {
+        stroke-width: 12;
+        opacity: 0.35;
+        filter: blur(6px);
+      }
+
+      #spike-tip-glow {
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      /* ---------------- z2: the winning silhouette ---------------- */
+
+      #hero-outer {
+        will-change: transform;
+      }
+
+      #hero-glow {
+        position: absolute;
+        left: 1020px;
+        top: 425px;
+        width: 220px;
+        height: 220px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(122, 22, 14, 0.85) 0%,
+          rgba(122, 22, 14, 0.28) 42%,
+          rgba(122, 22, 14, 0) 74%
+        );
+        mix-blend-mode: screen;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      #hero-inner {
+        position: absolute;
+        left: 1020px;
+        top: 425px;
+        width: 96px;
+        height: 110px;
+        transform-origin: 50% 50%;
+        opacity: 0;
+        will-change: transform, opacity;
+      }
+
+      #hero-garment {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(160deg, #fbf8f2 0%, var(--bone) 55%, #d8d1c2 100%);
+        clip-path: polygon(
+          38% 0%,
+          62% 0%,
+          62% 10%,
+          100% 22%,
+          86% 40%,
+          68% 28%,
+          68% 100%,
+          32% 100%,
+          32% 28%,
+          14% 40%,
+          0% 22%,
+          38% 10%
+        );
+        filter: drop-shadow(0 0 10px rgba(122, 22, 14, 0.55));
+      }
+
+      /* ---------------- z4: warm-bone caption ---------------- */
+
+      #caption-wrap {
+        will-change: transform;
+      }
+
+      #caption {
+        position: absolute;
+        left: 50%;
+        top: 948px;
+        transform: translate(-50%, 0);
+        color: var(--bone);
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        text-align: center;
+        white-space: nowrap;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      #caption::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -18px;
+        width: 46px;
+        height: 2px;
+        transform: translateX(-50%);
+        background: var(--oxblood);
+      }
+
+      /* ---------------- z6: grade pass (front) ---------------- */
+
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(120% 90% at 50% 48%, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.18) 100%);
+      }
+
+      #ca-layer {
+        position: absolute;
+        inset: -4px;
+        opacity: 0.5;
+        mix-blend-mode: screen;
+        background:
+          radial-gradient(60% 60% at 4% 4%, rgba(160, 190, 210, 0.06) 0%, rgba(160, 190, 210, 0) 60%),
+          radial-gradient(60% 60% at 96% 96%, rgba(210, 180, 160, 0.06) 0%, rgba(210, 180, 160, 0) 60%);
+      }
+
+      #grain {
+        position: absolute;
+        inset: -40px;
+        opacity: 0.06;
+        background-image: radial-gradient(rgba(237, 232, 221, 0.9) 1px, transparent 1.3px);
+        background-size: 5px 5px;
+        will-change: transform;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="shein_10_glassline"
+      data-start="0"
+      data-duration="3.0"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage">
+        <!-- z5: dust — track 1 -->
+        <div id="clip-dust" class="clip" data-start="0" data-duration="3.0" data-track-index="1">
+          <div class="wrap" id="dust-wrap" data-layout-allow-overflow></div>
+        </div>
+
+        <!-- z1: glass + ghost-grid — track 2 -->
+        <div id="clip-glass" class="clip" data-start="0" data-duration="3.0" data-track-index="2">
+          <div class="wrap" id="z1-wrap" data-layout-allow-overflow>
+            <div id="ghost-grid" data-layout-allow-overflow></div>
+            <div id="glass-pane"></div>
+          </div>
+        </div>
+
+        <!-- z3: spike-line — track 3 -->
+        <div id="clip-spikeline" class="clip" data-start="0" data-duration="3.0" data-track-index="3">
+          <div class="wrap" id="z3-wrap" data-layout-allow-overflow>
+            <svg id="spike-svg" viewBox="0 0 1920 1080" data-layout-allow-overflow>
+              <path
+                id="spike-glow-path"
+                d="M140,880 L340,865 L560,878 L760,840 L900,690 L980,500 L1020,425"
+              />
+              <path id="spike-path" d="M140,880 L340,865 L560,878 L760,840 L900,690 L980,500 L1020,425" />
+              <circle id="spike-tip-glow" cx="1020" cy="425" r="26" fill="rgba(122,22,14,0.55)" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- z2: the winning silhouette — track 4 -->
+        <div id="clip-hero" class="clip" data-start="0" data-duration="3.0" data-track-index="4">
+          <div class="wrap" id="hero-outer" data-layout-allow-overflow>
+            <div id="hero-glow"></div>
+            <div id="hero-inner" data-layout-allow-overflow>
+              <div id="hero-garment"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- z4: caption — track 5 -->
+        <div id="clip-caption" class="clip" data-start="0" data-duration="3.0" data-track-index="5">
+          <div class="wrap" id="caption-wrap" data-layout-allow-overflow>
+            <div id="caption">The clothes are the experiment</div>
+          </div>
+        </div>
+
+        <!-- z6: grade pass — track 6 -->
+        <div id="clip-grade" class="clip" data-start="0" data-duration="3.0" data-track-index="6">
+          <div class="wrap" id="grade-wrap" data-layout-allow-overflow>
+            <div id="grain"></div>
+            <div id="ca-layer"></div>
+            <div id="vignette"></div>
+          </div>
+        </div>
+      </section>
+
+      <audio
+        id="glassline-audio"
+        data-start="0"
+        data-duration="3.0"
+        data-track-index="7"
+        src="assets/glassline-sfx.wav"
+        data-volume="0.9"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic mulberry32 PRNG — seeded once, used only at setup ----
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x5eed1234);
+
+      const sineInOut = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+      // ---- timing constants (seconds) ----
+      const FPS = 24;
+      const SELECT_START = 0.6; // 600ms — matches the brief's ms timing (f14 @ 24fps ~ 0.583, use the literal ms)
+      const SELECT_END = 1.5;
+      const SYNC_T = 38 / FPS; // f38 — 1.58333s, the ONE sync frame
+      const LAND_END = 1.65;
+      const CAPTION_END = 1.8;
+      const SUSTAIN_START = 1.8;
+      const SUSTAIN_END = 2.6;
+      const HOLD_END = 3.0;
+
+      // =====================================================================
+      // z5 — mulberry32-seeded dust
+      // =====================================================================
+      const dustWrap = document.querySelector("#dust-wrap");
+      const DUST_COUNT = 40;
+      const dustEls = [];
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "dust";
+        const size = 2 + rand() * 3;
+        el.style.left = `${Math.round(rand() * 1920)}px`;
+        el.style.top = `${Math.round(rand() * 1080)}px`;
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        dustWrap.appendChild(el);
+        dustEls.push({
+          el,
+          amp: 5 + rand() * 9,
+          dur: 1.3 + rand() * 1.7,
+          phase: rand() * 1.2,
+          baseOpacity: 0.07 + rand() * 0.16,
+        });
+      }
+      dustEls.forEach((d) => gsap.set(d.el, { opacity: d.baseOpacity, y: 0 }));
+
+      // =====================================================================
+      // z1 — ghost-grid of candidate garments behind the frosted glass
+      // =====================================================================
+      const ghostGrid = document.querySelector("#ghost-grid");
+      const COLS = 6;
+      const ROWS = 6;
+      const CELL_W = 120;
+      const CELL_H = 90;
+      const ghostCells = [];
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const el = document.createElement("div");
+          el.className = "garment";
+          el.style.left = `${col * CELL_W + (CELL_W - 60) / 2}px`;
+          el.style.top = `${row * CELL_H + (CELL_H - 68) / 2}px`;
+          ghostGrid.appendChild(el);
+          ghostCells.push({
+            el,
+            baseOpacity: 0.14 + rand() * 0.16,
+            driftAmp: 2 + rand() * 3,
+            driftDur: 0.22 + rand() * 0.14,
+            phase: rand() * 0.3,
+          });
+        }
+      }
+      ghostCells.forEach((c) => gsap.set(c.el, { opacity: c.baseOpacity, y: 0 }));
+
+      // ---- hero (z2) starts hidden, positioned analytically over the winning
+      // cell's center (col=3,row=2) — computed from the same grid constants
+      // above, never measured from the DOM. ----
+      const heroOuter = document.querySelector("#hero-outer");
+      const heroInner = document.querySelector("#hero-inner");
+      const heroGlow = document.querySelector("#hero-glow");
+      gsap.set(heroInner, { xPercent: -50, yPercent: -50, opacity: 0, scale: 0.82 });
+      gsap.set(heroGlow, { opacity: 0 });
+
+      // ---- glass pane initial pose ----
+      const glassPane = document.querySelector("#glass-pane");
+      gsap.set(glassPane, { rotation: -7, x: -8 });
+
+      // ---- spike-line: length precomputed from the path's own fixed
+      // coordinates (sum of segment lengths for M140,880 ... L1020,425) —
+      // no DOM measurement at all, so nothing is seek-order-dependent.
+      const spikePath = document.querySelector("#spike-path");
+      const spikeGlowPath = document.querySelector("#spike-glow-path");
+      const spikeTipGlow = document.querySelector("#spike-tip-glow");
+      // padded past the exact polyline sum (1120.86) so the round linecap's
+      // own geometry can never leak a sliver at the endpoint before the draw.
+      const SPIKE_LEN = 1160;
+      gsap.set([spikePath, spikeGlowPath], {
+        strokeDasharray: SPIKE_LEN,
+        strokeDashoffset: SPIKE_LEN,
+      });
+      gsap.set(spikeTipGlow, { opacity: 0 });
+
+      // ---- caption ----
+      const captionEl = document.querySelector("#caption");
+      gsap.set(captionEl, { opacity: 0 });
+
+      // ---- grain ----
+      const grainEl = document.querySelector("#grain");
+      gsap.set(grainEl, { x: 0, y: 0 });
+
+      // ---- the four planes that share the ambient container push ----
+      const z1Wrap = document.querySelector("#z1-wrap");
+      const z3Wrap = document.querySelector("#z3-wrap");
+      const captionWrap = document.querySelector("#caption-wrap");
+      const ambientTargets = [z1Wrap, z3Wrap, heroOuter, captionWrap];
+      gsap.set(ambientTargets, { scale: 1 });
+
+      function ambientScaleAt(t) {
+        if (t <= 0.6) {
+          // 0 -> 0.6s: 1.000 -> 1.006, sine.inOut
+          const local = clamp01(t / 0.6);
+          return lerp(1.0, 1.006, sineInOut(local));
+        }
+        if (t <= SUSTAIN_START) {
+          // 0.6 -> 1.8s: hold — the busy select/land beats own the motion here
+          return 1.006;
+        }
+        if (t <= SUSTAIN_END) {
+          // 1.8 -> 2.6s: 1.006 -> 1.03, sine.inOut
+          const local = clamp01((t - SUSTAIN_START) / (SUSTAIN_END - SUSTAIN_START));
+          return lerp(1.006, 1.03, sineInOut(local));
+        }
+        // 2.6 -> 3.0s: HOLD, sharp and cuttable
+        return 1.03;
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // =====================================================================
+      // ESTABLISH (0 - 0.6s): container ambient push, single trajectory
+      // covering the whole 3.0s duration (one plane, one motion).
+      // =====================================================================
+      const ambientDrive = { p: 0 };
+      tl.to(
+        ambientDrive,
+        {
+          p: 1,
+          duration: HOLD_END,
+          ease: "none",
+          onUpdate: () => {
+            const scale = ambientScaleAt(ambientDrive.p * HOLD_END);
+            gsap.set(ambientTargets, { scale });
+          },
+        },
+        0,
+      );
+
+      // ghost-grid: faint independent micro-drift per silhouette, staggered,
+      // sine.inOut — individually phase-scheduled (no built-in random stagger).
+      // Finite repeat counts sized to outlast the 3s window (HyperFrames seeks
+      // a fixed finite duration; infinite repeats fight deterministic seeking).
+      ghostCells.forEach((c) => {
+        const reps = Math.ceil((HOLD_END - c.phase) / c.driftDur) + 1;
+        tl.to(
+          c.el,
+          { y: `+=${c.driftAmp}`, duration: c.driftDur, ease: "sine.inOut", yoyo: true, repeat: reps },
+          c.phase,
+        );
+      });
+
+      // dust drift — deterministic per-particle phase, sine.inOut, whole duration.
+      dustEls.forEach((d) => {
+        const reps = Math.ceil((HOLD_END - d.phase) / d.dur) + 1;
+        tl.to(
+          d.el,
+          {
+            y: d.amp,
+            opacity: d.baseOpacity * 0.4,
+            duration: d.dur,
+            ease: "sine.inOut",
+            yoyo: true,
+            repeat: reps,
+          },
+          d.phase,
+        );
+      });
+
+      // =====================================================================
+      // SELECT (0.6 - 1.5s): one silhouette sharpens while the rest fade down,
+      // resolving in real time. Glass pane carries its own single slide/rotate.
+      // =====================================================================
+      tl.to(
+        glassPane,
+        { rotation: -4, x: 0, duration: LAND_END - SELECT_START, ease: "power2.inOut" },
+        SELECT_START,
+      );
+
+      // the ghost-grid, all 36 cells, fade down together as the test resolves
+      // (the winning cell's own ghost copy fades too — it is leaving the grid
+      // to become the hero silhouette in front of the glass).
+      ghostCells.forEach((c) => {
+        tl.to(c.el, { opacity: 0.04, duration: LAND_END - SELECT_START, ease: "power2.inOut" }, SELECT_START);
+      });
+
+      // the hero sharpens into focus: opacity + scale-up, power2.out.
+      tl.to(heroInner, { opacity: 1, scale: 1, duration: SELECT_END - SELECT_START, ease: "power2.out" }, SELECT_START);
+      tl.to(heroGlow, { opacity: 0.55, duration: SELECT_END - SELECT_START, ease: "power2.out" }, SELECT_START);
+
+      // spike-line draws on beneath the glass, completing its upward draw at
+      // the exact sync instant (f38), sharp resolution, power4.out.
+      tl.to(
+        [spikePath, spikeGlowPath],
+        { strokeDashoffset: 0, duration: SYNC_T - SELECT_START, ease: "power4.out" },
+        SELECT_START,
+      );
+
+      // =====================================================================
+      // LAND (1.5 - 1.65s, sync f38 = 1.5833s): discrete impact.
+      // =====================================================================
+      tl.to(
+        heroInner,
+        {
+          keyframes: [
+            { scale: 1.09, duration: SYNC_T - SELECT_END, ease: "power3.out" },
+            { scale: 1, duration: LAND_END - SYNC_T, ease: "back.out(1.7)" },
+          ],
+        },
+        SELECT_END,
+      );
+
+      tl.to(heroGlow, { opacity: 1, duration: SYNC_T - SELECT_END, ease: "power2.out" }, SELECT_END);
+      tl.to(heroGlow, { opacity: 0.4, duration: LAND_END - SYNC_T, ease: "power2.out" }, SYNC_T);
+
+      tl.to(spikeTipGlow, { opacity: 1, duration: 0.06, ease: "none" }, SYNC_T);
+      tl.to(spikeTipGlow, { opacity: 0.5, duration: LAND_END - SYNC_T - 0.06, ease: "power2.out" }, SYNC_T + 0.06);
+
+      // =====================================================================
+      // CAPTION SETTLE (1.65 - 1.8s): a beat after the land, never simultaneous.
+      // =====================================================================
+      tl.to(captionEl, { opacity: 1, duration: CAPTION_END - LAND_END, ease: "power2.out" }, LAND_END);
+
+      // =====================================================================
+      // SUSTAINED (1.8 - 2.6s): spike-line + selection glow hold a faint pulse
+      // (opacity only — the aperture/draw itself never re-fires).
+      // =====================================================================
+      const pulseDrive = { p: 0 };
+      tl.to(
+        pulseDrive,
+        {
+          p: 1,
+          duration: SUSTAIN_END - SUSTAIN_START,
+          ease: "none",
+          onUpdate: () => {
+            const phase = pulseDrive.p * Math.PI * 2 * 2.5;
+            const pulse = 0.4 + 0.12 * Math.sin(phase);
+            gsap.set(spikeTipGlow, { opacity: pulse });
+            gsap.set(heroGlow, { opacity: 0.36 + 0.1 * Math.sin(phase * 0.9 + 0.4) });
+          },
+        },
+        SUSTAIN_START,
+      );
+
+      // grain keeps moving through the whole shot — a slow drift cycle, finite
+      // repeat count sized to outlast the 3s window.
+      {
+        const grainCycle = 0.55;
+        const grainReps = Math.ceil(HOLD_END / grainCycle) + 1;
+        tl.to(grainEl, { x: -5, y: 4, duration: grainCycle, ease: "sine.inOut", yoyo: true, repeat: grainReps }, 0);
+      }
+
+      // =====================================================================
+      // EXIT (2.6 - 3.0s): HOLD sharp & cuttable — no fade. Dust and grain
+      // are already looping continuously and simply keep running here.
+      // =====================================================================
+
+      window.__timelines["shein_10_glassline"] = tl;
+    </script>
+  </body>
+</html>
