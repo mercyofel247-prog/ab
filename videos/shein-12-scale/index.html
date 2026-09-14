@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>SHEIN 12 — scale gap (H&amp;M vs SHEIN)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --ground: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite: #3a3a3e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+
+      .wrap {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 50%;
+      }
+
+      /* ---------------- z1: the colossal SHEIN tower ---------------- */
+
+      #tower-body {
+        position: absolute;
+        left: 1475px;
+        top: -210px;
+        width: 170px;
+        height: 1220px;
+        transform-origin: 50% 100%;
+        background: linear-gradient(90deg, #2c2c2f 0%, #45454a 18%, #302f33 46%, #4c4b50 70%, #26262a 100%);
+        box-shadow:
+          inset 2px 0 0 rgba(255, 255, 255, 0.05),
+          inset -3px 0 8px rgba(0, 0, 0, 0.6);
+        will-change: transform;
+        overflow: hidden;
+      }
+
+      #tower-body::before {
+        /* floor lines — brushed-metal architectural detail, static */
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          0deg,
+          rgba(0, 0, 0, 0.28) 0px,
+          rgba(0, 0, 0, 0.28) 1px,
+          transparent 1px,
+          transparent 26px
+        );
+      }
+
+      #glint {
+        position: absolute;
+        left: 0;
+        top: 1170px;
+        width: 170px;
+        height: 50px;
+        background: linear-gradient(
+          180deg,
+          rgba(237, 232, 221, 0) 0%,
+          rgba(237, 232, 221, 0.5) 48%,
+          rgba(237, 232, 221, 0) 100%
+        );
+        mix-blend-mode: screen;
+        will-change: transform;
+      }
+
+      /* ---------------- z2: oxblood emissive rim ---------------- */
+
+      #rim-el {
+        position: absolute;
+        left: 1471px;
+        top: -210px;
+        width: 8px;
+        height: 1220px;
+        transform-origin: 50% 100%;
+        background: linear-gradient(90deg, rgba(122, 22, 14, 0) 0%, var(--oxblood) 45%, rgba(255, 120, 90, 0.9) 100%);
+        filter: drop-shadow(0 0 10px rgba(122, 22, 14, 0.85)) drop-shadow(0 0 24px rgba(122, 22, 14, 0.5));
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z3: the tiny cold-graphite H&M bar ---------------- */
+
+      #hm-bar {
+        position: absolute;
+        left: 235px;
+        top: 940px;
+        width: 90px;
+        height: 70px;
+        transform-origin: 50% 100%;
+        background: linear-gradient(90deg, #313135 0%, var(--graphite) 50%, #2a2a2e 100%);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z4: warm-bone labels ---------------- */
+
+      #label-hm,
+      #label-shein {
+        position: absolute;
+        top: 876px;
+        color: var(--bone);
+        font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+        font-size: 27px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        opacity: 0;
+        will-change: opacity;
+      }
+
+      #label-hm {
+        left: 380px;
+        text-align: left;
+      }
+
+      #label-shein {
+        left: 1080px;
+        width: 380px;
+        text-align: right;
+      }
+
+      /* ---------------- z5: mulberry32 dust ---------------- */
+
+      .dust {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(237, 232, 221, 0.9) 0%, rgba(237, 232, 221, 0) 72%);
+        will-change: transform, opacity;
+      }
+
+      /* ---------------- z6: grade pass ---------------- */
+
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(120% 90% at 50% 48%, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, 0.18) 100%);
+      }
+
+      #ca-layer {
+        position: absolute;
+        inset: -4px;
+        opacity: 0.5;
+        mix-blend-mode: screen;
+        background:
+          radial-gradient(60% 60% at 4% 4%, rgba(160, 190, 210, 0.06) 0%, rgba(160, 190, 210, 0) 60%),
+          radial-gradient(60% 60% at 96% 96%, rgba(210, 180, 160, 0.06) 0%, rgba(210, 180, 160, 0) 60%);
+      }
+
+      #grain {
+        position: absolute;
+        inset: -40px;
+        opacity: 0.06;
+        background-image: radial-gradient(rgba(237, 232, 221, 0.9) 1px, transparent 1.3px);
+        background-size: 5px 5px;
+        will-change: transform, opacity;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main-video"
+      data-start="0"
+      data-duration="2.75"
+      data-fps="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage">
+        <!-- z1: SHEIN tower — track 0 -->
+        <div id="clip-z1" class="clip" data-start="0" data-duration="2.75" data-track-index="0">
+          <div class="wrap" id="z1-outer" data-layout-allow-overflow>
+            <div id="tower-body" data-layout-allow-overflow>
+              <div id="glint"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- z2: oxblood rim — track 1 -->
+        <div id="clip-z2" class="clip" data-start="0" data-duration="2.75" data-track-index="1">
+          <div class="wrap" id="z2-outer" data-layout-allow-overflow>
+            <div id="rim-el"></div>
+          </div>
+        </div>
+
+        <!-- z3: H&M bar — track 2 -->
+        <div id="clip-z3" class="clip" data-start="0" data-duration="2.75" data-track-index="2">
+          <div class="wrap" id="z3-outer" data-layout-allow-overflow>
+            <div id="hm-bar"></div>
+          </div>
+        </div>
+
+        <!-- z4: labels — track 3 -->
+        <div id="clip-z4" class="clip" data-start="0" data-duration="2.75" data-track-index="3">
+          <div class="wrap" id="z4-outer" data-layout-allow-overflow>
+            <div id="label-hm">H&amp;M &middot; 4,500 / YEAR</div>
+            <div id="label-shein">SHEIN &middot; 4,700 / DAY</div>
+          </div>
+        </div>
+
+        <!-- z5: dust — track 4 -->
+        <div id="clip-z5" class="clip" data-start="0" data-duration="2.75" data-track-index="4">
+          <div class="wrap" id="dust-wrap" data-layout-allow-overflow></div>
+        </div>
+
+        <!-- z6: grade pass — track 5 -->
+        <div id="clip-z6" class="clip" data-start="0" data-duration="2.75" data-track-index="5">
+          <div class="wrap" id="grade-wrap" data-layout-allow-overflow>
+            <div id="grain"></div>
+            <div id="ca-layer"></div>
+            <div id="vignette"></div>
+          </div>
+        </div>
+      </section>
+
+      <audio
+        id="scale-audio"
+        data-start="0"
+        data-duration="2.75"
+        data-track-index="6"
+        src="assets/scale-sfx.wav"
+        data-volume="0.95"
+      ></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- deterministic mulberry32 PRNG — seeded once, used only at setup ----
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(0x5ca1e12c);
+
+      const sineInOut = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const clamp01 = (x) => Math.max(0, Math.min(1, x));
+      const power4Out = gsap.parseEase("power4.out");
+
+      // ---- timing constants (seconds), matching the brief's frame numbers at 24fps ----
+      const BASE_END = 10 / 24; // 0.41667s — f10
+      const SYNC_T = 34 / 24; // 1.41667s — f34, the ONE sync frame ("year")
+      const LAND_END = 38 / 24; // 1.58333s — f38
+      const SUSTAIN_END = 60 / 24; // 2.5s — f60
+      const HOLD_END = 66 / 24; // 2.75s — f66
+
+      // ---- fixed geometry (no DOM measurement anywhere) ----
+      const TOWER_H = 1220;
+      const GLINT_H = 50;
+
+      // =====================================================================
+      // z5 — mulberry32-seeded dust
+      // =====================================================================
+      const dustWrap = document.querySelector("#dust-wrap");
+      const DUST_COUNT = 36;
+      const dustEls = [];
+      for (let i = 0; i < DUST_COUNT; i++) {
+        const el = document.createElement("div");
+        el.className = "dust";
+        const size = 2 + rand() * 3;
+        el.style.left = `${Math.round(rand() * 1920)}px`;
+        el.style.top = `${Math.round(rand() * 1080)}px`;
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        dustWrap.appendChild(el);
+        dustEls.push({
+          el,
+          amp: 5 + rand() * 9,
+          dur: 1.2 + rand() * 1.6,
+          phase: rand() * 1.1,
+          baseOpacity: 0.06 + rand() * 0.15,
+        });
+      }
+      dustEls.forEach((d) => gsap.set(d.el, { opacity: d.baseOpacity, y: 0 }));
+
+      // =====================================================================
+      // seed / hidden states — all set OUTSIDE the timeline
+      // =====================================================================
+      const towerBody = document.querySelector("#tower-body");
+      const rimEl = document.querySelector("#rim-el");
+      const glintEl = document.querySelector("#glint");
+      const hmBar = document.querySelector("#hm-bar");
+      const labelHm = document.querySelector("#label-hm");
+      const labelShein = document.querySelector("#label-shein");
+      const grainEl = document.querySelector("#grain");
+
+      gsap.set([towerBody, rimEl], { transformOrigin: "50% 100%", scaleY: 0.05 });
+      gsap.set(rimEl, { opacity: 0 });
+      gsap.set(glintEl, { y: 0 });
+      gsap.set(hmBar, { transformOrigin: "50% 100%", scaleY: 0.08, opacity: 1 });
+      gsap.set([labelHm, labelShein], { opacity: 0 });
+      gsap.set(grainEl, { x: 0, y: 0, opacity: 0.06 });
+
+      // ---- the four planes that share the ambient container push ----
+      const z1Outer = document.querySelector("#z1-outer");
+      const z2Outer = document.querySelector("#z2-outer");
+      const z3Outer = document.querySelector("#z3-outer");
+      const z4Outer = document.querySelector("#z4-outer");
+      const ambientTargets = [z1Outer, z2Outer, z3Outer, z4Outer];
+      gsap.set(ambientTargets, { scale: 1 });
+
+      function ambientScaleAt(t) {
+        if (t <= BASE_END) {
+          // 0 -> 0.417s: 1.000 -> 1.008, sine.inOut
+          const local = clamp01(t / BASE_END);
+          return lerp(1.0, 1.008, sineInOut(local));
+        }
+        if (t <= LAND_END) {
+          // BASE_END -> LAND_END: hold — bar-build and land own the motion here
+          return 1.008;
+        }
+        if (t <= SUSTAIN_END) {
+          // LAND_END -> 2.5s: 1.008 -> 1.04, sine.inOut
+          const local = clamp01((t - LAND_END) / (SUSTAIN_END - LAND_END));
+          return lerp(1.008, 1.04, sineInOut(local));
+        }
+        // 2.5 -> 2.75s: HOLD, cuttable
+        return 1.04;
+      }
+
+      const tl = gsap.timeline({ paused: true });
+
+      // =====================================================================
+      // BASE (0 - 0.417s): both bars at seed height, ambient push begins.
+      // Single trajectory for the whole 2.75s duration.
+      // =====================================================================
+      const ambientDrive = { p: 0 };
+      tl.to(
+        ambientDrive,
+        {
+          p: 1,
+          duration: HOLD_END,
+          ease: "none",
+          onUpdate: () => {
+            const scale = ambientScaleAt(ambientDrive.p * HOLD_END);
+            gsap.set(ambientTargets, { scale });
+          },
+        },
+        0,
+      );
+
+      // =====================================================================
+      // BAR-BUILD (0.417 - 1.417s): H&M grows fast and stops; SHEIN climbs the
+      // full window and doesn't stop; a specular glint travels the tower edge.
+      // =====================================================================
+      const HM_GROW_DUR = 0.35;
+      tl.to([hmBar], { scaleY: 1, duration: HM_GROW_DUR, ease: "power3.out" }, BASE_END);
+
+      tl.to([towerBody, rimEl], { scaleY: 1, duration: SYNC_T - BASE_END, ease: "power4.out" }, BASE_END);
+
+      const glintDrive = { p: 0 };
+      tl.to(
+        glintDrive,
+        {
+          p: 1,
+          duration: SYNC_T - BASE_END,
+          ease: "none",
+          onUpdate: () => {
+            const eased = power4Out(glintDrive.p);
+            const y = -(TOWER_H - GLINT_H) * eased;
+            gsap.set(glintEl, { y });
+          },
+        },
+        BASE_END,
+      );
+
+      // =====================================================================
+      // LAND (1.417 - 1.583s, sync f34 "year"): 5 simultaneous beats —
+      // rim-ignite, impact push-through, H&M-dim, label-lock, grain kick.
+      // =====================================================================
+      tl.to(rimEl, { opacity: 1, duration: LAND_END - SYNC_T, ease: "expo.out" }, SYNC_T);
+
+      tl.to(
+        [towerBody, rimEl],
+        {
+          keyframes: [
+            { scale: 1.11, duration: 0.07, ease: "power3.out" },
+            { scale: 1, duration: LAND_END - SYNC_T - 0.07, ease: "back.out(1.7)" },
+          ],
+        },
+        SYNC_T,
+      );
+
+      tl.to(hmBar, { opacity: 0.78, duration: LAND_END - SYNC_T, ease: "power2.out" }, SYNC_T);
+
+      tl.to([labelHm, labelShein], { opacity: 1, duration: LAND_END - SYNC_T, ease: "power3.out" }, SYNC_T);
+
+      tl.to(grainEl, { opacity: 0.14, duration: 0.05, ease: "none" }, SYNC_T);
+      tl.to(grainEl, { opacity: 0.06, duration: LAND_END - SYNC_T - 0.05, ease: "power2.out" }, SYNC_T + 0.05);
+
+      // =====================================================================
+      // SUSTAINED (1.583 - 2.5s): oxblood rim breathes ±5% via opacity only —
+      // the tower's own scale never moves again. No dead air.
+      // =====================================================================
+      const breatheDrive = { p: 0 };
+      const BREATHE_DUR = HOLD_END - LAND_END; // runs through SUSTAINED and EXIT alike
+      tl.to(
+        breatheDrive,
+        {
+          p: 1,
+          duration: BREATHE_DUR,
+          ease: "none",
+          onUpdate: () => {
+            const phase = breatheDrive.p * Math.PI * 2 * 3;
+            const rimPulse = 0.95 + 0.05 * Math.sin(phase);
+            gsap.set(rimEl, { opacity: rimPulse });
+          },
+        },
+        LAND_END,
+      );
+
+      // grain keeps moving through the whole shot — a slow drift cycle, finite
+      // repeat count sized to outlast the 2.75s window.
+      {
+        const grainCycle = 0.55;
+        const grainReps = Math.ceil(HOLD_END / grainCycle) + 1;
+        tl.to(grainEl, { x: -5, y: 4, duration: grainCycle, ease: "sine.inOut", yoyo: true, repeat: grainReps }, 0);
+      }
+
+      // dust drift — deterministic per-particle phase, sine.inOut, finite
+      // repeat counts sized to outlast the 2.75s window.
+      dustEls.forEach((d) => {
+        const reps = Math.ceil((HOLD_END - d.phase) / d.dur) + 1;
+        tl.to(
+          d.el,
+          { y: d.amp, opacity: d.baseOpacity * 0.4, duration: d.dur, ease: "sine.inOut", yoyo: true, repeat: reps },
+          d.phase,
+        );
+      });
+
+      // =====================================================================
+      // EXIT (2.5 - 2.75s): HOLD, cuttable — tower razor-sharp, oxblood rim
+      // still breathing, grain and dust still live. No fade.
+      // =====================================================================
+
+      window.__timelines["main-video"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "shein-12-scale",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "hyperframes preview",
+    "check": "hyperframes check",
+    "lint": "hyperframes lint",
+    "render:draft": "hyperframes render -f 24 -q draft --workers 1 --strict -o renders/shein_12_scale.mp4",
+    "render": "hyperframes render -f 24 -q high -o renders/shein_12_scale.mp4",
+    "cloud": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high --no-wait",
+    "cloud:wait": "hyperframes cloud render --fps=24 --resolution=1080p --aspect-ratio=16:9 --quality=high -o renders/shein_12_scale.mp4",
+    "cloud:list": "hyperframes cloud list",
+    "cloud:get": "hyperframes cloud get",
+    "audio": "node generate-audio.mjs",
+    "publish": "hyperframes publish"
+  },
+  "devDependencies": {
+    "hyperframes": "0.8.37"
+  }
+}
