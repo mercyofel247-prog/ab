@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Ring Rotation Test</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* single wrapper: the only element that ever gets a transform, and the
+         only property tweened on it is rotate(). No blur anywhere in this
+         composition. Sized 340x340 (ring + tick overhang) and centered by the
+         flex parent, so its own box center coincides with the ring's center —
+         rotation about that shared center never shifts anything. Initial
+         rotation is set via gsap.set(), not a static CSS transform, so it
+         never fights the GSAP tween on the same property. */
+      #ringWrapper {
+        position: relative;
+        width: 340px;
+        height: 340px;
+      }
+
+      /* 300px outer diameter, 20px stroke, warm-bone */
+      #ring {
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        border: 20px solid var(--bone);
+        box-sizing: border-box;
+      }
+
+      /* four static oxblood tick marks at 12/3/6/9 o'clock, straddling the
+         ring's stroke band (radius 130-150). They never move independently —
+         they are plain children of #ringWrapper and only ever move as part
+         of its single rotate() transform. */
+      .tick {
+        position: absolute;
+        background: var(--oxblood);
+      }
+
+      #tick-12 {
+        left: 163px;
+        top: 15px;
+        width: 14px;
+        height: 30px;
+      }
+
+      #tick-3 {
+        left: 295px;
+        top: 163px;
+        width: 30px;
+        height: 14px;
+      }
+
+      #tick-6 {
+        left: 163px;
+        top: 295px;
+        width: 14px;
+        height: 30px;
+      }
+
+      #tick-9 {
+        left: 15px;
+        top: 163px;
+        width: 30px;
+        height: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="1.0"
+      data-fps="40"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="1.0" data-track-index="1">
+        <div id="ringWrapper">
+          <div id="ring"></div>
+          <div id="tick-12" class="tick"></div>
+          <div id="tick-3" class="tick"></div>
+          <div id="tick-6" class="tick"></div>
+          <div id="tick-9" class="tick"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- initial state ----
+      gsap.set("#ringWrapper", { rotation: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 500ms: rotate 0 -> 14deg, power2.inOut. Only ever increasing.
+      tl.to("#ringWrapper", { rotation: 14, duration: 0.5, ease: "power2.inOut" }, 0);
+
+      // 500ms -> 900ms: rotate 14 -> 0deg, power2.inOut. Only ever decreasing.
+      // (500 + 400 = 900, leaving the final 100ms as a clean hold at 0deg so
+      // the total composition stays exactly 1.0s.)
+      tl.to("#ringWrapper", { rotation: 0, duration: 0.4, ease: "power2.inOut" }, 0.5);
+
+      // 900ms -> 1000ms: hold at 0deg — nothing left to animate, the tween
+      // above already resolves to rest at 0.9s.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
