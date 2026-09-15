@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Radial Swirl Reveal</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      /* single outer wrapper: one rotate() transform + the blur filter live here.
+         Initial transform/filter values are set via gsap.set(), not CSS, to
+         avoid fighting the GSAP tween on the same property.
+
+         Oversized on purpose: a rotated 1920x1080 box pulls its edges in from
+         the stage's corners, exposing bare (unblurred) stage background right
+         next to blurred content -- a visible seam at the rotation peak. Sizing
+         #frame to 2300x1700 (centered, background-matched) guarantees full
+         coverage of the 1920x1080 stage at any angle up to the 14deg cap, with
+         margin for the peak blur's edge softening too, so no gap can ever show.
+         #stage's overflow:hidden clips the oversized excess. */
+      #frame {
+        position: absolute;
+        left: -190px;
+        top: -310px;
+        width: 2300px;
+        height: 1700px;
+        background: var(--black);
+        transform-origin: 50% 50%;
+        will-change: transform, filter;
+      }
+
+      /* the true 1920x1080 stage coordinate space, centered inside #frame */
+      #content {
+        position: absolute;
+        left: 190px;
+        top: 310px;
+        width: 1920px;
+        height: 1080px;
+      }
+
+      #shotA,
+      #shotB {
+        position: absolute;
+        inset: 0;
+      }
+
+      #shotB {
+        display: grid;
+        place-items: center;
+      }
+
+      .mark {
+        position: absolute;
+        background: var(--bone);
+      }
+
+      #circle {
+        width: 700px;
+        height: 700px;
+        border-radius: 50%;
+        background: var(--oxblood);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="1.2"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="1.2" data-track-index="1">
+        <div id="frame" data-layout-allow-overflow>
+          <div id="content">
+            <div id="shotA"></div>
+            <div id="shotB">
+              <div id="circle"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // deterministic PRNG (mulberry32) so the scattered field is identical on every render
+      function mulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(1337);
+
+      // dense, evenly-distributed field: grid-placed with per-cell jitter so
+      // it reads as scattered rather than a rigid lattice
+      const shotA = document.querySelector("#shotA");
+      const COLS = 40;
+      const ROWS = 24;
+      const CELL_W = 1920 / COLS; // 48
+      const CELL_H = 1080 / ROWS; // 45
+      const frag = document.createDocumentFragment();
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const cx = c * CELL_W + CELL_W / 2;
+          const cy = r * CELL_H + CELL_H / 2;
+          const jx = (rand() - 0.5) * (CELL_W * 0.55);
+          const jy = (rand() - 0.5) * (CELL_H * 0.55);
+          const w = 6 + rand() * 9; // 6-15px
+          const h = 3 + rand() * 5; // 3-8px
+          const rot = (rand() - 0.5) * 40; // -20..20deg
+          const op = 0.82 + rand() * 0.18; // 0.82-1
+
+          const mark = document.createElement("div");
+          mark.className = "mark";
+          mark.style.left = (cx + jx - w / 2).toFixed(2) + "px";
+          mark.style.top = (cy + jy - h / 2).toFixed(2) + "px";
+          mark.style.width = w.toFixed(2) + "px";
+          mark.style.height = h.toFixed(2) + "px";
+          mark.style.transform = "rotate(" + rot.toFixed(2) + "deg)";
+          mark.style.opacity = op.toFixed(3);
+          frag.appendChild(mark);
+        }
+      }
+      shotA.appendChild(frag);
+
+      // ---- initial state ----
+      gsap.set("#frame", { rotation: 0, filter: "blur(0px)" });
+      gsap.set("#shotA", { opacity: 1 });
+      gsap.set("#shotB", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 400ms: blur ramps 0 -> peak (power2.in); rotation ramps 0 -> 14deg (linear).
+      // Rotation lives on #frame's transform alone and only ever increases here.
+      tl.to("#frame", { filter: "blur(48px)", duration: 0.4, ease: "power2.in" }, 0);
+      tl.to("#frame", { rotation: 14, duration: 0.4, ease: "none" }, 0);
+
+      // 400ms -> 600ms: hold peak blur + peak rotation (no tween needed — values
+      // already sit at their peak from the ramp above). Shot A swaps to shot B
+      // here, concealed by the peak blur, so no cut is ever visible.
+      tl.to("#shotA", { opacity: 0, duration: 0.2, ease: "none" }, 0.4);
+      tl.to("#shotB", { opacity: 1, duration: 0.2, ease: "none" }, 0.4);
+
+      // 600ms -> 1000ms: blur reverses to 0 (power2.out); rotation eases back to
+      // 0 (power2.out) — same #frame transform, only ever decreasing from here.
+      tl.to("#frame", { filter: "blur(0px)", duration: 0.4, ease: "power2.out" }, 0.6);
+      tl.to("#frame", { rotation: 0, duration: 0.4, ease: "power2.out" }, 0.6);
+
+      // 1000ms -> 1200ms: hold shot B steady, sharp, unrotated — nothing left to
+      // animate, both tweens above already resolve to their rest values at 1.0s.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
