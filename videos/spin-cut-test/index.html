@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Spin Cut Test</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+        --graphite: #3a3a3e;
+        --oxblood: #7a160e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+        display: grid;
+        place-items: center;
+      }
+
+      /* both cards share the same centered grid cell; only one is visible
+         (via opacity) at any given time -- a hard, instantaneous cut, no
+         crossfade. #stage is 1920x1080 and the card is only 400x250, so a
+         full 360deg spin never approaches #stage's clipping edges -- no
+         seam risk here, unlike a full-bleed rotating layer. */
+      #cardAWrapper,
+      #cardB {
+        grid-area: 1 / 1;
+        position: relative;
+        width: 400px;
+        height: 250px;
+      }
+
+      /* the only element that ever gets a transform (rotate() only) or a
+         filter (blur() only). Initial rotation/filter/opacity are all set
+         via gsap.set(), never static CSS, so nothing fights the GSAP tweens
+         on the same properties. Left unclipped (no overflow:hidden) so the
+         blur's soft falloff is never hard-cut by a bounding box. */
+      #cardAWrapper {
+        will-change: transform, filter;
+      }
+
+      #cardA {
+        position: absolute;
+        inset: 0;
+        background: var(--bone);
+      }
+
+      #cardA svg {
+        position: absolute;
+        inset: 0;
+      }
+
+      #cardB {
+        background: var(--oxblood);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="0.8"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="0.8" data-track-index="1">
+        <div id="cardAWrapper">
+          <div id="cardA">
+            <svg viewBox="0 0 400 250" preserveAspectRatio="none">
+              <line x1="0" y1="0" x2="400" y2="250" stroke="#3a3a3e" stroke-width="4" />
+            </svg>
+          </div>
+        </div>
+        <div id="cardB"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- initial state ----
+      gsap.set("#cardAWrapper", { rotation: 0, filter: "blur(0px)", opacity: 1 });
+      gsap.set("#cardB", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 400ms: one full 360deg spin, linear, single continuous
+      // direction, never reversing.
+      tl.to("#cardAWrapper", { rotation: 360, duration: 0.4, ease: "none" }, 0);
+
+      // 0 -> 200ms: blur rises 0 -> peak (power2.out).
+      // 200 -> 400ms: blur falls peak -> 0 (power2.in).
+      // power2.out(x) = 1-(1-x)^2 and power2.in(x) = x^2 over equal 200ms
+      // halves produce blur(200-d) === blur(200+d) for every d -- an exactly
+      // symmetric hump centered on the 200ms peak.
+      tl.to("#cardAWrapper", { filter: "blur(26px)", duration: 0.2, ease: "power2.out" }, 0);
+      tl.to("#cardAWrapper", { filter: "blur(0px)", duration: 0.2, ease: "power2.in" }, 0.2);
+
+      // Exactly at 400ms: hard cut, shot A -> shot B. No crossfade -- shot A
+      // has just completed its one full rotation (360deg reads identical to
+      // 0deg) and settled back to blur(0px) at this same instant, so the cut
+      // lands on a fully resolved beat either way.
+      tl.set("#cardAWrapper", { opacity: 0 }, 0.4);
+      tl.set("#cardB", { opacity: 1 }, 0.4);
+
+      // 400ms -> 800ms: hold shot B, sharp and static -- nothing left to
+      // animate.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
