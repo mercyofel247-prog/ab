@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Spin Rate Check</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+        --graphite: #3a3a3e;
+        --oxblood: #7a160e;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+        display: grid;
+        place-items: center;
+      }
+
+      /* Both cards share the same centered grid cell; only one is visible
+         (via opacity) at a time -- a hard, instantaneous cut, no crossfade. */
+      #cardAWrapper,
+      #cardB {
+        grid-area: 1 / 1;
+        position: relative;
+        width: 400px;
+        height: 250px;
+      }
+
+      /* THE ONLY element in this composition that ever receives a
+         transform. It carries exactly one rotate() -- there is no other
+         rotated ancestor, no nested wrapper applying a second rotation, and
+         nothing here composes translate/scale into the same transform that
+         could be mistaken for a second rotation. Initial rotation/filter/
+         opacity are all set via gsap.set(), never static CSS, so nothing
+         fights the GSAP tweens on the same properties. Left unclipped (no
+         overflow:hidden) so the blur's soft falloff is never hard-cut. */
+      #cardAWrapper {
+        will-change: transform, filter;
+      }
+
+      #cardA {
+        position: absolute;
+        inset: 0;
+        background: var(--bone);
+      }
+
+      #cardA svg {
+        position: absolute;
+        inset: 0;
+      }
+
+      #cardB {
+        background: var(--oxblood);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="0.8"
+      data-fps="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="0.8" data-track-index="1">
+        <div id="cardAWrapper">
+          <div id="cardA">
+            <svg viewBox="0 0 400 250" preserveAspectRatio="none">
+              <line x1="0" y1="0" x2="400" y2="250" stroke="#3a3a3e" stroke-width="4" />
+            </svg>
+          </div>
+        </div>
+        <div id="cardB"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- rotation contract (do not silently change these) ----
+      // angle: EXACTLY 360 (one full turn, never 720 / never doubled).
+      // duration: EXACTLY 0.4 seconds (400ms) of real time, set explicitly
+      // as a duration in seconds -- never derived from a frame count or
+      // beat count that could resolve to a different real-time value at a
+      // different fps. rotation(t) = ROTATE_ANGLE_DEG * (t / ROTATE_DURATION_S)
+      // must hold at every sampled instant because the tween below is
+      // linear (ease: "none") over exactly this duration/angle pair.
+      const ROTATE_ANGLE_DEG = 360;
+      const ROTATE_DURATION_S = 0.4;
+
+      // ---- initial state ----
+      gsap.set("#cardAWrapper", { rotation: 0, filter: "blur(0px)", opacity: 1 });
+      gsap.set("#cardB", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 400ms: one full 360deg spin at a CONSTANT rate. ease: "none" is
+      // GSAP's literal linear interpolation -- no acceleration, no
+      // deceleration -- so rotation(t) = 360 * (t / 0.4) holds exactly at
+      // every instant, not just at the two endpoints. This is the single
+      // rotate() in the whole render chain: #cardAWrapper is the only
+      // element this composition ever transforms.
+      tl.to(
+        "#cardAWrapper",
+        { rotation: ROTATE_ANGLE_DEG, duration: ROTATE_DURATION_S, ease: "none" },
+        0,
+      );
+
+      // 0 -> 200ms: blur rises 0 -> peak (power2.out).
+      // 200 -> 400ms: blur falls peak -> 0 (power2.in).
+      // Easing lives on the BLUR only, never on the rotation above -- the
+      // two are independent tweens on independent properties, run in
+      // parallel on the same element. power2.out(x) = 1-(1-x)^2 and
+      // power2.in(x) = x^2 over equal 200ms halves produce
+      // blur(200-d) === blur(200+d) for every d -- an exactly symmetric
+      // hump centered on the 200ms peak.
+      tl.to("#cardAWrapper", { filter: "blur(26px)", duration: 0.2, ease: "power2.out" }, 0);
+      tl.to("#cardAWrapper", { filter: "blur(0px)", duration: 0.2, ease: "power2.in" }, 0.2);
+
+      // Exactly at 400ms: hard cut, shot A -> shot B. No crossfade -- shot A
+      // has just completed its one full rotation (360deg reads identical to
+      // 0deg) and settled back to blur(0px) at this same instant.
+      tl.set("#cardAWrapper", { opacity: 0 }, 0.4);
+      tl.set("#cardB", { opacity: 1 }, 0.4);
+
+      // 400ms -> 800ms: hold shot B, sharp and static -- nothing left to
+      // animate.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
