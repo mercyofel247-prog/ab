@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Mirror Split Test</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      /* shot A: the real triangle. Never touched by any transform or
+         animation -- this is what the composition always shows once the
+         mirror overlay above it is hidden/faded out. */
+      #sceneOriginal {
+        position: absolute;
+        inset: 0;
+      }
+
+      /* the mirror overlay: an exact duplicate of #sceneOriginal's content,
+         clipped to keep only its left half (where the triangle lives), then
+         flipped about the frame's own center with a single static
+         transform: scaleX(-1). Clip-path clips in the element's local,
+         pre-transform coordinate space, so clipping to the left half FIRST
+         and then flipping is what lands the kept (real) half onto the right
+         half of the screen as its mirror image -- clipping to the right
+         half would flip the (empty) right half onto the left instead.
+         Only opacity is ever animated on this layer; transform/clip-path
+         are static, so there is no GSAP/CSS transform conflict. */
+      #sceneMirror {
+        position: absolute;
+        inset: 0;
+        clip-path: inset(0 50% 0 0);
+        transform: scaleX(-1);
+        transform-origin: 50% 50%;
+        will-change: opacity;
+      }
+
+      /* equilateral triangle, 150px per side: apex at (75,0), base corners
+         at (0,129.9) and (150,129.9); each side = sqrt(75^2+129.9^2) = 150. */
+      .triangle {
+        position: absolute;
+        left: 620px;
+        top: 220px;
+        width: 150px;
+        height: 129.9px;
+        background: var(--bone);
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="1.0"
+      data-fps="40"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="1.0" data-track-index="1">
+        <div id="sceneOriginal">
+          <div class="triangle"></div>
+        </div>
+        <div id="sceneMirror">
+          <div class="triangle"></div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // ---- initial state ----
+      gsap.set("#sceneMirror", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 400ms: static, single triangle only (#sceneMirror stays
+      // hidden) -- nothing to tween.
+
+      // Exactly at 400ms: the mirror-split activates instantly (a discrete
+      // state change, not a motion) -- #sceneMirror snaps to fully visible.
+      tl.set("#sceneMirror", { opacity: 1 }, 0.4);
+
+      // 400ms -> 700ms: mirrored hold, completely static -- nothing to
+      // tween. #sceneMirror's transform/clip-path never change; only its
+      // opacity was set above, once.
+
+      // 700ms -> 900ms: the mirror releases via a simple linear opacity
+      // cross-fade back to the unmirrored single-triangle frame. #sceneMirror
+      // fades out, revealing #sceneOriginal underneath -- which was never
+      // touched and still shows shot A's original triangle exactly as at 0s.
+      // Finishing at 900ms (not the full 700-1000ms window) leaves a clean,
+      // fully-resolved multi-frame hold from 900-1000ms -- a real "held to
+      // the end", rather than a composition still mid-fade on its very last
+      // rendered frame.
+      tl.to("#sceneMirror", { opacity: 0, duration: 0.2, ease: "none" }, 0.7);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
