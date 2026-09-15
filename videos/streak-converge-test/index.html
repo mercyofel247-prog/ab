@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!--
+      [A17]-EXEMPT, TITLE-ONLY
+
+      This composition is exempt from palette-lock: it deliberately uses a
+      four-hue set (warm-bone / oxblood / graphite-blue / steel) beyond the
+      usual bone-and-oxblood pair, because it's a one-shot title/reset beat,
+      not a held brand accent. Do not treat this palette as a precedent for
+      a held-frame composition.
+    -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Streak Converge Test</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --black: #0b0b0c;
+        --bone: #ede8dd;
+        --oxblood: #7a160e;
+        --graphite-blue: #5b6068;
+        --steel: #8a8f98;
+        --dot: #937b7b; /* average of the four hues -- the "residue" color */
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--black);
+      }
+
+      /* Each streak is a thin 180x4 bar whose CSS rest position is already
+         centered at frame center (960,540) -- gsap.set() then pushes it out
+         near its corner via x/y offset, so animating x/y back to 0,0 is
+         exactly "travel to center". Rotation is a static orientation (set
+         once, never tweened) aligning the bar's long axis with its corner's
+         diagonal; only x/y (translate) and scaleX (the "streak" elongation)
+         are ever animated -- an independent translate+scale transform per
+         element, never a shared radial gradient/shader. */
+      .streak {
+        position: absolute;
+        left: 960px;
+        top: 540px;
+        margin-left: -90px;
+        margin-top: -2px;
+        width: 180px;
+        height: 4px;
+        will-change: transform;
+      }
+
+      #streak-tl {
+        background: var(--bone);
+      }
+      #streak-tr {
+        background: var(--oxblood);
+      }
+      #streak-br {
+        background: var(--graphite-blue);
+      }
+      #streak-bl {
+        background: var(--steel);
+      }
+
+      /* impact flash: a soft near-white core, centered on the convergence
+         point, opacity toggled on/off by .set() only -- a hard flash, never
+         a fade, so its on-screen window is exactly the two frames it's given. */
+      #flash {
+        position: absolute;
+        left: 960px;
+        top: 540px;
+        margin-left: -70px;
+        margin-top: -70px;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ffffff 0%, #fdfaf5 45%, rgba(253, 250, 245, 0) 75%);
+      }
+
+      /* the small held marker left behind once the flash clears */
+      #dot {
+        position: absolute;
+        left: 960px;
+        top: 540px;
+        margin-left: -8px;
+        margin-top: -8px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--dot);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="0.8"
+      data-fps="40"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="stage" class="clip" data-start="0" data-duration="0.8" data-track-index="1">
+        <div id="streak-tl" class="streak"></div>
+        <div id="streak-tr" class="streak"></div>
+        <div id="streak-br" class="streak"></div>
+        <div id="streak-bl" class="streak"></div>
+        <div id="flash"></div>
+        <div id="dot"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      // Corner-to-center diagonal angle (deg), atan(460/880) ~= 27.6deg.
+      // TL/BR share one diagonal orientation; TR/BL share the other.
+      const DIAG = 27.6;
+
+      // Each entry: starting x/y offset from center (pushes the bar out to
+      // ~80px inset from its corner) and the static rotation that aligns the
+      // bar's long axis with that corner's diagonal.
+      const CORNERS = {
+        "#streak-tl": { x: -880, y: -460, rotation: DIAG },
+        "#streak-tr": { x: 880, y: -460, rotation: -DIAG },
+        "#streak-br": { x: 880, y: 460, rotation: DIAG },
+        "#streak-bl": { x: -880, y: 460, rotation: -DIAG },
+      };
+
+      // ---- initial state ----
+      for (const [sel, c] of Object.entries(CORNERS)) {
+        gsap.set(sel, { x: c.x, y: c.y, rotation: c.rotation, scaleX: 0.4, opacity: 1 });
+      }
+      gsap.set("#flash", { opacity: 0 });
+      gsap.set("#dot", { opacity: 0 });
+
+      const tl = gsap.timeline({ paused: true });
+
+      // 0 -> 400ms: all four streaks travel from their corner to center,
+      // identical duration + ease, so they arrive simultaneously at exactly
+      // 400ms -- no streak can be early or late relative to the others.
+      // scaleX grows alongside the translate (independent translate+scale
+      // per element, per the build rule), giving each bar a stretching
+      // "speed line" look as it accelerates into the impact.
+      for (const sel of Object.keys(CORNERS)) {
+        tl.to(sel, { x: 0, y: 0, scaleX: 1.3, duration: 0.4, ease: "power3.in" }, 0);
+      }
+
+      // Exactly at 400ms: the streaks (now fully converged/overlapping) are
+      // concealed by an instant flash -- both are .set(), not tweened, so
+      // the swap is a hard, single-frame cut hidden by the flash's own
+      // brightness, not a visible pop.
+      tl.set(".streak", { opacity: 0 }, 0.4);
+      tl.set("#flash", { opacity: 1 }, 0.4);
+
+      // 400ms -> 450ms (2 frames at 40fps: t=0.400s and t=0.425s): the flash
+      // holds, then clears. #dot becomes visible in the same instant the
+      // flash clears, so there is no gap and no extra pop-in.
+      tl.set("#flash", { opacity: 0 }, 0.45);
+      tl.set("#dot", { opacity: 1 }, 0.45);
+
+      // 450ms -> 800ms: static held card -- the dot, on near-black, nothing
+      // else animates.
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
